@@ -8,8 +8,10 @@ Vanilla HTML/CSS/JS implementation of the confirmed Figma WEB 00–16 flow. Open
 - `morph.js`: continuous body interpolation using the five source images for each doll.
 - `asset-config.js`: visual asset and motion replacement paths.
 - `assets/figma/`: exports from the current Figma design.
+- `assets/figma-render/`: per-node exports with the exact Figma crop and orientation for each web slot.
 - `assets/figures/`: four dolls, five body reference images each.
 - `design-layout-v1.json`: measured Figma frame and layer positions.
+- `ASSET_GEOMETRY_AUDIT.md`: checked ratios and Figma node mapping for the visual assets.
 
 ## Current asset gaps
 
