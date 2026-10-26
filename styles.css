@@ -2,3 +2,4 @@
 .rotate-preview{position:absolute;left:0;top:0;width:926px;height:428px;transform-origin:0 0;transform:translateX(428px) rotate(90deg);overflow:hidden}.rotate-guide{z-index:30}.fallback-break{animation:fallbackBreak 1.2s ease-in forwards}@keyframes fallbackBreak{to{transform:scale(1.2) rotate(-4deg);opacity:.2}}
 .page-08a .sliding-pack,.page-08a .sliding-figure{animation:slideFirst .48s ease-in forwards}.page-08b .sliding-pack,.page-08b .sliding-figure{animation:slideSecond .38s ease-out both}@keyframes slideFirst{to{translate:78px 0}}@keyframes slideSecond{from{translate:-77px 0}to{translate:0 0}}
 .consent-figure{animation:float 3s ease-in-out infinite alternate}
+.machine{z-index:2}
