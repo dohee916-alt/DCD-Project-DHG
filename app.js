@@ -47,8 +47,6 @@ function resultMarkup(){let h=img(A.openingLastFrame||A.opening,0,0,428,926);h+=
 function workbenchMarkup(){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,303,29,249,373,'tray')+model('blister-four-clear',576,0,436,436,'workbench','pack');h+=img(A.purpleBottle,105,60,87,90,'bottle')+img(A.orangeBottle,102,149,93,88,'bottle');if(!s.firstInject)h+=text('GAIN<br>WEIGHT',205.7,87.5,62.8,34.4,'bottle-label')+text('LOOSE<br>WEIGHT',205.7,168.5,62.8,34.4,'bottle-label');
 for(let i=0;i<4;i++)if(s.figures[i].packed){let slots=[[630,131,148,59],[817,130,148,60],[632,227,148,65],[817,229,148,59]],q=slots[i];h+=horizontalFigure(i,...q,'packed-figure');}
 h+=canvasFigure(s.active,374,83,105,266,'active-figure');h+=model('syringe-'+(s.loaded||'empty'),242,195,54,196,'syringe','syringe');
-if(s.phase==='ready'&&!s.firstFill)h+=text('DRAG & CHOOSE',282,387,292,44,'doto guide-blink workbench-guide');
-if(s.phase==='ready'&&s.loaded&&!s.firstInject)h+=text('DRAG & INJECT',282,387,292,44,'doto guide-blink workbench-guide');
 if(f.value===0)h+=text('MINIMIZE',282,387,292,44,'doto guide-blink workbench-guide');if(f.value===100)h+=text('MAXIMIZE',282,387,292,44,'doto guide-blink workbench-guide');
 h+=text('DOLL '+(s.active+1)+'/4',399,29,100,14,'progress workbench-count');return h;}
 function rearPackMarkup(x,y,w,h,cls=''){return model('blister-four-foil',x,y,w,h,'rear','rear-pack '+cls);}
