@@ -62,15 +62,15 @@
 
 /* Motion corrections: no unsolicited poster scaling, bounce-loop, or sync floating */
 .phase-loop .poster-art{animation:none!important}
-.title-stack .impact{animation:impactClean .25s cubic-bezier(.15,.8,.2,1) both;opacity:0}
-@keyframes impactClean{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
 .page-02 .oops{animation:oopsDrop .52s cubic-bezier(.18,.82,.22,1) both!important;transform:rotate(-11deg)!important}
 @keyframes oopsDrop{0%{opacity:0;translate:-18px -95px}76%{opacity:1;translate:0 4px}100%{opacity:1;translate:0 0}}
 /* Continuous 08->09 slide and 09->11 feed/ejection */
-.page-08a .sliding-pack{animation:packToPrinter 1.17s cubic-bezier(.45,0,.55,1) both!important}
+.page-08a .sliding-pack{animation:packSlidePhaseA .54s linear both!important}
+@keyframes packSlidePhaseA{from{translate:0 0}to{translate:78px 0}}
+@keyframes packSlidePhaseB{from{translate:78px 0}to{translate:155px 0}}
 @keyframes packToPrinter{from{translate:0 0}to{translate:155px 0}}
 .ejecting-pack{z-index:1;animation:packExtrude 2.32s linear both!important}
-@keyframes packExtrude{0%{translate:0 0}47%{translate:45px 0}85%{translate:45px 0}96%{translate:235px 0}100%{translate:219px 0}}
+@keyframes packExtrude{0%{translate:0 0}47%{translate:45px 0}75%{translate:77px 0}88%{translate:115px 0}96%{translate:235px 0}100%{translate:219px 0}}
 .page-09 .machine,.page-10 .machine,.page-11 .machine{z-index:2}
 .page-11 .machine-exit{animation:machineLeave .5s ease-in both}
 /* Dragged doll must be above all packed dolls until landing */
@@ -116,10 +116,10 @@
 
 /* DCD verification pass — Figma WEB 00-16 */
 /* Only the guide copy follows the complete hand-motion cycle (1.4s forward + 1.4s backward). */
-.phase-guide .guide-copy{animation:blink 2.8s steps(1,end) infinite!important}
+.phase-guide .guide-copy{animation:handEndFlash 2.8s linear infinite!important}
+@keyframes handEndFlash{0%,8%,45%,55%,92%,100%{opacity:1}3%,50%,97%{opacity:0}}
 .doto,.rotate-guide,.guide-copy,.workbench-guide,.wave,.bottle-label,.signature-guide{font-size:16px!important;line-height:20px!important;font-weight:700!important;font-variation-settings:"ROND" 0,"wght" 700!important}
 .paper-prompt{font-size:10px!important;line-height:12px!important;font-weight:700!important;font-variation-settings:"ROND" 0,"wght" 700!important}
-.title-stack .impact{animation-duration:.19s!important;animation-timing-function:cubic-bezier(.22,.65,.2,1)!important}
 /* The Figma arrow SVG has a 94px drop-shadow canvas but a 50px visible button. Keep the full 94px asset. */
 .figma-arrow{width:94px!important;height:94px!important;overflow:visible!important}
 .figma-arrow img{width:94px!important;height:94px!important;object-fit:contain!important}
@@ -144,7 +144,7 @@
 /* Keep full-width stage backdrop isolated; never show the mockup's 52px stripe. */
 .scene-content{left:-52px;width:926px}
 /* Finished 08A position persists when we switch to 08B without rebuilding the model. */
-.page-08b .sliding-pack{animation:none!important;translate:155px 0!important}
+.page-08b .sliding-pack{animation:packSlidePhaseB .54s linear both!important}
 
 /* WEB 15–16: the four visible glass layers and colors of the Figma button component. */
 .consent-button{padding:0;border:0;border-radius:145px;background:linear-gradient(180deg,#ea5a06 0%,#f2ddd6 50.481%,#e0480a 100%);box-shadow:0 11px 22px #d64d0f24;backdrop-filter:none;-webkit-backdrop-filter:none;isolation:isolate}
@@ -157,10 +157,10 @@
 
 /* The printer leaves only as WEB 11 hands its pack to WEB 12. */
 .to-prescription .machine{animation:printerExit .62s ease-in both!important}
-.to-prescription .rear-pack{animation:packExtrude 2.32s linear both!important;transform-origin:center;transform:perspective(700px) rotateY(85deg) rotateZ(90deg) scale(1.4);transition:transform .62s cubic-bezier(.45,0,.65,1)}
+.to-prescription .rear-pack{animation:none!important;translate:219px 0;transform-origin:center;transform:perspective(700px) rotateY(85deg) rotateZ(90deg) scale(1.4);transition:transform .62s cubic-bezier(.45,0,.65,1)}
 @keyframes printerExit{to{translate:-200px 0;opacity:0}}
-.wave span{display:inline-block;animation:packedLetterWave 1.35s ease-in-out infinite}
-@keyframes packedLetterWave{0%,50%,100%{translate:0 0}25%{translate:0 -6px}}
+.wave span{display:inline-block;animation:packedLetterWave 1.6s ease-in-out infinite}
+@keyframes packedLetterWave{0%,50%,100%{translate:0 0}25%{translate:0 -3px}}
 .page-15 .consent-prescription.floating,.page-16 .consent-prescription.floating{animation:paperAmbient 5.8s ease-in-out infinite alternate!important}
 .page-15 .consent-pack-assembly.floating,.page-16 .consent-pack-assembly.floating{animation:packAmbient 6.7s ease-in-out infinite alternate!important}
 /* Figma labels are 18px and printer text 24px; the reduced 16px rule applies to gesture guides. */
@@ -168,8 +168,6 @@
 .wave{font-size:24px!important;line-height:32px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
 .signature-guide{font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
 /* Restore the approved OOPS drop and give each slogan its own readable impact. */
-.title-stack .impact{animation-name:sloganImpact!important;animation-duration:.48s!important;animation-timing-function:cubic-bezier(.18,1.2,.35,1)!important;animation-fill-mode:both!important}
-@keyframes sloganImpact{0%{opacity:0;transform:scale(1.8);filter:blur(2px)}72%{opacity:1;transform:scale(.95);filter:blur(0)}100%{opacity:1;transform:scale(1);filter:blur(0)}}
 .page-09 .wave,.page-10 .wave{font-size:16px!important;line-height:19px!important}
 .page-09 .rear-pack{clip-path:inset(0 118px 0 0)}
 .figma-glass-button,.figma-glass-button.gray{z-index:6!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow:visible!important;isolation:auto!important}
@@ -180,6 +178,15 @@
 .doto,.rotate-guide,.guide-copy,.workbench-guide,.bottle-label{font-size:16px!important;line-height:20px!important;font-weight:700!important;font-variation-settings:"ROND" 0,"wght" 700!important}
 .paper-prompt,.signature-guide{font-size:10px!important;line-height:12px!important;font-weight:700!important;font-variation-settings:"ROND" 0,"wght" 700!important}
 /* Stamp each word at its final position; the brief highlight marks the hit. */
-.title-stack .impact{animation-name:stampIn!important;animation-duration:.075s!important;animation-timing-function:steps(1,end)!important;animation-fill-mode:both!important;transform:none!important;filter:none!important;translate:none!important}
-@keyframes stampIn{0%{opacity:0;text-shadow:none}1%{opacity:1;text-shadow:0 0 2px #fff,0 0 12px #ff9f65}100%{opacity:1;text-shadow:0 0 7px #ffd4b3}}
 @media (prefers-reduced-motion:reduce){.title-stack .impact{animation-duration:.001s!important}}
+
+/* DCD motion polish: approved artwork, OOPS and clipboard kept intact. */
+.title-stack .impact{display:block;opacity:0;animation:sloganStamp .095s steps(1,end) both!important;transform:none!important;filter:none!important;translate:none!important}
+@keyframes sloganStamp{0%{opacity:0}100%{opacity:1}}
+.page-09 .rear-pack{clip-path:inset(0 118px 0 0)}
+.page-10 .rear-pack,.page-11 .rear-pack{clip-path:inset(0 0 0 0);transition:clip-path .44s ease-out}
+.page-15 .primary-tint{animation-duration:1s!important}
+.page-15 .consent-copy,.page-15 .consent-button{animation:none!important;opacity:1;transition:opacity .3s ease-out}
+.page-15.consent-entering .consent-copy,.page-15.consent-entering .consent-button{opacity:0!important;pointer-events:none!important}
+.page-16 .consent-copy{animation:none!important;transition:opacity .26s ease-out}
+.page-16 .consent-button{animation:consentCopy .28s ease-out both!important}
