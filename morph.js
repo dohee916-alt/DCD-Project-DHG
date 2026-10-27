@@ -16,15 +16,14 @@ window.DCDMorph = (() => {
         const scale = Math.min(W / image.width, H / image.height);
         const width = image.width * scale, height = image.height * scale;
         ctx.drawImage(image, (W - width) / 2, (H - height) / 2, width, height);
-        const data = ctx.getImageData(0, 0, W, H).data;
+        const packed = window.DCD_FIGURE_BOUNDS?.[key];
+        if (!packed) { resolve(null); return; }
+        const bytes = atob(packed);
         const edges = new Array(H);
         for (let y = 0; y < H; y++) {
-          let left = W, right = -1;
-          for (let x = 0; x < W; x++) if (data[(y * W + x) * 4 + 3] > 24) {
-            if (left === W) left = x;
-            right = x;
-          }
-          edges[y] = right >= left ? [left, right + 1] : [W / 2, W / 2];
+          const i = y * 4;
+          edges[y] = [bytes.charCodeAt(i) | bytes.charCodeAt(i + 1) << 8,
+            bytes.charCodeAt(i + 2) | bytes.charCodeAt(i + 3) << 8];
         }
         resolve({canvas, edges});
       };
