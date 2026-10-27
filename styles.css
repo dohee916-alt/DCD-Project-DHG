@@ -169,7 +169,7 @@
 .signature-guide{font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
 /* Restore the approved OOPS drop and give each slogan its own readable impact. */
 .page-09 .wave,.page-10 .wave{font-size:16px!important;line-height:19px!important}
-.page-09 .rear-pack{clip-path:inset(0 118px 0 0)}
+
 .figma-glass-button,.figma-glass-button.gray{z-index:6!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow:visible!important;isolation:auto!important}
 .figma-glass-button::before,.figma-glass-button::after{display:none!important}
 .figma-glass-button svg{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}
@@ -183,10 +183,18 @@
 /* DCD motion polish: approved artwork, OOPS and clipboard kept intact. */
 .title-stack .impact{display:block;opacity:0;animation:sloganStamp .095s steps(1,end) both!important;transform:none!important;filter:none!important;translate:none!important}
 @keyframes sloganStamp{0%{opacity:0}100%{opacity:1}}
-.page-09 .rear-pack{clip-path:inset(0 118px 0 0)}
-.page-10 .rear-pack,.page-11 .rear-pack{clip-path:inset(0 0 0 0);transition:clip-path .44s ease-out}
+
+
 .page-15 .primary-tint{animation-duration:1s!important}
 .page-15 .consent-copy,.page-15 .consent-button{animation:none!important;opacity:1;transition:opacity .3s ease-out}
 .page-15.consent-entering .consent-copy,.page-15.consent-entering .consent-button{opacity:0!important;pointer-events:none!important}
 .page-16 .consent-copy{animation:none!important;transition:opacity .26s ease-out}
 .page-16 .consent-button{animation:consentCopy .28s ease-out both!important}
+
+/* Keep the entire packaged GLB visible during WEB 09–11: the machine itself occludes its rear. */
+.page-09 .rear-pack,.page-10 .rear-pack,.page-11 .rear-pack{clip-path:none!important}
+/* Toss-inspired flowing ink: connected gradient stroke, no separated circles. */
+.signature-flow-path{stroke-dasharray:44 56;stroke-dashoffset:44;animation:signatureInkFlow 2.7s linear infinite}
+@keyframes signatureInkFlow{from{stroke-dashoffset:44}to{stroke-dashoffset:-56}}
+.signature-flow{overflow:visible!important;pointer-events:none!important}
+.signature{z-index:13!important;touch-action:none;pointer-events:auto}
