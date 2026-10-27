@@ -12,6 +12,7 @@ Vanilla HTML/CSS/JS implementation of the confirmed Figma WEB 00–16 flow. Open
 - `assets/figures/`: four dolls, five body reference images each.
 - `design-layout-v1.json`: measured Figma frame and layer positions.
 - `ASSET_GEOMETRY_AUDIT.md`: checked ratios and Figma node mapping for the visual assets.
+- `IMPLEMENTATION_STATUS.md`: screen-by-screen list of working interactions and missing motion assets.
 
 ## Current asset gaps
 
