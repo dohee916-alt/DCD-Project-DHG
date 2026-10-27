@@ -21,3 +21,17 @@
 .paper-section{font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:14px;font-weight:700}
 .paper-prompt,.signature-guide{font-size:10px;line-height:12px}
 .options{font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:24px;grid-template-rows:repeat(8,24px)}
+.title-stack{opacity:.7;text-shadow:0 0 7px #ffd4b3}
+.title-stack .title-line{display:block}
+.headline-orange{color:#d83a00}
+.headline-white{color:#fff}
+.doto{color:#d83a00}
+.guide-copy{color:#fff}
+.bottle-label{color:#000}
+.wave{color:#d83a00}
+.paper-head,.paper-section{color:#2b333d}
+.dose,.paper-prompt,.signature-guide{color:#d83a00}
+.page-12 .options{color:#2e2924}
+.page-13 .options,.page-14 .options,.page-14done .options{color:#2b333d}
+.page-15 .consent-copy{color:#f53c0a}
+.page-16 .consent-copy{color:#f9f6f2}
