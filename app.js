@@ -57,7 +57,20 @@ function packingMarkup(){let h=img(A.workbenchBackground,52,0,874,428,'bg');if([
 h+=rearPackMarkup(s.page==='11'?271:52,0,437,428,s.page==='11'?'':'ejecting-pack');h+=img(A.machine,52,29,101,376,'machine');h+=text(waveText(s.page==='11'?'!!':'BEING PACKED..'),s.page==='11'?798.1:620.7,213.3,s.page==='11'?16.6:196.4,19,'packed-copy wave');return h;}
 function frontFigures(ox=0,oy=0,cls='front-figure'){let q=[[204,47,59,148],[304,49,65,148],[204,234,60,148],[308,234,59,148]],order=[0,2,3,1];return q.map((b,i)=>canvasFigure(order[i],b[0]-ox,b[1]-oy,b[2],b[3],cls)).join('');}
 function checklist(items,kind){return '<div class="options">'+items.map((v,i)=>'<label><input type="checkbox" data-kind="'+kind+'" data-index="'+i+'" '+(s[kind].includes(i)?'checked':'')+'><span>'+v+'</span></label>').join('')+'</div>';}
-function signatureMarkup(){const trail=['#9e2a00','#b63000','#ca3700','#d83a00','#e54205','#f04c0b','#f65410','#fa5e16','#ff691e','#ff7629','#ff873a','#ff9a51'];return text('SIGN HERE TO CONFIRM.',2,505,291,25,'doto guide-blink signature-guide')+img('assets/figma/3fe8e.svg',299,456,68,59,'signature-sample')+'<svg class="lay signature-sample signature-dots" '+box(299,456,68,59)+' viewBox="0 0 73 64" aria-hidden="true">'+trail.map((color,i)=>'<circle r="2.5" fill="'+color+'"><animateMotion dur="2.7s" repeatCount="indefinite" begin="-'+(i*.035).toFixed(3)+'s" path="'+signaturePath+'" /></circle>').join('')+'</svg>'+'<canvas id="signature" class="lay signature" '+box(233,439,152,96)+' width="456" height="288" aria-label="Draw your signature"></canvas>';}
+function signatureMarkup(){
+  // One continuous gradient brush stroke, following the exact Figma sample curve.
+  // A single path replaces 12 independent moving circles.
+  return text('SIGN HERE TO CONFIRM.',2,505,291,25,'doto guide-blink signature-guide')
+    +img('assets/figma/3fe8e.svg',299,456,68,59,'signature-sample')
+    +'<svg class="lay signature-sample signature-flow" '+box(299,456,68,59)+' viewBox="0 0 73 64" aria-hidden="true">'
+    +'<defs><linearGradient id="dcd-signature-gradient" x1="0" y1="0" x2="73" y2="64" gradientUnits="userSpaceOnUse">'
+    +'<stop offset="0%" stop-color="#D83A00"/><stop offset="30%" stop-color="#FF571A"/>'
+    +'<stop offset="70%" stop-color="#FF9239"/><stop offset="100%" stop-color="#FFD1A0"/>'
+    +'</linearGradient></defs>'
+    +'<path class="signature-flow-path" d="'+signaturePath+'" pathLength="100" fill="none" stroke="url(#dcd-signature-gradient)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'
+    +'</svg>'
+    +'<canvas id="signature" class="lay signature" '+box(177,447,259,122)+' width="777" height="366" aria-label="Draw your signature"></canvas>';
+}
 function prescriptionMarkup(){
   let page=s.page,side=['13','14','14done'].includes(page),raised=page==='14'||page==='14done';
   let h=img(A.workbenchBackground,52,0,874,428,'bg');
