@@ -15,10 +15,14 @@ function later(fn,ms){let id=setTimeout(fn,ms);timers.push(id);return id;}
 function clearTimers(){timers.forEach(clearTimeout);timers=[];}
 function box(x,y,w,h,extra=''){return 'style="left:'+x+'px;top:'+y+'px;width:'+w+'px;height:'+h+'px;'+extra+'"';}
 function img(src,x,y,w,h,cls=''){return '<img class="lay '+cls+'" '+box(x,y,w,h)+' src="'+src+'" draggable="false" alt="">';}
-function model(name,x,y,w,h,view,cls=''){return '<div class="lay model-host '+cls+'" '+box(x,y,w,h)+' data-model="'+name+'" data-view="'+view+'" aria-label="3D '+name+'"></div>';}
+function model(name,x,y,w,h,view,cls='',look=''){return '<div class="lay model-host '+cls+'" '+box(x,y,w,h)+' data-model="'+name+'" data-view="'+view+'"'+(look?' data-look="'+look+'"':'')+' aria-label="3D '+name+'"></div>';}
 function group(x,y,w,h,cls,inner){return '<div class="lay '+cls+'" '+box(x,y,w,h)+'>'+inner+'</div>';}
 function text(str,x,y,w,h,cls=''){return '<div class="lay '+cls+'" '+box(x,y,w,h)+'>'+str+'</div>';}
-function button(str,x,y,w,h,action,cls=''){return '<button class="lay glass '+cls+'" '+box(x,y,w,h)+' data-action="'+action+'">'+str+'</button>';}
+function glassButton(label,x,y,w,action,gray=false){
+  const asset=label==='YES'?'consent-yes.png':label==='NO'?'consent-no.png':'consent-test-it.png';
+  const shadow=gray?0:22,top=gray?0:11;
+  return '<button class="lay consent-button figma-glass-button'+(gray?' gray':'')+'" '+box(x-shadow,y-top,w+shadow*2,gray?60:104)+' data-action="'+action+'" aria-label="'+label+'"><img src="assets/figma/'+asset+'" draggable="false" alt=""></button>';
+}
 function arrowButton(x,y,action,kind='12'){return '<button class="lay figma-arrow" '+box(x-22,y-11,94,94)+' data-action="'+action+'" aria-label="Next"><img src="assets/figma/'+(kind==='13'?'49c33':'634cb')+'.svg" alt=""></button>';}
 function canvasFigure(i,x,y,w,h,cls='',rot=0){return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+'"></canvas>';}
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.085)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
@@ -33,14 +37,14 @@ function ropeAt(p){let closest=null,distance=Infinity;for(const [name,{line}] of
 function pullDistance(g,p){let [dx,dy]=ropes[g.rope].pull,len=Math.hypot(dx,dy);return ((p.x-g.start.x)*dx+(p.y-g.start.y)*dy)/len;}
 function drawFigures(){stage.querySelectorAll('canvas[data-figure]').forEach(c=>{let i=+c.dataset.figure;window.DCDMorph.draw(c,s.figures[i].kind,s.figures[i].value);});}
 function animateFigureValue(index,from,to,duration=530){return new Promise(resolve=>{let start=null,last=-1;function frame(t){if(start===null)start=t;let u=Math.min((t-start)/duration,1),e=u*u*(3-2*u),value=from+(to-from)*e;if(Math.abs(value-last)>.35||u===1){s.figures[index].value=value;const c=stage.querySelector('canvas.active-figure');if(c&&c.isConnected)window.DCDMorph.draw(c,s.figures[index].kind,value);last=value;}if(u<1)requestAnimationFrame(frame);else{s.figures[index].value=to;resolve();}}requestAnimationFrame(frame);});}
-function introMarkup(p){let copy=['THE','BRAND','NEW','GLP-1'];let h=img(A.opening,0,0,428,926,'poster-art');if(s.phase==='intro')h+=text(copy.map((v,i)=>'<span class="impact '+(i===3?'headline-white':'headline-orange')+'" style="animation-delay:'+(i*.08)+'s">'+v+'</span>').join(''),69,345,292,296,'title-stack');else if(p==='00')h+=text(copy.map((v,i)=>'<span class="title-line '+(i===3?'headline-white':'headline-orange')+'">'+v+'</span>').join(''),69,345,292,296,'title-stack fixed');
+function introMarkup(p){let copy=['THE','BRAND','NEW','GLP-1'];let h=img(A.opening,0,0,428,926,'poster-art');if(s.phase==='intro')h+=text(copy.map((v,i)=>'<span class="impact '+(i===3?'headline-white':'headline-orange')+'" style="animation-delay:'+(i*.68)+'s">'+v+'</span>').join(''),69,345,292,296,'title-stack');else if(p==='00')h+=text(copy.map((v,i)=>'<span class="title-line '+(i===3?'headline-white':'headline-orange')+'">'+v+'</span>').join(''),69,345,292,296,'title-stack fixed');
 h+='<div class="poster-dodge" aria-hidden="true"></div>';
 if(p==='00'){if(s.phase!=='intro')h+=text('COME VISIT TO TRY IT!',68,799,292,22,'poster-cta guide-blink');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
 else if(s.phase==='guide'){h+=text('PULL<br>THE STRINGS<br>APART',33,435,376,96,'doto guide-blink guide-copy');h+=img(A.gestureHand,0,186,211,249,'gesture gesture-left');h+=img(A.gestureHand,208,620,220,249,'gesture gesture-right');h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
 else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
 return h;}
 function resultMarkup(){let h=img(A.openingLastFrame||A.opening,0,0,428,926);h+='<div class="poster-dodge" aria-hidden="true"></div>';h+=text('THE PILL IS GONE..',78,139,292,22,'result-top');h+=text('OOPS!',-5,141,292,22,'oops');h+=text('LET’S MAKE OUR OWN!',68,809,292,22,'result-bottom');h+='<button type="button" class="lay figma-cta" data-action="start" style="left:132px;top:453px;width:166px;height:60px" aria-label="LET’S GO"><svg viewBox="0 0 166 60" width="166" height="60" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="cta-perimeter" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EA5A06"/><stop offset=".5048" stop-color="#F2DDDA"/><stop offset="1" stop-color="#E0480A"/></linearGradient><radialGradient id="cta-face" cx=".5" cy=".5" r=".65"><stop offset="0" stop-color="#FF630B" stop-opacity=".97"/><stop offset=".38" stop-color="#FF9142" stop-opacity=".91"/><stop offset=".7" stop-color="#FFBA91" stop-opacity=".91"/><stop offset="1" stop-color="#FFEDE0" stop-opacity=".96"/></radialGradient><radialGradient id="cta-glow"><stop offset="0" stop-color="#FF3300" stop-opacity=".43"/><stop offset=".45" stop-color="#FF571A" stop-opacity=".28"/><stop offset="1" stop-color="#FFCC99" stop-opacity="0"/></radialGradient><linearGradient id="cta-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset=".33" stop-color="#FFD4B2" stop-opacity=".8"/><stop offset="1" stop-color="#FFFFFF" stop-opacity=".58"/></linearGradient></defs><rect x=".5" y=".5" width="165" height="59" rx="29.5" fill="url(#cta-perimeter)"/><rect x="3" y="2.5" width="160" height="55" rx="27.5" fill="url(#cta-face)" stroke="#FFF2E3" stroke-opacity=".3"/><rect x="3" y="2.5" width="160" height="55" rx="27.5" fill="url(#cta-glow)"/><rect x=".5" y=".5" width="165" height="59" rx="29.5" fill="none" stroke="url(#cta-rim)" stroke-width=".5"/><text x="83" y="37" text-anchor="middle" fill="#FFFFFF" font-family="Source Sans 3,Arial,sans-serif" font-size="20" font-weight="700">LET’S GO</text></svg></button>';return h;}
-function workbenchMarkup(){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,303,29,249,373,'tray')+model('blister-four-clear',576,0,436,436,'workbench','pack');h+=img(A.purpleBottle,105,60,87,90,'bottle')+img(A.orangeBottle,102,149,93,88,'bottle');if(!(s.used.orange&&s.used.purple))h+=text('GAIN<br>WEIGHT',205.7,87.5,62.8,34.4,'bottle-label')+text('LOOSE<br>WEIGHT',205.7,168.5,62.8,34.4,'bottle-label');
+function workbenchMarkup(){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,303,29,249,373,'tray')+model('blister-four-clear',576,0,436,436,'workbench','pack');h+=img(A.purpleBottle,105,60,87,90,'bottle')+img(A.orangeBottle,102,149,93,88,'bottle');if(!s.firstInject)h+=text('GAIN<br>WEIGHT',205.7,87.5,62.8,34.4,'bottle-label')+text('LOOSE<br>WEIGHT',205.7,168.5,62.8,34.4,'bottle-label');
 for(let i=0;i<4;i++)if(s.figures[i].packed){let slots=[[630,131,148,59],[817,130,148,60],[632,227,148,65],[817,229,148,59]],q=slots[i];h+=horizontalFigure(i,...q,'packed-figure');}
 h+=canvasFigure(s.active,374,83,105,266,'active-figure');h+=model('syringe-'+(s.loaded||'empty'),242,195,54,196,'syringe','syringe');
 if(s.phase==='ready'&&!s.firstFill)h+=text('DRAG & CHOOSE',282,387,292,44,'doto guide-blink workbench-guide');
@@ -52,10 +56,10 @@ function packingMarkup(){let h=img(A.workbenchBackground,52,0,874,428,'bg');if([
   let dx=s.page==='08a'?0:155,slots=[[630,131,148,59],[817,130,148,60],[632,227,148,65],[817,229,148,59]];
   let inside=model('blister-four-clear',0,0,436,436,'workbench','pack')+slots.map((q,i)=>horizontalFigure(i,q[0]-576,q[1],q[2],q[3],'packed-figure')).join('');
   h+=group(576+dx,0,436,436,'pack-assembly sliding-pack',inside);return h;}
-h+=rearPackMarkup(s.page==='11'?271:52,0,437,428,s.page==='11'?'':'ejecting-pack');h+=img(A.machine,52,29,101,376,'machine');h+=text(waveText(s.page==='11'?'!!':'BEING PACKED..'),530,206,292,44,'packed-copy wave');return h;}
+h+=rearPackMarkup(s.page==='11'?271:52,0,437,428,s.page==='11'?'':'ejecting-pack');h+=img(A.machine,52,29,101,376,'machine');h+=text(waveText(s.page==='11'?'!!':'BEING PACKED..'),s.page==='11'?798.1:620.7,213.3,s.page==='11'?16.6:196.4,19,'packed-copy wave');return h;}
 function frontFigures(ox=0,oy=0,cls='front-figure'){let q=[[204,47,59,148],[304,49,65,148],[204,234,60,148],[308,234,59,148]],order=[0,2,3,1];return q.map((b,i)=>canvasFigure(order[i],b[0]-ox,b[1]-oy,b[2],b[3],cls)).join('');}
 function checklist(items,kind){return '<div class="options">'+items.map((v,i)=>'<label><input type="checkbox" data-kind="'+kind+'" data-index="'+i+'" '+(s[kind].includes(i)?'checked':'')+'><span>'+v+'</span></label>').join('')+'</div>';}
-function signatureMarkup(){return text('SIGN HERE TO CONFIRM.',2,505,291,25,'doto guide-blink signature-guide')+img('assets/figma/3fe8e.svg',299,456,68,59,'signature-sample')+'<svg class="lay signature-sample signature-dots" '+box(299,456,68,59)+' viewBox="0 0 73 64" aria-hidden="true">'+[0,.33,.66].map(t=>'<circle r="2.2" fill="#d83a00"><animateMotion dur="2.7s" repeatCount="indefinite" begin="-'+(t*2.7).toFixed(2)+'s" path="'+signaturePath+'" /></circle>').join('')+'</svg>'+'<canvas id="signature" class="lay signature" '+box(233,439,152,96)+' width="456" height="288" aria-label="Draw your signature"></canvas>';}
+function signatureMarkup(){const trail=['#9e2a00','#b63000','#ca3700','#d83a00','#e54205','#f04c0b','#f65410','#fa5e16','#ff691e','#ff7629','#ff873a','#ff9a51'];return text('SIGN HERE TO CONFIRM.',2,505,291,25,'doto guide-blink signature-guide')+img('assets/figma/3fe8e.svg',299,456,68,59,'signature-sample')+'<svg class="lay signature-sample signature-dots" '+box(299,456,68,59)+' viewBox="0 0 73 64" aria-hidden="true">'+trail.map((color,i)=>'<circle r="2.5" fill="'+color+'"><animateMotion dur="2.7s" repeatCount="indefinite" begin="-'+(i*.035).toFixed(3)+'s" path="'+signaturePath+'" /></circle>').join('')+'</svg>'+'<canvas id="signature" class="lay signature" '+box(233,439,152,96)+' width="456" height="288" aria-label="Draw your signature"></canvas>';}
 function prescriptionMarkup(){
   let page=s.page,side=['13','14','14done'].includes(page),raised=page==='14'||page==='14done';
   let h=img(A.workbenchBackground,52,0,874,428,'bg');
@@ -78,19 +82,19 @@ function consentMarkup(){
   let no=s.page==='16',h=img(A.workbenchBackground,52,0,874,428,'bg');
   let dose=(s.figures.reduce((a,f)=>a+f.orange,0)/4).toFixed(1);
   let paper=img(A.consentClipboardBase,0,0,441,588,'consent-paper');
-  paper+=text('PRESCRIPTION',165,72,211,25,'paper-head');
-  paper+=text('AVERAGE OF APPLIED GLP-1 : '+dose,75,114,291,25,'dose');
-  paper+=text('POSSIBLE SIDE EFFECTS',75,149,291,25,'paper-section');
-  paper+=text('Select the consequences you expect.',75,165,291,24,'paper-prompt');
-  paper+='<div class="lay checklist consent-checklist" '+box(77,190,291,211)+'>'+checklist(sides,'side')+'</div>';
+  paper+=text('PRESCRIPTION',165,113,130,25,'paper-head');
+  paper+=text('AVERAGE OF APPLIED GLP-1 : '+dose,75,156,291,25,'dose');
+  paper+=text('POSSIBLE SIDE EFFECTS',75,194,291,25,'paper-section');
+  paper+=text('Select the consequences you expect.',75,211,291,24,'paper-prompt');
+  paper+='<div class="lay checklist consent-checklist" '+box(77,231,291,211)+'>'+checklist(sides,'side')+'</div>';
   h+=group(65,-46,441,588,'consent-prescription',group(0,0,441,588,'consent-ambient',paper));
-  let pack=model('blister-four-clear',0,0,448,448,'front','consent-pack');
+  let pack=model('blister-four-foil',0,0,448,448,'front','consent-pack','consent');
   pack+=frontFigures(61,-10,'consent-figure');
   h+=group(214.5,55.5,448,448,'consent-pack-assembly',group(0,0,448,448,'pack-ambient',pack));
   h+='<div class="orange-tint primary-tint"></div><div class="orange-tint deep-tint"></div>';
   h+=text(no?'Thank you<br>for Prescribing!':'DO YOU AGREE TO<br>TEST IT ON YOU?',no?604:593,151,264,64,'consent-copy');
-  if(no)h+=button('<span class="glass-label">TEST IT</span>',669,241,134,60,'ar','consent-button');
-  else h+=button('<span class="glass-label">YES</span>',608,241,112,60,'ar','consent-button')+button('<span class="glass-label">NO</span>',730,241,112,60,'decline','gray consent-button');
+  if(no)h+=glassButton('TEST IT',669,241,134,'ar');
+  else h+=glassButton('YES',608,241,112,'ar')+glassButton('NO',730,241,112,'decline',true);
   return h;
 }
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup().replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide');else if(s.page==='workbench')h=workbenchMarkup();else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done'].includes(s.page))h=prescriptionMarkup();else if(['15','16'].includes(s.page))h=consentMarkup();else if(s.page==='ar')h='<div class="ar-placeholder">AR<br><small>Portrait experience</small></div>';
@@ -110,7 +114,7 @@ function beginPacking(){
       }
         later(()=>{if(s.page==='10'){
           s.page='11';save();stage.className='stage page-11 phase-ready';
-          const label=stage.querySelector('.wave');if(label)label.innerHTML=waveText('!!');
+          const label=stage.querySelector('.wave');if(label){label.innerHTML=waveText('!!');label.style.left='798.1px';label.style.width='16.6px';}
         }
           later(()=>{if(s.page==='11'){
             stage.querySelector('.scene-content')?.classList.add('to-prescription');
@@ -131,9 +135,9 @@ async function fillSyringe(color,host){
   if(s.figures[s.active].value===(color==='orange'?0:100)){moveSyringe(host,0,0,0,330);await pause(350);render();return;}
   s.loaded=color;s.firstFill=true;s.phase='filling';
   stage.querySelectorAll('.workbench-guide').forEach(n=>n.remove());
-  // Bottle fill: set syringe upright at the bottle; injection remains at user's exact release angle.
-  const bottle=bottleMouth[color],dx=bottle.x-269,dy=bottle.y-203;
-  moveSyringe(host,dx,dy,0,220);await pause(240);
+  // Turn the needle left by 90 degrees at the bottle; injection keeps the release angle.
+  const bottle=bottleMouth[color],dx=bottle.x-(269-98),dy=bottle.y-293;
+  moveSyringe(host,dx,dy,-90,220);await pause(240);
   if(s.page!=='workbench'||s.phase!=='filling')return;
   // The empty GLB has no drug mesh. Load the chosen liquid before reversing the plunger.
   await window.DCD3D?.swap(host,'syringe-'+color,{fillStart:true});
@@ -146,7 +150,7 @@ async function fillSyringe(color,host){
 async function inject(host){
   const color=s.loaded;if(!color||s.phase!=='ready')return;
   s.phase='injecting';s.firstInject=true;
-  stage.querySelectorAll('.workbench-guide').forEach(n=>n.remove());
+  stage.querySelectorAll('.workbench-guide,.bottle-label').forEach(n=>n.remove());
   // The user's exact released needle position and angle are retained during the whole injection.
   await window.DCD3D?.play(host,'inject',M.injectionMs);
   if(s.page!=='workbench'||s.phase!=='injecting')return;
@@ -198,12 +202,13 @@ function enterConsent(){
   paper.classList.remove('prescription-assembly');paper.classList.add('consent-prescription');
   Object.assign(paper.style,{left:'65px',top:'-46px'});
   const paperImage=paper.querySelector('.clipboard');if(paperImage){paperImage.src=A.consentClipboardBase;paperImage.classList.replace('clipboard','consent-paper');}
-  const paperPositions={'.paper-head':[165,72,211,25],'.dose':[75,114,291,25],'.paper-section':[75,149,291,25],'.paper-prompt':[75,165,291,24],'.checklist':[77,190,291,211]};
+  const paperPositions={'.paper-head':[165,113,130,25],'.dose':[75,156,291,25],'.paper-section':[75,194,291,25],'.paper-prompt':[75,211,291,24],'.checklist':[77,231,291,211]};
   for(const [selector,[x,y,w,h]] of Object.entries(paperPositions)){const el=paper.querySelector(selector);if(el)Object.assign(el.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});}
   paper.querySelector('.checklist')?.classList.add('consent-checklist');
   pack.classList.remove('front-pack');pack.classList.add('consent-pack-assembly');
   Object.assign(pack.style,{left:'214.5px',top:'55.5px'});
-  root.insertAdjacentHTML('beforeend','<div class="orange-tint primary-tint"></div><div class="orange-tint deep-tint"></div>'+text('DO YOU AGREE TO<br>TEST IT ON YOU?',593,151,264,64,'consent-copy')+button('<span class="glass-label">YES</span>',608,241,112,60,'ar','consent-button')+button('<span class="glass-label">NO</span>',730,241,112,60,'decline','gray consent-button'));
+  const packModel=pack.querySelector('.model-host');if(packModel){packModel.dataset.look='consent';window.DCD3D?.addConsentFoil(packModel);window.DCD3D?.setFilmOpacity(packModel,.67);}
+  root.insertAdjacentHTML('beforeend','<div class="orange-tint primary-tint"></div><div class="orange-tint deep-tint"></div>'+text('DO YOU AGREE TO<br>TEST IT ON YOU?',593,151,264,64,'consent-copy')+glassButton('YES',608,241,112,'ar')+glassButton('NO',730,241,112,'decline',true));
   stage.className='stage page-15 phase-ready';
   const animateFrom=(el,before,finishRotation=0)=>{
     const after=el.getBoundingClientRect(),dx=(before.left-after.left)/scale,dy=(before.top-after.top)/scale;
@@ -218,7 +223,7 @@ function declineConsent(){
   const root=stage.querySelector('.scene-content')||stage;
   const copy=stage.querySelector('.consent-copy');if(copy){copy.innerHTML='Thank you<br>for Prescribing!';copy.style.left='604px';copy.style.top='151px';}
   root.querySelectorAll('.consent-button').forEach(n=>n.remove());
-  root.insertAdjacentHTML('beforeend',button('<span class="glass-label">TEST IT</span>',669,241,134,60,'ar','consent-button'));
+  root.insertAdjacentHTML('beforeend',glassButton('TEST IT',669,241,134,'ar'));
 }
 function startRotateGuide(){rotateGuideFinished=false;setPage('03');later(()=>{if(s.page!=='03')return;rotateGuideFinished=true;const v=document.querySelector('#viewport');if(v.clientWidth>v.clientHeight)setPage('workbench');},M.rotateGuideMs);}
 function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next'){if(s.page==='12'&&s.expected.length)turnPrescriptionPage();else if(s.page==='13'&&s.side.length)raisePrescription();else if(s.page==='14done')enterConsent();}if(a==='decline')declineConsent();if(a==='ar')setPage('ar');}
@@ -231,9 +236,9 @@ stage.addEventListener('change',e=>{let t=e.target;if(!t.matches('input[data-kin
   }
 });
 stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s.phase==='guide'){let rope=ropeAt(p);if(!rope)return;e.preventDefault();gesture.set(e.pointerId,{rope,start:p,type:e.pointerType||'mouse',pulled:false});stage.setPointerCapture(e.pointerId);return;}
-if(s.page!=='workbench'||s.phase!=='ready')return;let kind=null,index=-1;if(hit(p,242,195,54,196))kind='syringe';else if(hit(p,357,65,138,299))kind='doll';else{let slots=[[630,131,148,59],[817,130,148,60],[632,227,148,65],[817,229,148,59]];index=slots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();drag={kind,index,pointerId:e.pointerId,start:p,moved:false,angle:kind==='syringe'?45:0,el:e.target.closest('.syringe,.figure')};if(drag.el)drag.el.classList.add('dragging');if(kind==='syringe'&&drag.el)drag.el.style.transform='rotate(45deg)';stage.setPointerCapture(e.pointerId);}});
+if(s.page!=='workbench'||s.phase!=='ready')return;let kind=null,index=-1;if(hit(p,242,195,54,196))kind='syringe';else if(hit(p,357,65,138,299))kind='doll';else{let slots=[[630,131,148,59],[817,130,148,60],[632,227,148,65],[817,229,148,59]];index=slots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();drag={kind,index,pointerId:e.pointerId,start:p,last:p,moved:false,angle:kind==='syringe'?45:0,el:e.target.closest('.syringe,.figure')};if(drag.el)drag.el.classList.add('dragging');if(kind==='syringe'&&drag.el)drag.el.style.transform='rotate(45deg)';stage.setPointerCapture(e.pointerId);}});
 stage.addEventListener('pointermove',e=>{let p=localPoint(e);if(gesture.has(e.pointerId)){let g=gesture.get(e.pointerId);g.pulled=pullDistance(g,p)>=14;let active=[...gesture.values()],both=active.some(v=>v.rope==='upper'&&v.pulled)&&active.some(v=>v.rope==='lower'&&v.pulled),singlePointerMirror=g.type!=='touch'&&g.pulled;if((both||singlePointerMirror)&&s.page==='01'&&s.phase==='guide'){gesture.clear();setPage('01','rupture');}return;}
-if(!drag||drag.pointerId!==e.pointerId)return;drag.moved=true;let el=drag.el;if(el){el.style.translate=(p.x-drag.start.x)+'px '+(p.y-drag.start.y)+'px';if(drag.kind==='syringe'){let dx=p.x-drag.start.x;if(Math.abs(dx)>5)drag.angle=dx<0?-45:45;el.style.transform='rotate('+drag.angle+'deg)';}}});
+if(!drag||drag.pointerId!==e.pointerId)return;drag.moved=true;let el=drag.el;if(el){el.style.translate=(p.x-drag.start.x)+'px '+(p.y-drag.start.y)+'px';if(drag.kind==='syringe'){let vx=p.x-drag.last.x;if(Math.abs(vx)>2)drag.angle=vx<0?-45:45;el.style.transform='rotate('+drag.angle+'deg)';}}drag.last=p;});
 stage.addEventListener('pointerup',e=>{gesture.delete(e.pointerId);if(!drag||drag.pointerId!==e.pointerId)return;let p=localPoint(e),d=drag;drag=null;if(d.kind==='syringe'){syringeInjectionAngle=d.angle;
   const angle=d.angle*Math.PI/180;
   const tip={x:syringeTip.x+90*Math.sin(angle)+p.x-d.start.x,y:293-90*Math.cos(angle)+p.y-d.start.y};

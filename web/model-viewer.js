@@ -69,12 +69,13 @@ async function mount(host, options = {}) {
       part.material = part.material.clone();
       part.material.transmission = 0;
       part.material.transparent = true;
-      part.material.opacity = 0.20;
+      part.material.opacity = host.dataset.look === 'consent' ? 0.67 : 0.20;
       part.material.depthWrite = false;
       part.material.roughness = 0.16;
       part.material.side = THREE.DoubleSide;
       part.material.color.setRGB(0.76, 0.86, 0.96);
     });
+    if (host.dataset.look === 'consent') paintConsentFoil(model);
     if (view === 'workbench' || view === 'rear') model.rotation.z = -Math.PI / 2;
     if (view === 'rear') model.rotation.y = Math.PI;
     if (view === 'consent') model.rotation.z = -8.5 * Math.PI / 180;
@@ -179,4 +180,33 @@ async function play(host, direction, duration) {
   });
 }
 
-window.DCD3D = Object.freeze({ mountAll, disposeAll, swap, play, preload: decode });
+async function setFilmOpacity(host, opacity) {
+  const item = await host?._dcd3dReady;
+  if (!item || !item.live) return false;
+  item.model.traverse(part => {
+    if (part.isMesh && part.name === 'film') part.material.opacity = opacity;
+  });
+  return true;
+}
+
+function paintConsentFoil(model) {
+  model.traverse(part => {
+    if (!part.isMesh || part.name !== 'foil') return;
+    part.material = part.material.clone();
+    part.material.color.set('#f05a24');
+    part.material.metalness = 0.62;
+    part.material.roughness = 0.34;
+  });
+}
+
+async function addConsentFoil(host) {
+  const [item, foilAsset] = await Promise.all([host?._dcd3dReady, decode('blister-four-foil')]);
+  if (!item?.live || !host?.isConnected || item.model.getObjectByName('foil')) return false;
+  const foil = foilAsset.scene.getObjectByName('foil');
+  if (!foil) return false;
+  item.model.add(foil.clone());
+  paintConsentFoil(item.model);
+  return true;
+}
+
+window.DCD3D = Object.freeze({ mountAll, disposeAll, swap, play, setFilmOpacity, addConsentFoil, preload: decode });

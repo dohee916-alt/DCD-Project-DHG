@@ -70,7 +70,7 @@
 .page-08a .sliding-pack{animation:packToPrinter 1.17s cubic-bezier(.45,0,.55,1) both!important}
 @keyframes packToPrinter{from{translate:0 0}to{translate:155px 0}}
 .ejecting-pack{z-index:1;animation:packExtrude 2.32s linear both!important}
-@keyframes packExtrude{0%{translate:0 0}78%{translate:166px 0}93%{translate:233px 0}100%{translate:219px 0}}
+@keyframes packExtrude{0%{translate:0 0}47%{translate:45px 0}85%{translate:45px 0}96%{translate:235px 0}100%{translate:219px 0}}
 .page-09 .machine,.page-10 .machine,.page-11 .machine{z-index:2}
 .page-11 .machine-exit{animation:machineLeave .5s ease-in both}
 /* Dragged doll must be above all packed dolls until landing */
@@ -131,7 +131,7 @@
 .page-14 .prescription-assembly{animation:none!important} /* 13->14 motion is now driven by the shared live element. */
 .signature{border:0!important;background:transparent!important;z-index:13!important}
 .signature-sample{z-index:12!important;overflow:visible!important;pointer-events:none!important}
-.signature-guide{z-index:12!important;text-align:left!important}
+.signature-guide{z-index:12!important;text-align:right!important}
 .page-14 .signature-sample{animation:signReveal .35s .48s both}
 /* Preserve the previous WEB14 elements' screen positions via JS FLIP; don't stack legacy CSS entry translations. */
 .page-15 .consent-prescription,.page-15 .consent-pack-assembly{animation:none!important}
@@ -167,3 +167,13 @@
 .bottle-label{font-size:18px!important;line-height:17.2px!important;font-weight:900!important;text-align:center!important;font-variation-settings:"ROND" 0,"wght" 900!important}
 .wave{font-size:24px!important;line-height:32px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
 .signature-guide{font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
+/* Restore the approved OOPS drop and give each slogan its own readable impact. */
+.page-02 .oops{animation:oopsDrop .52s cubic-bezier(.18,.82,.22,1) both!important}
+.title-stack .impact{animation-name:sloganImpact!important;animation-duration:.48s!important;animation-timing-function:cubic-bezier(.18,1.2,.35,1)!important;animation-fill-mode:both!important}
+@keyframes sloganImpact{0%{opacity:0;transform:scale(1.8);filter:blur(2px)}72%{opacity:1;transform:scale(.95);filter:blur(0)}100%{opacity:1;transform:scale(1);filter:blur(0)}}
+.page-09 .wave,.page-10 .wave{font-size:16px!important;line-height:19px!important}
+.page-09 .rear-pack{clip-path:inset(0 118px 0 0)}
+.figma-glass-button,.figma-glass-button.gray{z-index:6!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow:visible!important;isolation:auto!important}
+.figma-glass-button::before,.figma-glass-button::after{display:none!important}
+.figma-glass-button svg{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}
+.figma-glass-button img{display:block;width:100%;height:100%;object-fit:fill;pointer-events:none}
