@@ -180,7 +180,7 @@
 /* Doto instructions: 16px Bold, with 10px Bold on the paper. */
 .doto,.rotate-guide,.guide-copy,.workbench-guide,.bottle-label{font-size:16px!important;line-height:20px!important;font-weight:700!important;font-variation-settings:"ROND" 0,"wght" 700!important}
 .paper-prompt,.signature-guide{font-size:10px!important;line-height:12px!important;font-weight:700!important;font-variation-settings:"ROND" 0,"wght" 700!important}
-/* A fast downward strike with one hard stop: no scale, blur, bounce or settling. */
-.title-stack .impact{animation-name:stampIn!important;animation-duration:.15s!important;animation-timing-function:cubic-bezier(.55,0,1,1)!important;animation-fill-mode:both!important;filter:none!important;translate:none!important}
-@keyframes stampIn{0%{opacity:0;transform:translateY(-56px)}2%{opacity:1;transform:translateY(-56px)}100%{opacity:1;transform:translateY(0)}}
+/* Stamp each word at its final position; the brief highlight marks the hit. */
+.title-stack .impact{animation-name:stampIn!important;animation-duration:.075s!important;animation-timing-function:steps(1,end)!important;animation-fill-mode:both!important;transform:none!important;filter:none!important;translate:none!important}
+@keyframes stampIn{0%{opacity:0;text-shadow:none}1%{opacity:1;text-shadow:0 0 2px #fff,0 0 12px #ff9f65}100%{opacity:1;text-shadow:0 0 7px #ffd4b3}}
 @media (prefers-reduced-motion:reduce){.title-stack .impact{animation-duration:.001s!important}}
