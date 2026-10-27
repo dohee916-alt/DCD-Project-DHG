@@ -25,19 +25,19 @@ function glassButton(label,x,y,w,action,gray=false){
 }
 function arrowButton(x,y,action,kind='12'){return '<button class="lay figma-arrow" '+box(x-22,y-11,94,94)+' data-action="'+action+'" aria-label="Next"><img src="assets/figma/'+(kind==='13'?'49c33':'634cb')+'.svg" alt=""></button>';}
 function canvasFigure(i,x,y,w,h,cls='',rot=0){return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+'"></canvas>';}
-function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.085)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
+function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
 function horizontalFigure(i,x,y,w,h,cls=''){return canvasFigure(i,x+(w-h)/2,y+(h-w)/2,h,w,cls,90);}
 function setPage(p,phase='ready'){clearTimers();s.page=p;s.phase=phase;save();render();}
 function dimensions(){return ['00','01','02','03','ar'].includes(s.page)?[428,926]:[874,428];}
-function fit(){let [w,h]=dimensions(),v=document.querySelector('#viewport'),W=v.clientWidth,H=v.clientHeight;scale=Math.min(W/w,H/h);stage.style.width=w+'px';stage.style.height=h+'px';stage.style.clipPath='none';stage.style.transform='translate(-50%,-50%) scale('+scale+')';stage.style.transformOrigin='center';stage.dataset.orientation='normal';offset={x:W/2,y:H/2};}
-function localPoint(e){let r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};}
+function fit(){let [w,h]=dimensions(),v=document.querySelector('#viewport'),W=v.clientWidth,H=v.clientHeight,rotated=w>h&&W<H;scale=Math.min((rotated?H:W)/w,(rotated?W:H)/h);stage.style.width=w+'px';stage.style.height=h+'px';stage.style.clipPath='none';stage.style.transform='translate(-50%,-50%) rotate('+(rotated?90:0)+'deg) scale('+scale+')';stage.style.transformOrigin='center';stage.dataset.orientation=rotated?'rotated':'normal';offset={x:W/2,y:H/2};}
+function localPoint(e){let r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;if(stage.dataset.orientation==='rotated'){let [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;return{x:w/2+(e.clientY-cy)/scale+dx,y:h/2-(e.clientX-cx)/scale};}return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};}
 function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
 const ropes={upper:{line:[6,20,406,596],pull:[-74,-96]},lower:{line:[8,752,406,615],pull:[110,-44]}};
 function ropeAt(p){let closest=null,distance=Infinity;for(const [name,{line}] of Object.entries(ropes)){let [x1,y1,x2,y2]=line,t=clamp(((p.x-x1)*(x2-x1)+(p.y-y1)*(y2-y1))/((x2-x1)**2+(y2-y1)**2),0,1),d=Math.hypot(p.x-(x1+t*(x2-x1)),p.y-(y1+t*(y2-y1)));if(d<distance){closest=name;distance=d;}}return distance<=55?closest:null;}
 function pullDistance(g,p){let [dx,dy]=ropes[g.rope].pull,len=Math.hypot(dx,dy);return ((p.x-g.start.x)*dx+(p.y-g.start.y)*dy)/len;}
 function drawFigures(){stage.querySelectorAll('canvas[data-figure]').forEach(c=>{let i=+c.dataset.figure;window.DCDMorph.draw(c,s.figures[i].kind,s.figures[i].value);});}
 function animateFigureValue(index,from,to,duration=530){return new Promise(resolve=>{let start=null,last=-1;function frame(t){if(start===null)start=t;let u=Math.min((t-start)/duration,1),e=u*u*(3-2*u),value=from+(to-from)*e;if(Math.abs(value-last)>.35||u===1){s.figures[index].value=value;const c=stage.querySelector('canvas.active-figure');if(c&&c.isConnected)window.DCDMorph.draw(c,s.figures[index].kind,value);last=value;}if(u<1)requestAnimationFrame(frame);else{s.figures[index].value=to;resolve();}}requestAnimationFrame(frame);});}
-function introMarkup(p){let copy=['THE','BRAND','NEW','GLP-1'];let h=img(A.opening,0,0,428,926,'poster-art');if(s.phase==='intro')h+=text(copy.map((v,i)=>'<span class="impact headline-orange" style="animation-delay:'+(0.12+i*.34)+'s">'+v+'</span>').join(''),69,345,292,296,'title-stack');else if(p==='00')h+=text(copy.map(v=>'<span class="title-line headline-orange">'+v+'</span>').join(''),69,345,292,296,'title-stack fixed');
+function introMarkup(p){let copy=['THE','BRAND','NEW','GLP-1'];let h=img(A.opening,0,0,428,926,'poster-art');if(s.phase==='intro')h+=text(copy.map((v,i)=>'<span class="impact headline-orange" style="animation-delay:'+(0.05+i*.115)+'s">'+v+'</span>').join(''),69,345,292,296,'title-stack');else if(p==='00')h+=text(copy.map(v=>'<span class="title-line headline-orange">'+v+'</span>').join(''),69,345,292,296,'title-stack fixed');
 h+='<div class="poster-dodge" aria-hidden="true"></div>';
 if(p==='00'){if(s.phase!=='intro')h+=text('COME VISIT TO TRY IT!',68,799,292,22,'poster-cta guide-blink');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
 else if(s.phase==='guide'){h+=text('PULL<br>THE STRINGS<br>APART',33,435,376,96,'doto guide-blink guide-copy');h+=img(A.gestureHand,0,186,211,249,'gesture gesture-left');h+=img(A.gestureHand,208,620,220,249,'gesture gesture-right');h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
@@ -120,8 +120,8 @@ function beginPacking(){
           }},380);
         },850);
       },1130);
-    },120);
-  },1170);
+    },540);
+  },540);
 }
 
 const syringeTip={x:269,y:203};
@@ -207,23 +207,24 @@ function enterConsent(){
   Object.assign(pack.style,{left:'214.5px',top:'55.5px'});
   const packModel=pack.querySelector('.model-host');if(packModel){packModel.dataset.look='consent';window.DCD3D?.addConsentFoil(packModel);window.DCD3D?.setFilmOpacity(packModel,.67);}
   root.insertAdjacentHTML('beforeend','<div class="orange-tint primary-tint"></div><div class="orange-tint deep-tint"></div>'+text('DO YOU AGREE TO<br>TEST IT ON YOU?',593,151,264,64,'consent-copy')+glassButton('YES',608,241,112,'ar')+glassButton('NO',730,241,112,'decline',true));
-  stage.className='stage page-15 phase-ready';
+  stage.className='stage page-15 phase-ready consent-entering';
   const animateFrom=(el,before,finishRotation=0)=>{
     const after=el.getBoundingClientRect(),dx=(before.left-after.left)/scale,dy=(before.top-after.top)/scale;
     const motion=el.animate([{transform:`translate(${dx}px,${dy}px) rotate(0deg)`},{transform:`translate(0,0) rotate(${finishRotation}deg)`}],{duration:1000,easing:'cubic-bezier(.2,.7,.15,1)'});
     motion.onfinish=()=>{if(s.page==='15'||s.page==='16')el.classList.add('floating');};
+    return motion.finished.catch(()=>{});
   };
-  animateFrom(paper,oldPaper);animateFrom(pack,oldPack,-8.5);
+  Promise.all([animateFrom(paper,oldPaper),animateFrom(pack,oldPack,-8.5)]).then(()=>{if(s.page==='15')stage.classList.remove('consent-entering');});
 }
 function declineConsent(){
   if(s.page!=='15')return;
   s.page='16';save();stage.className='stage page-16 phase-ready';
   const root=stage.querySelector('.scene-content')||stage;
-  const copy=stage.querySelector('.consent-copy');if(copy){copy.innerHTML='Thank you<br>for Prescribing!';copy.style.left='604px';copy.style.top='151px';}
+  const copy=stage.querySelector('.consent-copy');if(copy){copy.textContent='';copy.style.opacity='0';copy.style.left='604px';copy.style.top='151px';}
   root.querySelectorAll('.consent-button').forEach(n=>n.remove());
-  root.insertAdjacentHTML('beforeend',glassButton('TEST IT',669,241,134,'ar'));
+  later(()=>{if(s.page!=='16')return;if(copy){copy.innerHTML='Thank you<br>for Prescribing!';copy.style.opacity='1';}root.insertAdjacentHTML('beforeend',glassButton('TEST IT',669,241,134,'ar'));},720);
 }
-function startRotateGuide(){rotateGuideFinished=false;setPage('03');later(()=>{if(s.page!=='03')return;rotateGuideFinished=true;const v=document.querySelector('#viewport');if(v.clientWidth>v.clientHeight)setPage('workbench');},M.rotateGuideMs);}
+function startRotateGuide(){rotateGuideFinished=false;setPage('03');later(()=>{if(s.page!=='03')return;rotateGuideFinished=true;setPage('workbench');},M.rotateGuideMs);}
 function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next'){if(s.page==='12'&&s.expected.length)turnPrescriptionPage();else if(s.page==='13'&&s.side.length)raisePrescription();else if(s.page==='14done')enterConsent();}if(a==='decline')declineConsent();if(a==='ar')setPage('ar');}
 stage.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('change',e=>{let t=e.target;if(!t.matches('input[data-kind]'))return;let kind=t.dataset.kind,n=+t.dataset.index;let set=new Set(s[kind]);t.checked?set.add(n):set.delete(n);s[kind]=[...set];save();
@@ -247,7 +248,7 @@ stage.addEventListener('pointerup',e=>{gesture.delete(e.pointerId);if(!drag||dra
 }else if(d.kind==='doll'){if(hit(p,576,0,436,436))animatePackActive(d.el);else render();}else if(d.kind==='packed'){if(hit(p,303,29,249,373))unpack(d.index);else render();}});
 stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){drag=null;render();}});
 function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};}
-function onViewportChange(){fit();if(s.page==='03'&&rotateGuideFinished){const v=document.querySelector('#viewport');if(v.clientWidth>v.clientHeight)setPage('workbench');}}
+function onViewportChange(){fit();}
 window.addEventListener('resize',onViewportChange);window.addEventListener('orientationchange',onViewportChange);
 if(s.page==='00'&&s.phase==='intro')runIntro('00');else if(s.page==='01'&&s.phase==='intro')runIntro('01');else if(s.page==='03')startRotateGuide();else render();
 window.DCD_DEBUG={state:()=>structuredClone(s),page:p=>setPage(p),finishRupture};
