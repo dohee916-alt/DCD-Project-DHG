@@ -20,15 +20,20 @@ function decode(name) {
 
 function disposeAll() {
   for (const item of active) {
-    item.live = false;
-    item.renderer.dispose();
-    item.environment.dispose();
-    item.pmrem.dispose();
+    disposeItem(item);
   }
   active = [];
 }
 
-async function mount(host) {
+function disposeItem(item) {
+  item.live = false;
+  if (item.motion) item.motion.resolve(false);
+  item.renderer.dispose();
+  item.environment.dispose();
+  item.pmrem.dispose();
+}
+
+async function mount(host, options = {}) {
   const name = host.dataset.model;
   const view = host.dataset.view || 'front';
   let renderer;
@@ -59,6 +64,17 @@ async function mount(host) {
     scene.add(rim);
 
     const model = gltf.scene.clone(true);
+    if (name.startsWith('blister-four')) model.traverse(part => {
+      if (!part.isMesh || part.name !== 'film') return;
+      part.material = part.material.clone();
+      part.material.transmission = 0;
+      part.material.transparent = true;
+      part.material.opacity = 0.20;
+      part.material.depthWrite = false;
+      part.material.roughness = 0.16;
+      part.material.side = THREE.DoubleSide;
+      part.material.color.setRGB(0.76, 0.86, 0.96);
+    });
     if (view === 'workbench' || view === 'rear') model.rotation.z = -Math.PI / 2;
     if (view === 'rear') model.rotation.y = Math.PI;
     if (view === 'consent') model.rotation.z = -8.5 * Math.PI / 180;
@@ -81,14 +97,24 @@ async function mount(host) {
     if (view === 'workbench') model.position.x += size.x * 0.06;
     if (view === 'consent') model.position.y -= 6.1;
 
+    if (view === 'syringe' && options.fillStart) {
+      for (const label of ['plunger', 'rubber']) {
+        const part = model.getObjectByName(label);
+        if (part) part.position.y = 80;
+      }
+      const drug = model.getObjectByName('drug');
+      if (drug) { drug.scale.y = 0.01; drug.position.y = 106; }
+    }
+
     const item = { host, renderer, pmrem, environment, scene, model, camera,
-      live: true, injectionStart: 0 };
+      live: true, motion: null };
     active.push(item);
     function frame(now) {
       if (!item.live || !host.isConnected) return;
-      if (view === 'syringe' && host.classList.contains('injecting')) {
-        if (!item.injectionStart) item.injectionStart = now;
-        const progress = Math.min((now - item.injectionStart) / 1450, 1);
+      if (view === 'syringe' && item.motion) {
+        if (item.motion.start === null) item.motion.start = now;
+        const t = Math.min((now - item.motion.start) / item.motion.duration, 1);
+        const progress = item.motion.direction === 'fill' ? 1 - t : t;
         for (const label of ['plunger', 'rubber']) {
           const part = model.getObjectByName(label);
           if (part) part.position.y = 80 * progress;
@@ -98,12 +124,17 @@ async function mount(host) {
           drug.scale.y = Math.max(0.01, 1 - progress);
           drug.position.y = 106 * progress;
         }
+        if (t >= 1) {
+          item.motion.resolve(true);
+          item.motion = null;
+        }
       }
       renderer.render(scene, camera);
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
     host.dataset.modelReady = 'true';
+    return item;
   } catch (error) {
     if (renderer) renderer.dispose();
     host.dataset.modelError = 'true';
@@ -113,7 +144,39 @@ async function mount(host) {
 
 function mountAll(root) {
   disposeAll();
-  root.querySelectorAll('.model-host[data-model]').forEach(mount);
+  root.querySelectorAll('.model-host[data-model]').forEach(host => {
+    host._dcd3dReady = mount(host);
+  });
 }
 
-window.DCD3D = Object.freeze({ mountAll, disposeAll });
+async function swap(host, name, options = {}) {
+  const previous = await host?._dcd3dReady;
+  if (!host?.isConnected) return false;
+  if (previous) {
+    disposeItem(previous);
+    active = active.filter(item => item !== previous);
+  }
+  host.dataset.model = name;
+  delete host.dataset.modelReady;
+  delete host.dataset.modelError;
+  host._dcd3dReady = mount(host, options);
+  return Boolean(await host._dcd3dReady);
+}
+
+async function play(host, direction, duration) {
+  const item = await host?._dcd3dReady;
+  if (!item || !item.live) return false;
+  return new Promise(resolve => {
+    item.motion = { direction, duration, start: null, resolve };
+    if (direction === 'fill') {
+      for (const label of ['plunger', 'rubber']) {
+        const part = item.model.getObjectByName(label);
+        if (part) part.position.y = 80;
+      }
+      const drug = item.model.getObjectByName('drug');
+      if (drug) { drug.scale.y = 0.01; drug.position.y = 106; }
+    }
+  });
+}
+
+window.DCD3D = Object.freeze({ mountAll, disposeAll, swap, play, preload: decode });

@@ -2,7 +2,7 @@
 window.DCD_ASSETS = Object.freeze({
   poster: "assets/figma-render/poster.webp",
   opening: "assets/figma-render/poster.webp",
-  openingBreakVideo: "assets/motion/opening-break.mp4",
+  openingBreakVideo: null, // Set when the approved rupture motion file exists.
   openingLastFrame: null,
   workbenchBackground: "assets/figma-render/workbench-bg@2x.png",
   workbenchTray: "assets/figma-render/tray@2x-transparent.png",
@@ -13,11 +13,11 @@ window.DCD_ASSETS = Object.freeze({
   rearPack10: "assets/figma-render/rear-pack-10.webp",
   rearPack11: "assets/figma-render/rear-pack-11.webp",
   machine: "assets/figma-render/machine.webp",
-  clipboard: "assets/figma-render/clipboard-12.webp",
+  clipboard: "assets/figma/ae06f.png",
   consentPack15: "assets/figma-render/consent-pack-15.webp",
   consentPaper15: "assets/figma-render/consent-paper-15.webp",
   consentPackBase: "assets/figma-render/consent-pack-base.webp",
-  consentClipboardBase: "assets/figma-render/consent-clipboard-base.webp",
+  consentClipboardBase: "assets/figma/ae06f.png",
   orangeBottle: "assets/figma-render/bottle-orange@2x-transparent.png",
   purpleBottle: "assets/figma-render/bottle-purple@2x-transparent.png",
   syringeEmpty: "assets/figma-render/syringe-empty@2x-transparent.png",

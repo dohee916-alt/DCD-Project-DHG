@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Doto:ROND,wght@0,900&family=Source+Sans+3:wght@700&display=swap');*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{font-family:Arial,Helvetica,sans-serif;color:#303941;background:#e9edf1}button,input{font:inherit}button{cursor:pointer}#viewport{position:fixed;inset:0;overflow:hidden;background:#e9edf1}#stage{position:absolute;left:50%;top:50%;overflow:hidden;background:#d8e6f1;touch-action:none;user-select:none;-webkit-user-select:none}.lay{position:absolute;display:block;object-fit:fill;pointer-events:none}.bg{z-index:0}.tray,.pack,.front-pack,.rear-pack,.clipboard,.machine,.bottle{z-index:1}.figure{z-index:3;object-fit:contain}.packed-figure,.front-figure{z-index:4}.active-figure{cursor:grab;pointer-events:auto}.bottle-label{z-index:4;color:#e04410;font-size:16px;font-weight:800;text-align:center}.progress{z-index:5;color:#d43a0c;font-size:16px;font-weight:800}.syringe{z-index:8;pointer-events:auto;cursor:grab;touch-action:none;transform-origin:center}.syringe img{width:100%;height:100%;object-fit:contain}.syringe .liquid{position:absolute;left:35%;top:45%;width:30%;height:32%;border-radius:8px;opacity:.64;mix-blend-mode:multiply;pointer-events:none}.syringe .liquid.empty{display:none}.syringe .liquid.orange{background:linear-gradient(#ffb167,#e9510b)}.syringe .liquid.purple{background:linear-gradient(#bea1f1,#7547a9)}.syringe.injecting{animation:inject 1.45s ease-in-out forwards}@keyframes inject{45%{transform:translate(167px,-57px) rotate(38deg)}70%{transform:translate(167px,-57px) rotate(38deg)}100%{transform:none}}.doto{z-index:9;font-family:Doto,Arial,sans-serif;color:#ec3c0b;font-size:23px;font-weight:900;text-align:center}.guide-blink{animation:blink 1s steps(1,end) infinite}@keyframes blink{50%{opacity:0}}.poster-art{z-index:0}.title-stack{z-index:3;font-size:62px;font-weight:1000;line-height:1.05;text-align:center;color:#fff;letter-spacing:-3px}.title-stack .impact{display:block;opacity:0;animation:impact .36s cubic-bezier(.2,1.4,.5,1) forwards}@keyframes impact{from{opacity:0;transform:scale(1.8)}to{opacity:1;transform:scale(1)}} .title-stack.fixed{opacity:.7}.poster-cta{color:white;font-size:21px;font-weight:900;text-align:center;z-index:5}.phase-loop .poster-art{animation:posterMotion 4s ease-in-out infinite}@keyframes posterMotion{50%{transform:scale(1.012);filter:saturate(1.11)}}.full-hit{position:absolute;inset:0;border:0;background:transparent;z-index:10}.gesture{z-index:6;object-fit:contain;opacity:1;mix-blend-mode:screen;animation:gestureMove 1.4s ease-in-out infinite alternate}.gesture-left{transform:scaleX(-1) rotate(-32.35deg);--gx:-74px;--gy:-96px}.gesture-right{transform:scaleY(-1) rotate(-147.65deg);--gx:110px;--gy:-44px}@keyframes gestureMove{to{translate:var(--gx) var(--gy)}}.pull-zone{position:absolute;width:50%;height:80%;top:10%;z-index:7;touch-action:none}.left-zone{left:0}.right-zone{right:0}.guide-copy{line-height:1.1;color:white}.rupture-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:8}.missing-motion{position:absolute;bottom:5%;width:100%;text-align:center;color:#fff;background:#b64430;z-index:10}.result-top,.result-bottom{z-index:4;color:white;text-align:center;font-weight:900;font-size:20px}.oops{z-index:5;color:#fff;font-size:28px;font-weight:1000;transform:rotate(11deg);animation:fall .65s cubic-bezier(.3,1.5,.6,1) both}@keyframes fall{from{translate:0 -200px;rotate:-30deg;opacity:0}to{translate:0 0;rotate:0;opacity:1}}.result-bottom{animation:reveal .4s 1s both}@keyframes reveal{from{opacity:0}to{opacity:1}}.glass{z-index:10;border:1.5px solid #ff6937;border-radius:999px;color:#fff;font-weight:900;font-size:23px;background:linear-gradient(145deg,#ffc6aaad,#ff873fc4 35%,#ff4e20da 75%,#ffbea8a8);box-shadow:inset 0 3px 4px #ffffffce,inset 0 -5px 8px #c4362380,0 6px 13px #d74b3444;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}.glass.gray{background:linear-gradient(145deg,#e8d4cbbd,#baaea7bd 55%,#9c8983c9);border-color:#b7a39c;color:#f9efea}.glass.arrow{font-size:42px}.glass.big{animation:reveal .4s 1.3s both}.glass:focus-visible{outline:3px solid #222;outline-offset:2px}.rotate-guide{z-index:20}.wave{z-index:5;color:#db430f;font-size:28px;font-weight:900}.wave::first-letter{animation:wave 1s ease-in-out infinite}@keyframes wave{50%{translate:0 -5px}}.page-08a .rear-pack{animation:packSlide .86s forwards}@keyframes packSlide{to{translate:155px 0}}.page-11 .rear-pack{animation:eject .52s cubic-bezier(.1,1.7,.4,1) both}@keyframes eject{from{translate:-50px 0}to{translate:0 0}}.page-11 .machine-exit{animation:machineLeave .7s .6s both}@keyframes machineLeave{to{translate:-200px 0}}.page-12 .front-pack,.page-12 .front-figure{animation:frontArrive 1.05s ease-out both}@keyframes frontArrive{from{transform:perspective(700px) rotateY(180deg) rotateZ(-90deg) scale(.5);opacity:.5}to{transform:perspective(700px) rotateY(0) rotateZ(0) scale(1);opacity:1}}.page-12 .clipboard{animation:paperUp 1.05s ease-out both}@keyframes paperUp{from{translate:0 428px}to{translate:0 0}}.paper-head,.dose,.paper-section,.paper-prompt,.checklist{z-index:6}.paper-head{font-size:19px;font-weight:900;color:#df4710}.dose{font-size:12px;font-weight:800;color:#db430f}.paper-section{font-size:14px;font-weight:900}.paper-prompt{font-size:12px;color:#e34b1e;font-weight:800}.checklist{pointer-events:auto}.options{display:grid;grid-template-rows:repeat(8,24px);font-size:12px;line-height:20px}.options label{display:flex;align-items:center;gap:8px;cursor:pointer}.options input{appearance:none;width:13px;height:13px;margin:0;border:1px solid #9da9af;background:#fff;flex:none;cursor:pointer}.options input:checked{background:#ef4b12;border-color:#db410c;box-shadow:inset 0 0 0 2px #ffb07d}.signature{z-index:12;pointer-events:auto;touch-action:none;border-bottom:1px solid #ef4b12}.signature-guide{font-size:16px}.consent-paper,.consent-pack{z-index:2;animation:float 3s ease-in-out infinite alternate}@keyframes float{to{translate:0 -5px}}.orange-tint{position:absolute;left:52px;top:0;width:874px;height:428px;background:linear-gradient(110deg,#ff812f99,#ff5a16b5);z-index:3;pointer-events:none}.consent-copy{z-index:5;color:#f23d0b;font-size:26px;font-weight:1000;text-align:center;line-height:1.1}.ar-placeholder{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#ff6b29;color:#fff;font-size:64px;font-weight:900}.ar-placeholder small{font-size:18px}#stage[data-orientation=rotated] .lay{transform-origin:center}@media (prefers-reduced-motion:reduce){.guide-blink,.poster-art,.gesture,.consent-paper,.consent-pack{animation:none!important}}
+@import url('https://fonts.googleapis.com/css2?family=Doto:ROND,wght@0,700&family=Source+Sans+3:wght@700&display=swap');*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{font-family:Arial,Helvetica,sans-serif;color:#303941;background:#e9edf1}button,input{font:inherit}button{cursor:pointer}#viewport{position:fixed;inset:0;overflow:hidden;background:#e9edf1}#stage{position:absolute;left:50%;top:50%;overflow:hidden;background:#d8e6f1;touch-action:none;user-select:none;-webkit-user-select:none}.lay{position:absolute;display:block;object-fit:fill;pointer-events:none}.bg{z-index:0}.tray,.pack,.front-pack,.rear-pack,.clipboard,.machine,.bottle{z-index:1}.figure{z-index:3;object-fit:contain}.packed-figure,.front-figure{z-index:4}.active-figure{cursor:grab;pointer-events:auto}.bottle-label{z-index:4;color:#e04410;font-size:16px;font-weight:800;text-align:center}.progress{z-index:5;color:#d43a0c;font-size:16px;font-weight:800}.syringe{z-index:8;pointer-events:auto;cursor:grab;touch-action:none;transform-origin:center}.syringe img{width:100%;height:100%;object-fit:contain}.syringe .liquid{position:absolute;left:35%;top:45%;width:30%;height:32%;border-radius:8px;opacity:.64;mix-blend-mode:multiply;pointer-events:none}.syringe .liquid.empty{display:none}.syringe .liquid.orange{background:linear-gradient(#ffb167,#e9510b)}.syringe .liquid.purple{background:linear-gradient(#bea1f1,#7547a9)}.syringe.injecting{animation:inject 1.45s ease-in-out forwards}@keyframes inject{45%{transform:translate(167px,-57px) rotate(38deg)}70%{transform:translate(167px,-57px) rotate(38deg)}100%{transform:none}}.doto{z-index:9;font-family:Doto,Arial,sans-serif;color:#ec3c0b;font-size:23px;font-weight:900;text-align:center}.guide-blink{animation:blink 1s steps(1,end) infinite}@keyframes blink{50%{opacity:0}}.poster-art{z-index:0}.title-stack{z-index:3;font-size:62px;font-weight:1000;line-height:1.05;text-align:center;color:#fff;letter-spacing:-3px}.title-stack .impact{display:block;opacity:0;animation:impact .36s cubic-bezier(.2,1.4,.5,1) forwards}@keyframes impact{from{opacity:0;transform:scale(1.8)}to{opacity:1;transform:scale(1)}} .title-stack.fixed{opacity:.7}.poster-cta{color:white;font-size:21px;font-weight:900;text-align:center;z-index:5}.phase-loop .poster-art{animation:posterMotion 4s ease-in-out infinite}@keyframes posterMotion{50%{transform:scale(1.012);filter:saturate(1.11)}}.full-hit{position:absolute;inset:0;border:0;background:transparent;z-index:10}.gesture{z-index:6;object-fit:contain;opacity:1;mix-blend-mode:screen;animation:gestureMove 1.4s ease-in-out infinite alternate}.gesture-left{transform:scaleX(-1) rotate(-32.35deg);--gx:-74px;--gy:-96px}.gesture-right{transform:scaleY(-1) rotate(-147.65deg);--gx:110px;--gy:-44px}@keyframes gestureMove{to{translate:var(--gx) var(--gy)}}.pull-zone{position:absolute;width:50%;height:80%;top:10%;z-index:7;touch-action:none}.left-zone{left:0}.right-zone{right:0}.guide-copy{line-height:1.1;color:white}.rupture-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:8}.missing-motion{position:absolute;bottom:5%;width:100%;text-align:center;color:#fff;background:#b64430;z-index:10}.result-top,.result-bottom{z-index:4;color:white;text-align:center;font-weight:900;font-size:20px}.oops{z-index:5;color:#fff;font-size:28px;font-weight:1000;transform:rotate(11deg);animation:fall .65s cubic-bezier(.3,1.5,.6,1) both}@keyframes fall{from{translate:0 -200px;rotate:-30deg;opacity:0}to{translate:0 0;rotate:0;opacity:1}}.result-bottom{animation:reveal .4s 1s both}@keyframes reveal{from{opacity:0}to{opacity:1}}.glass{z-index:10;border:1.5px solid #ff6937;border-radius:999px;color:#fff;font-weight:900;font-size:23px;background:linear-gradient(145deg,#ffc6aaad,#ff873fc4 35%,#ff4e20da 75%,#ffbea8a8);box-shadow:inset 0 3px 4px #ffffffce,inset 0 -5px 8px #c4362380,0 6px 13px #d74b3444;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}.glass.gray{background:linear-gradient(145deg,#e8d4cbbd,#baaea7bd 55%,#9c8983c9);border-color:#b7a39c;color:#f9efea}.glass.arrow{font-size:42px}.glass.big{animation:reveal .4s 1.3s both}.glass:focus-visible{outline:3px solid #222;outline-offset:2px}.rotate-guide{z-index:20}.wave{z-index:5;color:#db430f;font-size:28px;font-weight:900}.wave::first-letter{animation:wave 1s ease-in-out infinite}@keyframes wave{50%{translate:0 -5px}}.page-08a .rear-pack{animation:packSlide .86s forwards}@keyframes packSlide{to{translate:155px 0}}.page-11 .rear-pack{animation:eject .52s cubic-bezier(.1,1.7,.4,1) both}@keyframes eject{from{translate:-50px 0}to{translate:0 0}}.page-11 .machine-exit{animation:machineLeave .7s .6s both}@keyframes machineLeave{to{translate:-200px 0}}.page-12 .front-pack,.page-12 .front-figure{animation:frontArrive 1.05s ease-out both}@keyframes frontArrive{from{transform:perspective(700px) rotateY(180deg) rotateZ(-90deg) scale(.5);opacity:.5}to{transform:perspective(700px) rotateY(0) rotateZ(0) scale(1);opacity:1}}.page-12 .clipboard{animation:paperUp 1.05s ease-out both}@keyframes paperUp{from{translate:0 428px}to{translate:0 0}}.paper-head,.dose,.paper-section,.paper-prompt,.checklist{z-index:6}.paper-head{font-size:19px;font-weight:900;color:#df4710}.dose{font-size:12px;font-weight:800;color:#db430f}.paper-section{font-size:14px;font-weight:900}.paper-prompt{font-size:12px;color:#e34b1e;font-weight:800}.checklist{pointer-events:auto}.options{display:grid;grid-template-rows:repeat(8,24px);font-size:12px;line-height:20px}.options label{display:flex;align-items:center;gap:8px;cursor:pointer}.options input{appearance:none;width:13px;height:13px;margin:0;border:1px solid #9da9af;background:#fff;flex:none;cursor:pointer}.options input:checked{background:#ef4b12;border-color:#db410c;box-shadow:inset 0 0 0 2px #ffb07d}.signature{z-index:12;pointer-events:auto;touch-action:none;border-bottom:1px solid #ef4b12}.signature-guide{font-size:16px}.consent-paper,.consent-pack{z-index:2;animation:float 3s ease-in-out infinite alternate}@keyframes float{to{translate:0 -5px}}.orange-tint{position:absolute;left:52px;top:0;width:874px;height:428px;background:linear-gradient(110deg,#ff812f99,#ff5a16b5);z-index:3;pointer-events:none}.consent-copy{z-index:5;color:#f23d0b;font-size:26px;font-weight:1000;text-align:center;line-height:1.1}.ar-placeholder{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:#ff6b29;color:#fff;font-size:64px;font-weight:900}.ar-placeholder small{font-size:18px}#stage[data-orientation=rotated] .lay{transform-origin:center}@media (prefers-reduced-motion:reduce){.guide-blink,.poster-art,.gesture,.consent-paper,.consent-pack{animation:none!important}}
 .rotate-preview{position:absolute;left:0;top:0;width:926px;height:428px;transform-origin:0 0;transform:translate(440.7px,-55.1px) rotate(90deg) scale(1.0595);overflow:hidden}.rotate-guide{z-index:30}
 .page-08a .sliding-pack,.page-08a .sliding-figure{animation:slideFirst .48s ease-in forwards}.page-08b .sliding-pack,.page-08b .sliding-figure{animation:slideSecond .38s ease-out both}@keyframes slideFirst{to{translate:78px 0}}@keyframes slideSecond{from{translate:-77px 0}to{translate:0 0}}
 .consent-figure{animation:float 3s ease-in-out infinite alternate}
@@ -10,13 +10,13 @@
 .poster-cta,.result-top,.result-bottom,.oops{font-size:24px;line-height:24px}
 .oops{transform:rotate(11deg);transform-origin:center}
 .consent-copy{font-size:28px;line-height:32px}
-.doto,.bottle-label,.wave,.paper-prompt{font-family:Doto,Arial,sans-serif;font-weight:900;font-variation-settings:"ROND" 0,"wght" 900;letter-spacing:0}
+.doto,.bottle-label,.wave,.paper-prompt{font-family:Doto,Arial,sans-serif;font-weight:700;font-variation-settings:"ROND" 0,"wght" 700;letter-spacing:0}
 .doto,.rotate-guide,.guide-copy,.wave{font-size:24px;line-height:32px}
 .workbench-guide{font-size:20px;line-height:24px}
 .bottle-label{font-size:18px;line-height:22px;text-align:left}
 .wave{text-align:right}
 .glass{font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;line-height:24px}
-.paper-head{font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:18px;font-weight:700}
+.paper-head{font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:18px;font-weight:700;text-align:center}
 .dose{font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:15px;font-weight:700}
 .paper-section{font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:14px;font-weight:700}
 .paper-prompt,.signature-guide{font-size:10px;line-height:12px}
@@ -46,3 +46,124 @@
 .model-host{overflow:hidden;background:transparent}.model-host canvas{display:block;width:100%;height:100%;pointer-events:none}
 .page-02 .glass.big::before{z-index:0}.page-02 .glass.big::after{z-index:1}.page-02 .glass.big>span{position:relative;z-index:2;display:inline-block;color:#fff!important;opacity:1!important}
 .page-02 .figma-cta{z-index:10;display:block;padding:0;border:0;border-radius:999px;background:transparent;box-shadow:0 11px 22px rgba(214,77,15,.14),0 0 6px rgba(255,186,145,.91);backdrop-filter:none;-webkit-backdrop-filter:none;pointer-events:auto;cursor:pointer;animation:reveal .5s 3.1s both}.page-02 .figma-cta svg{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}
+.figma-arrow{z-index:12;padding:0;border:0;background:transparent;pointer-events:auto;cursor:pointer}.figma-arrow img{display:block;width:50px;height:50px;pointer-events:none}
+.pack-assembly{z-index:2;overflow:visible}.pack-assembly .pack{z-index:0}.pack-assembly .figure{z-index:1}
+.prescription-assembly{z-index:4;overflow:visible}.prescription-assembly .clipboard{z-index:0}.prescription-assembly .paper-head,.prescription-assembly .dose,.prescription-assembly .paper-section,.prescription-assembly .paper-prompt,.prescription-assembly .checklist,.prescription-assembly .signature,.prescription-assembly .signature-guide{z-index:1}
+.page-12 .front-pack,.page-12 .front-figure{animation:none}.page-12 .pack-assembly{animation:frontArrive 1.05s ease-out both}.page-12 .clipboard{animation:none}.page-12 .prescription-assembly{animation:paperUp 1.05s ease-out both}
+.consent-prescription{z-index:2}.consent-pack-assembly{z-index:3}.consent-paper,.consent-pack,.consent-figure{animation:none!important}.consent-prescription,.consent-pack-assembly{animation:float 3s ease-in-out infinite alternate}.consent-prescription .lay,.consent-pack-assembly .lay{position:absolute}.consent-checklist{pointer-events:none}
+.consent-button{font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:24px;font-weight:700;background:radial-gradient(ellipse at 50% 50%,#ff630bf7 0%,#ff9142e8 40%,#ffba91e8 72%,#ffede0f5 100%);border:1px solid #ea5a06;box-shadow:inset 0 2px 2px #fff9,0 11px 22px #d64d0f24;pointer-events:auto}.consent-button.gray{background:radial-gradient(ellipse at 50% 50%,#9c7164ef 0%,#ae9990eb 45%,#e7dedafa 100%);border-color:#8b716b}
+.orange-tint.declined{background:#e82e03;opacity:.9}
+.page-15 .orange-tint{background:#D83A00;mix-blend-mode:color;opacity:1}.page-16 .orange-tint,.page-16 .orange-tint.declined{background:#D83A00;mix-blend-mode:multiply;opacity:1}
+#viewport{background:#e5edf6}
+
+/* Responsive workbench: Figma mockup margin is not web content. All original Figma coordinates stay within scene-content. */
+.scene-content{position:absolute;left:-52px;top:0;width:926px;height:428px;overflow:visible}
+#stage{contain:layout paint;overflow:hidden}
+
+/* Motion corrections: no unsolicited poster scaling, bounce-loop, or sync floating */
+.phase-loop .poster-art{animation:none!important}
+.title-stack .impact{animation:impactClean .25s cubic-bezier(.15,.8,.2,1) both;opacity:0}
+@keyframes impactClean{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+.page-02 .oops{animation:oopsDrop .52s cubic-bezier(.18,.82,.22,1) both!important;transform:rotate(-11deg)!important}
+@keyframes oopsDrop{0%{opacity:0;translate:-18px -95px}76%{opacity:1;translate:0 4px}100%{opacity:1;translate:0 0}}
+/* Continuous 08->09 slide and 09->11 feed/ejection */
+.page-08a .sliding-pack{animation:packToPrinter 1.17s cubic-bezier(.45,0,.55,1) both!important}
+@keyframes packToPrinter{from{translate:0 0}to{translate:155px 0}}
+.ejecting-pack{z-index:1;animation:packExtrude 2.32s linear both!important}
+@keyframes packExtrude{0%{translate:0 0}78%{translate:166px 0}93%{translate:233px 0}100%{translate:219px 0}}
+.page-09 .machine,.page-10 .machine,.page-11 .machine{z-index:2}
+.page-11 .machine-exit{animation:machineLeave .5s ease-in both}
+/* Dragged doll must be above all packed dolls until landing */
+.scene-content .active-figure.dragging,.scene-content .packed-figure.dragging{z-index:40!important;will-change:translate,transform}
+/* 12->14 paper stays inside the actual 588px clipboard image */
+.page-13 .paper-head,.page-12 .paper-head,.page-14 .paper-head,.page-14done .paper-head{text-align:center}
+.page-14 .prescription-assembly{animation:clipboardSlideUp .66s cubic-bezier(.25,.8,.25,1) both}
+@keyframes clipboardSlideUp{from{translate:0 140px}to{translate:0 0}}
+.page-14 .signature,.page-14 .signature-guide{animation:signReveal .35s .48s both}
+@keyframes signReveal{from{opacity:0}to{opacity:1}}
+.signature{border-bottom-color:#171717}
+/* Figma 15/16 are two distinct groups: different quiet, out-of-phase movement */
+.consent-prescription,.consent-pack-assembly{animation:none!important}
+.page-15 .consent-prescription{animation:paperEnter .85s cubic-bezier(.22,.7,.18,1) both!important}
+.page-15 .consent-pack-assembly{animation:packEnter .85s cubic-bezier(.22,.7,.18,1) both!important}
+.page-16 .consent-prescription{animation:none!important}
+.page-16 .consent-pack-assembly{animation:none!important}
+.consent-ambient{animation:paperAmbient 5.1s ease-in-out 1.1s infinite alternate!important}.pack-ambient{animation:packAmbient 6.3s ease-in-out 1.4s infinite alternate!important}
+@keyframes paperEnter{from{translate:403px -110px}to{translate:0 0}}
+@keyframes packEnter{from{translate:-101px -72px;rotate:8.5deg}to{translate:0 0;rotate:0deg}}
+@keyframes paperAmbient{from{translate:0 -2px}to{translate:1px 3px}}
+@keyframes packAmbient{from{translate:0 2px}to{translate:-1px -3px}}
+.consent-pack-assembly{transform:rotate(-8.5deg);transform-origin:center}
+/* Figma color blend: cross-fade without instantly replacing COLOR by MULTIPLY */
+.page-15 .primary-tint{animation:orangeColorArrival .85s linear both}
+@keyframes orangeColorArrival{from{opacity:0}to{opacity:1}}
+.page-16 .primary-tint{background:#D83A00;mix-blend-mode:color;animation:orangeColorDepart .85s linear both}
+.page-16 .deep-tint{background:#D83A00;mix-blend-mode:multiply;animation:orangeMultiplyArrive .85s linear both}
+@keyframes orangeColorDepart{from{opacity:1}to{opacity:0}}
+@keyframes orangeMultiplyArrive{from{opacity:0}to{opacity:1}}
+/* Glass controls: Figma multi-layer perimeter + face + reflected rim, not washed-out single gradient */
+.consent-button{border:0;background:linear-gradient(180deg,#EA5A06 0%,#F2DDDA 50.48%,#E0480A 100%);border-radius:999px;isolation:isolate;box-shadow:0 10px 18px rgba(215,67,18,.24),0 0 6px rgba(240,83,16,.55);position:absolute}
+.consent-button::before{content:"";position:absolute;inset:2px;border-radius:inherit;z-index:-1;background:radial-gradient(ellipse at 50% 36%,#FF630B 0%,#FF9142 40%,#FFBA91 78%,#FFEDE0 100%);pointer-events:none}
+.consent-button::after{content:"";position:absolute;inset:.5px;border-radius:inherit;z-index:1;border:.6px solid rgba(255,255,255,.72);box-shadow:inset 0 2px 2px rgba(255,255,255,.4);pointer-events:none}
+.consent-button.gray{background:linear-gradient(180deg,#a7897c 0%,#e0d1ca 50%,#856e66 100%);border:0;box-shadow:0 8px 16px rgba(82,57,50,.16)}
+.consent-button.gray::before{background:radial-gradient(ellipse at 50% 36%,#B39A90 0%,#CDB8AF 47%,#E7DEDA 100%)}
+.glass-label{position:relative;z-index:2;pointer-events:none;color:#fff}
+.page-15 .consent-copy,.page-16 .consent-copy{animation:consentCopy .3s .55s both}
+@keyframes consentCopy{from{opacity:0}to{opacity:1}}
+.page-15 .consent-button,.page-16 .consent-button{animation:consentCopy .3s .65s both}
+/* Disable existing redundant legacy animations that otherwise restart between 00 and 01 */
+.page-12 .front-pack{animation:none}
+
+/* DCD verification pass — Figma WEB 00-16 */
+/* Only the guide copy follows the complete hand-motion cycle (1.4s forward + 1.4s backward). */
+.phase-guide .guide-copy{animation:blink 2.8s steps(1,end) infinite!important}
+.doto,.rotate-guide,.guide-copy,.workbench-guide,.wave,.bottle-label,.signature-guide{font-size:16px!important;line-height:20px!important;font-weight:700!important;font-variation-settings:"ROND" 0,"wght" 700!important}
+.paper-prompt{font-size:10px!important;line-height:12px!important;font-weight:700!important;font-variation-settings:"ROND" 0,"wght" 700!important}
+.title-stack .impact{animation-duration:.19s!important;animation-timing-function:cubic-bezier(.22,.65,.2,1)!important}
+/* The Figma arrow SVG has a 94px drop-shadow canvas but a 50px visible button. Keep the full 94px asset. */
+.figma-arrow{width:94px!important;height:94px!important;overflow:visible!important}
+.figma-arrow img{width:94px!important;height:94px!important;object-fit:contain!important}
+/* One stable doll sprite, no translucent layer crossfade. */
+.figure,.active-figure,.packed-figure,.front-figure,.consent-figure{opacity:1!important}
+/* Figma uses one 448px transparent package at x=61 y=-10, one 588px clipboard at x=416 y=-14. */
+.page-12 .front-pack,.page-13 .front-pack,.page-14 .front-pack,.page-14done .front-pack{height:448px!important}
+.page-12 .prescription-assembly,.page-13 .prescription-assembly,.page-14 .prescription-assembly,.page-14done .prescription-assembly{height:588px!important}
+.page-14 .prescription-assembly{animation:none!important} /* 13->14 motion is now driven by the shared live element. */
+.signature{border:0!important;background:transparent!important;z-index:13!important}
+.signature-sample{z-index:12!important;overflow:visible!important;pointer-events:none!important}
+.signature-guide{z-index:12!important;text-align:left!important}
+.page-14 .signature-sample{animation:signReveal .35s .48s both}
+/* Preserve the previous WEB14 elements' screen positions via JS FLIP; don't stack legacy CSS entry translations. */
+.page-15 .consent-prescription,.page-15 .consent-pack-assembly{animation:none!important}
+.consent-prescription .consent-ambient{animation:paperAmbient 5.8s ease-in-out 1.4s infinite alternate!important}
+.consent-pack-assembly .pack-ambient{animation:packAmbient 6.7s ease-in-out 2.05s infinite alternate!important}
+/* Blend the two Figma compositing modes over 850ms when YES/NO becomes NO. */
+.page-15 .deep-tint{opacity:0!important;mix-blend-mode:multiply!important;animation:none!important}
+.page-16 .primary-tint{background:#D83A00!important;mix-blend-mode:color!important;animation:orangeColorDepart .9s ease-in-out both!important}
+.page-16 .deep-tint{background:#D83A00!important;mix-blend-mode:multiply!important;animation:orangeMultiplyArrive .9s ease-in-out both!important}
+/* Keep full-width stage backdrop isolated; never show the mockup's 52px stripe. */
+.scene-content{left:-52px;width:926px}
+/* Finished 08A position persists when we switch to 08B without rebuilding the model. */
+.page-08b .sliding-pack{animation:none!important;translate:155px 0!important}
+
+/* WEB 15–16: the four visible glass layers and colors of the Figma button component. */
+.consent-button{padding:0;border:0;border-radius:145px;background:linear-gradient(180deg,#ea5a06 0%,#f2ddd6 50.481%,#e0480a 100%);box-shadow:0 11px 22px #d64d0f24;backdrop-filter:none;-webkit-backdrop-filter:none;isolation:isolate}
+.consent-button::before{inset:2px;border:1px solid #fff2e34d;border-radius:139px;background:radial-gradient(ellipse at 50% 50%,#ff630bf7 0%,#ff7a27f0 19%,#ff9142e8 38%,#ffa66ae8 54%,#ffba91e8 70%,#ffd4b9ef 85%,#ffede0f5 100%);box-shadow:inset 0 0 18px #ff571a47;z-index:0}
+.consent-button::after{inset:0;border:.5px solid #ffffffd9;border-radius:145px;box-shadow:none;z-index:1}
+.consent-button.gray{background:linear-gradient(180deg,#6b564f 0%,#f4e8de 50.481%,#806b5d 100%);box-shadow:0 11px 22px #674b3c24}
+.consent-button.gray::before{border-color:#fff3e84d;background:radial-gradient(ellipse at 50% 50%,#816c6580 0%,#b59991e8 38%,#decdbce8 73.558%,#fff1ecf5 100%);box-shadow:inset 0 0 18px #a8775d47}
+.consent-button.gray::after{border-color:#fff8f0d9}
+.consent-button .glass-label{font:700 20px/24px Arial,Helvetica,sans-serif;color:#fff}
+
+/* The printer leaves only as WEB 11 hands its pack to WEB 12. */
+.to-prescription .machine{animation:printerExit .62s ease-in both!important}
+.to-prescription .rear-pack{animation:packExtrude 2.32s linear both!important;transform-origin:center;transform:perspective(700px) rotateY(85deg) rotateZ(90deg) scale(1.4);transition:transform .62s cubic-bezier(.45,0,.65,1)}
+@keyframes printerExit{to{translate:-200px 0;opacity:0}}
+.wave span{display:inline-block;animation:packedLetterWave 1.35s ease-in-out infinite}
+@keyframes packedLetterWave{0%,50%,100%{translate:0 0}25%{translate:0 -6px}}
+.page-15 .consent-prescription.floating,.page-16 .consent-prescription.floating{animation:paperAmbient 5.8s ease-in-out infinite alternate!important}
+.page-15 .consent-pack-assembly.floating,.page-16 .consent-pack-assembly.floating{animation:packAmbient 6.7s ease-in-out infinite alternate!important}
+/* Figma labels are 18px and printer text 24px; the reduced 16px rule applies to gesture guides. */
+.bottle-label{font-size:18px!important;line-height:17.2px!important;font-weight:900!important;text-align:center!important;font-variation-settings:"ROND" 0,"wght" 900!important}
+.wave{font-size:24px!important;line-height:32px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
+.signature-guide{font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}

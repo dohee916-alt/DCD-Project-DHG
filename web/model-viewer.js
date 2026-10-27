@@ -20,16 +20,20 @@ function decode(name) {
 
 function disposeAll() {
   for (const item of active) {
-    item.live = false;
-    if (item.motion) item.motion.resolve(false);
-    item.renderer.dispose();
-    item.environment.dispose();
-    item.pmrem.dispose();
+    disposeItem(item);
   }
   active = [];
 }
 
-async function mount(host) {
+function disposeItem(item) {
+  item.live = false;
+  if (item.motion) item.motion.resolve(false);
+  item.renderer.dispose();
+  item.environment.dispose();
+  item.pmrem.dispose();
+}
+
+async function mount(host, options = {}) {
   const name = host.dataset.model;
   const view = host.dataset.view || 'front';
   let renderer;
@@ -93,6 +97,15 @@ async function mount(host) {
     if (view === 'workbench') model.position.x += size.x * 0.06;
     if (view === 'consent') model.position.y -= 6.1;
 
+    if (view === 'syringe' && options.fillStart) {
+      for (const label of ['plunger', 'rubber']) {
+        const part = model.getObjectByName(label);
+        if (part) part.position.y = 80;
+      }
+      const drug = model.getObjectByName('drug');
+      if (drug) { drug.scale.y = 0.01; drug.position.y = 106; }
+    }
+
     const item = { host, renderer, pmrem, environment, scene, model, camera,
       live: true, motion: null };
     active.push(item);
@@ -136,6 +149,20 @@ function mountAll(root) {
   });
 }
 
+async function swap(host, name, options = {}) {
+  const previous = await host?._dcd3dReady;
+  if (!host?.isConnected) return false;
+  if (previous) {
+    disposeItem(previous);
+    active = active.filter(item => item !== previous);
+  }
+  host.dataset.model = name;
+  delete host.dataset.modelReady;
+  delete host.dataset.modelError;
+  host._dcd3dReady = mount(host, options);
+  return Boolean(await host._dcd3dReady);
+}
+
 async function play(host, direction, duration) {
   const item = await host?._dcd3dReady;
   if (!item || !item.live) return false;
@@ -152,4 +179,4 @@ async function play(host, direction, duration) {
   });
 }
 
-window.DCD3D = Object.freeze({ mountAll, disposeAll, play });
+window.DCD3D = Object.freeze({ mountAll, disposeAll, swap, play, preload: decode });
