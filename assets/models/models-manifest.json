@@ -1,0 +1,27 @@
+[
+  {
+    "file": "syringe-empty.glb",
+    "bytes": 508268,
+    "vertices": 14013
+  },
+  {
+    "file": "syringe-orange.glb",
+    "bytes": 514228,
+    "vertices": 14159
+  },
+  {
+    "file": "syringe-purple.glb",
+    "bytes": 514244,
+    "vertices": 14159
+  },
+  {
+    "file": "blister-four-clear.glb",
+    "bytes": 116996,
+    "vertices": 3442
+  },
+  {
+    "file": "blister-four-foil.glb",
+    "bytes": 865920,
+    "vertices": 3630
+  }
+]

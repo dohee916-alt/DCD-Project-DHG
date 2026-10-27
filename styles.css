@@ -43,5 +43,6 @@
 .page-02 .oops{left:105px!important;top:109px!important;width:80px!important;height:30px!important;text-align:left!important;transform:rotate(-11.06deg)!important;transform-origin:center!important}
 .page-02 .oops{animation:fall .85s cubic-bezier(.3,1.5,.6,1) both}.page-02 .result-top{animation:reveal .35s .15s both}.page-02 .result-bottom{animation:reveal .45s 1.8s both}.page-02 .glass.big{animation:reveal .5s 3.1s both}
 .workbench-count{font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;line-height:14px;color:#2e2924;text-align:left;letter-spacing:0}
+.model-host{overflow:hidden;background:transparent}.model-host canvas{display:block;width:100%;height:100%;pointer-events:none}
 .page-02 .glass.big::before{z-index:0}.page-02 .glass.big::after{z-index:1}.page-02 .glass.big>span{position:relative;z-index:2;display:inline-block;color:#fff!important;opacity:1!important}
 .page-02 .figma-cta{z-index:10;display:block;padding:0;border:0;border-radius:999px;background:transparent;box-shadow:0 11px 22px rgba(214,77,15,.14),0 0 6px rgba(255,186,145,.91);backdrop-filter:none;-webkit-backdrop-filter:none;pointer-events:auto;cursor:pointer;animation:reveal .5s 3.1s both}.page-02 .figma-cta svg{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}

@@ -1,0 +1,119 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const loader = new GLTFLoader();
+const parsed = new Map();
+let active = [];
+
+function decode(name) {
+  if (!parsed.has(name)) {
+    const base64 = window.DCD_MODELS?.[name];
+    if (!base64) return Promise.reject(new Error(`Missing 3D model: ${name}`));
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    parsed.set(name, loader.parseAsync(bytes.buffer, ''));
+  }
+  return parsed.get(name);
+}
+
+function disposeAll() {
+  for (const item of active) {
+    item.live = false;
+    item.renderer.dispose();
+    item.environment.dispose();
+    item.pmrem.dispose();
+  }
+  active = [];
+}
+
+async function mount(host) {
+  const name = host.dataset.model;
+  const view = host.dataset.view || 'front';
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true,
+      powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(host.clientWidth, host.clientHeight, false);
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    renderer.domElement.setAttribute('aria-hidden', 'true');
+    host.replaceChildren(renderer.domElement);
+    const gltf = await decode(name);
+    if (!host.isConnected) { renderer.dispose(); return; }
+
+    const scene = new THREE.Scene();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const environment = pmrem.fromScene(new RoomEnvironment(), 0.04);
+    scene.environment = environment.texture;
+    scene.add(new THREE.HemisphereLight(0xf7fbff, 0x79889b, 2.0));
+    const key = new THREE.DirectionalLight(0xffffff, 3.0);
+    key.position.set(-80, 100, 180);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0xc8e5ff, 2.2);
+    rim.position.set(100, 40, -120);
+    scene.add(rim);
+
+    const model = gltf.scene.clone(true);
+    if (view === 'workbench' || view === 'rear') model.rotation.z = -Math.PI / 2;
+    if (view === 'rear') model.rotation.y = Math.PI;
+    if (view === 'consent') model.rotation.z = -8.5 * Math.PI / 180;
+    if (view === 'workbench') model.rotation.y = 0.75;
+    scene.add(model);
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    model.position.sub(center);
+    const aspect = host.clientWidth / host.clientHeight;
+    const padding = view === 'workbench' ? 1.095 : view === 'syringe' ? 1.04 :
+      view === 'front' ? 1.13 : view === 'consent' ? 1.02 : 1.09;
+    const worldHeight = Math.max(size.y, size.x / aspect) * padding;
+    const camera = new THREE.OrthographicCamera(
+      -worldHeight * aspect / 2, worldHeight * aspect / 2,
+      worldHeight / 2, -worldHeight / 2, 0.1, 2000,
+    );
+    camera.position.set(0, 0, Math.max(size.z * 3, 350));
+    camera.lookAt(0, 0, 0);
+    if (view === 'workbench') model.position.x += size.x * 0.06;
+    if (view === 'consent') model.position.y -= 6.1;
+
+    const item = { host, renderer, pmrem, environment, scene, model, camera,
+      live: true, injectionStart: 0 };
+    active.push(item);
+    function frame(now) {
+      if (!item.live || !host.isConnected) return;
+      if (view === 'syringe' && host.classList.contains('injecting')) {
+        if (!item.injectionStart) item.injectionStart = now;
+        const progress = Math.min((now - item.injectionStart) / 1450, 1);
+        for (const label of ['plunger', 'rubber']) {
+          const part = model.getObjectByName(label);
+          if (part) part.position.y = 80 * progress;
+        }
+        const drug = model.getObjectByName('drug');
+        if (drug) {
+          drug.scale.y = Math.max(0.01, 1 - progress);
+          drug.position.y = 106 * progress;
+        }
+      }
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    host.dataset.modelReady = 'true';
+  } catch (error) {
+    if (renderer) renderer.dispose();
+    host.dataset.modelError = 'true';
+    console.error('DCD 3D model could not load', name, error);
+  }
+}
+
+function mountAll(root) {
+  disposeAll();
+  root.querySelectorAll('.model-host[data-model]').forEach(mount);
+}
+
+window.DCD3D = Object.freeze({ mountAll, disposeAll });
