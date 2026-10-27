@@ -168,7 +168,6 @@
 .wave{font-size:24px!important;line-height:32px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
 .signature-guide{font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
 /* Restore the approved OOPS drop and give each slogan its own readable impact. */
-.page-02 .oops{animation:oopsDrop .52s cubic-bezier(.18,.82,.22,1) both!important}
 .title-stack .impact{animation-name:sloganImpact!important;animation-duration:.48s!important;animation-timing-function:cubic-bezier(.18,1.2,.35,1)!important;animation-fill-mode:both!important}
 @keyframes sloganImpact{0%{opacity:0;transform:scale(1.8);filter:blur(2px)}72%{opacity:1;transform:scale(.95);filter:blur(0)}100%{opacity:1;transform:scale(1);filter:blur(0)}}
 .page-09 .wave,.page-10 .wave{font-size:16px!important;line-height:19px!important}
