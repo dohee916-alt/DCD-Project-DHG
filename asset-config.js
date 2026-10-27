@@ -27,7 +27,7 @@ window.DCD_ASSETS = Object.freeze({
   figure: (kind, state) => `assets/figures/figure-${kind}-${String(state).padStart(2, "0")}.webp`
 });
 window.DCD_MOTION = Object.freeze({
-  introMs: 3150,
+  introMs: 1550,
   rotateGuideMs: 3000,
   injectionMs: 1450,
   packingSlideMs: 860,
