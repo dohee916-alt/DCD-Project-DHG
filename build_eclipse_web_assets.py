@@ -137,20 +137,20 @@ def make_glb(label, spec, maps, with_foil):
     doc={'asset':{'version':'2.0','generator':'DCD eclipse OBJ-to-PBR-GLB'},'scene':0,'scenes':[{'nodes':list(range(len(nodes)))}],
          'nodes':nodes,'meshes':meshes,'accessors':accessors,'bufferViews':views,'buffers':[{'byteLength':0}],
          'materials':[{'name':'Blister | clear formed film','doubleSided':True,
-           'pbrMetallicRoughness':{'baseColorFactor':[1,1,1,1],'baseColorTexture':{'index':0},'metallicFactor':0,'roughnessFactor':0.16},
-           'normalTexture':{'index':1,'scale':0.68},
+           'pbrMetallicRoughness':{'baseColorFactor':[0.98,0.99,1,1],'metallicFactor':0,'roughnessFactor':0.08},
+           'normalTexture':{'index':0,'scale':0.52},
            'extensions':{'KHR_materials_transmission':{'transmissionFactor':0.88},'KHR_materials_ior':{'ior':1.47}}}],
          'extensionsUsed':['KHR_materials_transmission','KHR_materials_ior']}
     images=[];textures=[]
-    for key in (('plastic','normal','color','metalrough') if with_foil else ('plastic','normal')):
+    for key in (('normal','color','metalrough') if with_foil else ('normal',)):
         view=add_data(maps[key]);images.append({'bufferView':view,'mimeType':'image/png','name':label+' eclipse seal '+key})
         textures.append({'source':len(images)-1})
     doc['images']=images;doc['textures']=textures
     if with_foil:
         doc['materials'].append({'name':'Blister | source-matched fine aluminium seal','doubleSided':True,
-          'pbrMetallicRoughness':{'baseColorFactor':[1,1,1,1],'baseColorTexture':{'index':2},
-            'metallicFactor':0.84,'roughnessFactor':1,'metallicRoughnessTexture':{'index':3}},
-          'normalTexture':{'index':1,'scale':0.34}})
+          'pbrMetallicRoughness':{'baseColorFactor':[1,1,1,1],'baseColorTexture':{'index':1},
+            'metallicFactor':0.84,'roughnessFactor':1,'metallicRoughnessTexture':{'index':2}},
+          'normalTexture':{'index':0,'scale':0.34}})
     while len(blob)%4:blob.append(0)
     doc['buffers'][0]['byteLength']=len(blob)
     encoded=json.dumps(doc,separators=(',',':')).encode()

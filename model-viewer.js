@@ -70,11 +70,13 @@ async function mount(host, options = {}) {
       part.material.transmission = 0;
       part.material.transparent = true;
       part.material.opacity = host.dataset.look === 'consent' ? 0.67 :
-        view === 'workbench' ? 0.38 : 0.24;
+        view === 'workbench' ? 0.16 : 0.14;
       part.material.depthWrite = false;
-      part.material.roughness = 0.16;
+      part.material.roughness = 0.08;
+      part.material.clearcoat = 0.45;
+      part.material.clearcoatRoughness = 0.06;
       part.material.side = THREE.DoubleSide;
-      part.material.color.setRGB(0.64, 0.75, 0.86);
+      part.material.color.setRGB(0.98, 0.99, 1);
     });
     if (host.dataset.look === 'consent') paintConsentFoil(model);
     if (view === 'workbench' || view === 'rear') model.rotation.z = -Math.PI / 2;
