@@ -87,15 +87,17 @@ def make_maps(label, spec):
 
 
 def read_obj(path, spec):
-    vertices=[None]; normals=[None]; tex=[None]; found={}; positions=[]; out_norm=[]; out_uv=[]; indices=[]
+    vertices=[None]; normals=[None]; groups={}; group='ungrouped'
     ymin,ymax=spec['y'];zmin,zmax=spec['z'];oy,oz=spec['origin']
     for line in path.open():
         a=line.split()
         if not a:continue
         if a[0]=='v':vertices.append(tuple(map(float,a[1:4])))
         elif a[0]=='vn':normals.append(tuple(map(float,a[1:4])))
-        elif a[0]=='vt':tex.append(tuple(map(float,a[1:3])))
+        elif a[0]=='g':group=' '.join(a[1:])
         elif a[0]=='f':
+            if group not in groups:groups[group]={'found':{},'pos':[],'norm':[],'uv':[],'idx':[]}
+            data=groups[group];found=data['found'];positions=data['pos'];out_norm=data['norm'];out_uv=data['uv'];indices=data['idx']
             corners=[]
             for token in a[1:]:
                 parts=token.split('/'); key=(int(parts[0]),int(parts[2]) if len(parts)>2 and parts[2] else 0)
@@ -108,7 +110,7 @@ def read_obj(path, spec):
                     out_uv.extend(((y-ymin)/(ymax-ymin),(z-zmin)/(zmax-zmin)))
                 corners.append(found[key])
             for k in range(1,len(corners)-1):indices.extend((corners[0],corners[k],corners[k+1]))
-    return positions,out_norm,out_uv,indices
+    return [(name,data['pos'],data['norm'],data['uv'],data['idx']) for name,data in groups.items()]
 
 
 def make_glb(label, spec, maps, with_foil):
@@ -127,20 +129,25 @@ def make_glb(label, spec, maps, with_foil):
             item['min']=[min(q) for q in rows];item['max']=[max(q) for q in rows]
         accessors.append(item);return len(accessors)-1
     files=[spec['film']]+([spec['foil']] if with_foil else [])
-    for index,file in enumerate(files):
-        pos,norm,uv,idx=read_obj(SOURCE/file,spec)
-        attrs={'POSITION':accessor(pos,'f',5126,'VEC3',34962),'NORMAL':accessor(norm,'f',5126,'VEC3',34962),'TEXCOORD_0':accessor(uv,'f',5126,'VEC2',34962)}
-        ii=accessor(idx,'I',5125,'SCALAR',34963)
-        name='film' if index==0 else 'foil'
-        meshes.append({'name':name,'primitives':[{'attributes':attrs,'indices':ii,'material':index}]})
-        nodes.append({'name':name,'mesh':index})
+    for file_index,file in enumerate(files):
+        for group_name,pos,norm,uv,idx in read_obj(SOURCE/file,spec):
+            attrs={'POSITION':accessor(pos,'f',5126,'VEC3',34962),'NORMAL':accessor(norm,'f',5126,'VEC3',34962),'TEXCOORD_0':accessor(uv,'f',5126,'VEC2',34962)}
+            ii=accessor(idx,'I',5125,'SCALAR',34963)
+            if file_index==1:name='foil';material_index=2
+            elif group_name in ('Body1','Body7'):name='film-seal';material_index=0
+            else:name='film-well-'+group_name;material_index=1
+            meshes.append({'name':name,'primitives':[{'attributes':attrs,'indices':ii,'material':material_index}]})
+            nodes.append({'name':name,'mesh':len(meshes)-1})
     doc={'asset':{'version':'2.0','generator':'DCD eclipse OBJ-to-PBR-GLB'},'scene':0,'scenes':[{'nodes':list(range(len(nodes)))}],
          'nodes':nodes,'meshes':meshes,'accessors':accessors,'bufferViews':views,'buffers':[{'byteLength':0}],
-         'materials':[{'name':'Blister | clear formed film','doubleSided':True,
-           'pbrMetallicRoughness':{'baseColorFactor':[0.98,0.99,1,1],'metallicFactor':0,'roughnessFactor':0.08},
+         'materials':[{'name':'Blister | transparent seal land','doubleSided':True,'alphaMode':'BLEND',
+           'pbrMetallicRoughness':{'baseColorFactor':[0.98,0.99,1,0.11],'metallicFactor':0,'roughnessFactor':0.12},
            'normalTexture':{'index':0,'scale':0.52},
-           'extensions':{'KHR_materials_transmission':{'transmissionFactor':0.88},'KHR_materials_ior':{'ior':1.47}}}],
-         'extensionsUsed':['KHR_materials_transmission','KHR_materials_ior']}
+           'extensions':{'KHR_materials_clearcoat':{'clearcoatFactor':0.5,'clearcoatRoughnessFactor':0.08}}},
+           {'name':'Blister | clear formed wells','doubleSided':True,'alphaMode':'BLEND',
+           'pbrMetallicRoughness':{'baseColorFactor':[0.76,0.86,0.96,0.34],'metallicFactor':0,'roughnessFactor':0.08},
+           'extensions':{'KHR_materials_clearcoat':{'clearcoatFactor':0.8,'clearcoatRoughnessFactor':0.04}}}],
+         'extensionsUsed':['KHR_materials_clearcoat']}
     images=[];textures=[]
     for key in (('normal','color','metalrough') if with_foil else ('normal',)):
         view=add_data(maps[key]);images.append({'bufferView':view,'mimeType':'image/png','name':label+' eclipse seal '+key})

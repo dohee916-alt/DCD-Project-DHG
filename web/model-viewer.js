@@ -64,13 +64,12 @@ async function mount(host, options = {}) {
     scene.add(rim);
 
     const model = gltf.scene.clone(true);
-    if (name.startsWith('blister-')) model.traverse(part => {
-      if (!part.isMesh || part.name !== 'film') return;
+    if (name.startsWith('blister-') && host.dataset.look === 'consent') model.traverse(part => {
+      if (!part.isMesh || !part.name.startsWith('film-')) return;
       part.material = part.material.clone();
       part.material.transmission = 0;
       part.material.transparent = true;
-      part.material.opacity = host.dataset.look === 'consent' ? 0.67 :
-        view === 'workbench' ? 0.16 : 0.14;
+      part.material.opacity = 0.67;
       part.material.depthWrite = false;
       part.material.roughness = 0.08;
       part.material.clearcoat = 0.45;
@@ -187,7 +186,7 @@ async function setFilmOpacity(host, opacity) {
   const item = await host?._dcd3dReady;
   if (!item || !item.live) return false;
   item.model.traverse(part => {
-    if (part.isMesh && part.name === 'film') part.material.opacity = opacity;
+    if (part.isMesh && part.name.startsWith('film-')) part.material.opacity = opacity;
   });
   return true;
 }
