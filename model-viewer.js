@@ -73,11 +73,6 @@ async function addWorkbenchBackdrop(host, scene, model, size, worldHeight) {
     new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
   backing.position.z = z;
   scene.add(backing);
-  const shadow = new THREE.Mesh(geometry,
-    new THREE.ShadowMaterial({ color: 0x30445e, opacity: 0.24 }));
-  shadow.position.z = z + 0.02;
-  shadow.receiveShadow = true;
-  scene.add(shadow);
   return texture;
 }
 
@@ -106,16 +101,6 @@ async function mount(host, options = {}) {
     scene.add(new THREE.HemisphereLight(0xf7fbff, 0x79889b, 2.0));
     const key = new THREE.DirectionalLight(0xffffff, 3.0);
     key.position.set(-80, 100, 180);
-    if (view === 'workbench') {
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      key.castShadow = true;
-      key.shadow.intensity = 0.24;
-      key.shadow.mapSize.set(1024, 1024);
-      Object.assign(key.shadow.camera, { left: -45, right: 45,
-        top: 45, bottom: -45, near: 1, far: 400 });
-      key.shadow.camera.updateProjectionMatrix();
-    }
     scene.add(key);
     const rim = new THREE.DirectionalLight(0xc8e5ff, 2.2);
     rim.position.set(100, 40, -120);
@@ -153,7 +138,6 @@ async function mount(host, options = {}) {
       part.material.ior = 1.5;
       part.material.thickness = 0;
       part.material.needsUpdate = true;
-      part.castShadow = part.name.startsWith('film-well-');
     });
     scene.add(model);
     const box = new THREE.Box3().setFromObject(model);
