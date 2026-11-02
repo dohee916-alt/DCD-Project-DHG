@@ -199,11 +199,3 @@
 @keyframes signatureInkFlow{from{stroke-dashoffset:44}to{stroke-dashoffset:-56}}
 .signature-flow{overflow:visible!important;pointer-events:none!important}
 .signature{z-index:13!important;touch-action:none;pointer-events:auto}
-
-/* Depth cue for the clear four-well pack, anchored to its formed cavity positions. */
-.model-host.pack[data-view="workbench"]{filter:drop-shadow(3px 6px 5px rgba(52,73,96,.26))}
-.model-host.pack[data-view="workbench"]::before{content:"";position:absolute;inset:0;pointer-events:none;background:
- radial-gradient(ellipse 18% 8% at 29.4% 36.8%,transparent 47%,rgba(50,69,91,.24) 75%,transparent 100%),
- radial-gradient(ellipse 18% 8% at 72.2% 36.8%,transparent 47%,rgba(50,69,91,.24) 75%,transparent 100%),
- radial-gradient(ellipse 18% 8% at 29.4% 58.8%,transparent 47%,rgba(50,69,91,.24) 75%,transparent 100%),
- radial-gradient(ellipse 18% 8% at 72.2% 58.8%,transparent 47%,rgba(50,69,91,.24) 75%,transparent 100%);filter:blur(3px);translate:4px 5px}

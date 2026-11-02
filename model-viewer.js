@@ -28,9 +28,57 @@ function disposeAll() {
 function disposeItem(item) {
   item.live = false;
   if (item.motion) item.motion.resolve(false);
+  item.backgroundTexture?.dispose();
   item.renderer.dispose();
   item.environment.dispose();
   item.pmrem.dispose();
+}
+
+function offsetIn(element, ancestor) {
+  let x = 0, y = 0;
+  while (element && element !== ancestor) {
+    x += element.offsetLeft;
+    y += element.offsetTop;
+    element = element.offsetParent;
+  }
+  return { x, y };
+}
+
+async function addWorkbenchBackdrop(host, scene, model, size, worldHeight) {
+  const root = host.closest('.scene-content,.rotate-preview');
+  const background = root?.querySelector('img.bg');
+  if (background?.decode) await background.decode().catch(() => {});
+  if (!host.isConnected) return null;
+  const surface = document.createElement('canvas');
+  surface.width = Math.max(1, Math.round(host.clientWidth * 2));
+  surface.height = Math.max(1, Math.round(host.clientHeight * 2));
+  const context = surface.getContext('2d');
+  context.fillStyle = '#d8e6f1';
+  context.fillRect(0, 0, surface.width, surface.height);
+  if (background?.naturalWidth) {
+    const hostOffset = offsetIn(host, root);
+    const bgOffset = offsetIn(background, root);
+    const sx = surface.width / host.clientWidth;
+    const sy = surface.height / host.clientHeight;
+    context.drawImage(background, (bgOffset.x - hostOffset.x) * sx,
+      (bgOffset.y - hostOffset.y) * sy,
+      background.clientWidth * sx, background.clientHeight * sy);
+  }
+  const texture = new THREE.CanvasTexture(surface);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const worldWidth = worldHeight * host.clientWidth / host.clientHeight;
+  const geometry = new THREE.PlaneGeometry(worldWidth, worldHeight);
+  const z = model.position.z - size.z / 2 - 0.8;
+  const backing = new THREE.Mesh(geometry,
+    new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
+  backing.position.z = z;
+  scene.add(backing);
+  const shadow = new THREE.Mesh(geometry,
+    new THREE.ShadowMaterial({ color: 0x30445e, opacity: 0.24 }));
+  shadow.position.z = z + 0.02;
+  shadow.receiveShadow = true;
+  scene.add(shadow);
+  return texture;
 }
 
 async function mount(host, options = {}) {
@@ -58,6 +106,16 @@ async function mount(host, options = {}) {
     scene.add(new THREE.HemisphereLight(0xf7fbff, 0x79889b, 2.0));
     const key = new THREE.DirectionalLight(0xffffff, 3.0);
     key.position.set(-80, 100, 180);
+    if (view === 'workbench') {
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      key.castShadow = true;
+      key.shadow.intensity = 0.24;
+      key.shadow.mapSize.set(1024, 1024);
+      Object.assign(key.shadow.camera, { left: -45, right: 45,
+        top: 45, bottom: -45, near: 1, far: 400 });
+      key.shadow.camera.updateProjectionMatrix();
+    }
     scene.add(key);
     const rim = new THREE.DirectionalLight(0xc8e5ff, 2.2);
     rim.position.set(100, 40, -120);
@@ -85,10 +143,17 @@ async function mount(host, options = {}) {
     if (view === 'workbench') model.traverse(part => {
       if (!part.isMesh || !part.name.startsWith('film-')) return;
       part.material = part.material.clone();
-      part.material.opacity = part.name.startsWith('film-well-') ? 0.22 : 0.08;
-      part.material.roughness = 0.05;
-      part.material.forceSinglePass = true;
-      part.material.depthWrite = false;
+      part.material.color.setRGB(1, 1, 1);
+      part.material.metalness = 0;
+      part.material.roughness = 0.06;
+      part.material.transmission = 0.96;
+      part.material.opacity = 1;
+      part.material.transparent = false;
+      part.material.depthWrite = true;
+      part.material.ior = 1.5;
+      part.material.thickness = 0;
+      part.material.needsUpdate = true;
+      part.castShadow = part.name.startsWith('film-well-');
     });
     scene.add(model);
     const box = new THREE.Box3().setFromObject(model);
@@ -107,6 +172,10 @@ async function mount(host, options = {}) {
     camera.lookAt(0, 0, 0);
     if (view === 'workbench') model.position.x += size.x * 0.06;
     if (view === 'consent') model.position.y -= 6.1;
+    const backgroundTexture = view === 'workbench'
+      ? await addWorkbenchBackdrop(host, scene, model, size, worldHeight) : null;
+    if (!host.isConnected) { backgroundTexture?.dispose(); renderer.dispose();
+      environment.dispose(); pmrem.dispose(); return; }
 
     if (view === 'syringe' && options.fillStart) {
       for (const label of ['plunger', 'rubber']) {
@@ -118,6 +187,7 @@ async function mount(host, options = {}) {
     }
 
     const item = { host, renderer, pmrem, environment, scene, model, camera,
+      backgroundTexture,
       live: true, motion: null };
     active.push(item);
     function frame(now) {
