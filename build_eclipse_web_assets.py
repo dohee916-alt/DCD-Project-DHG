@@ -48,13 +48,13 @@ def png_rgb(path, width, height, rows):
 
 def make_maps(label, spec):
     width, height = (704, 1216) if label == 'four' else (512, 1152)
-    normal_rows, color_rows, orm_rows = [], [], []
+    normal_rows, color_rows, orm_rows, plastic_rows = [], [], [], []
     ymin, ymax = spec['y']; zmin, zmax = spec['z']
     ry, rz = spec['radii']
     pitch = 0.35  # approved fine diamond spacing
     for j in range(height):
         z = zmax - (j + 0.5) * (zmax - zmin) / height
-        nrow, crow, rrow = bytearray(), bytearray(), bytearray()
+        nrow, crow, rrow, prow = bytearray(), bytearray(), bytearray(), bytearray()
         for i in range(width):
             y = ymin + (i + 0.5) * (ymax - ymin) / width
             radius = min(math.sqrt(((y-cy)/ry)**2 + ((z-cz)/rz)**2) for cy,cz in spec['centres'])
@@ -74,11 +74,12 @@ def make_maps(label, spec):
             nrow.extend((int(255*(0.5-gx/(2*norm))),int(255*(0.5+gy/(2*norm))),int(255*(0.5+1/(2*norm)))))
             tone = (diamond-0.5)*seal
             crow.extend((max(0,min(255,int(196+30*tone))),max(0,min(255,int(201+30*tone))),max(0,min(255,int(206+30*tone)))))
+            prow.extend((max(0,min(255,int(221+56*tone))),max(0,min(255,int(230+48*tone))),max(0,min(255,int(240+30*tone)))))
             rough = max(0.17,min(0.36,0.265+0.18*tone))
             rrow.extend((255,int(255*rough),255))
-        normal_rows.append(bytes(nrow));color_rows.append(bytes(crow));orm_rows.append(bytes(rrow))
+        normal_rows.append(bytes(nrow));color_rows.append(bytes(crow));orm_rows.append(bytes(rrow));plastic_rows.append(bytes(prow))
     files = {}
-    for suffix, rows in [('normal',normal_rows),('color',color_rows),('metalrough',orm_rows)]:
+    for suffix, rows in [('normal',normal_rows),('color',color_rows),('metalrough',orm_rows),('plastic',plastic_rows)]:
         path=MAPS/(label+'-eclipse-seal-'+suffix+'.png')
         png_rgb(path,width,height,rows)
         files[suffix]=path.read_bytes()
@@ -136,19 +137,20 @@ def make_glb(label, spec, maps, with_foil):
     doc={'asset':{'version':'2.0','generator':'DCD eclipse OBJ-to-PBR-GLB'},'scene':0,'scenes':[{'nodes':list(range(len(nodes)))}],
          'nodes':nodes,'meshes':meshes,'accessors':accessors,'bufferViews':views,'buffers':[{'byteLength':0}],
          'materials':[{'name':'Blister | clear formed film','doubleSided':True,
-           'pbrMetallicRoughness':{'baseColorFactor':[0.98,0.99,1,1],'metallicFactor':0,'roughnessFactor':0.16},
+           'pbrMetallicRoughness':{'baseColorFactor':[1,1,1,1],'baseColorTexture':{'index':0},'metallicFactor':0,'roughnessFactor':0.16},
+           'normalTexture':{'index':1,'scale':0.68},
            'extensions':{'KHR_materials_transmission':{'transmissionFactor':0.88},'KHR_materials_ior':{'ior':1.47}}}],
          'extensionsUsed':['KHR_materials_transmission','KHR_materials_ior']}
+    images=[];textures=[]
+    for key in (('plastic','normal','color','metalrough') if with_foil else ('plastic','normal')):
+        view=add_data(maps[key]);images.append({'bufferView':view,'mimeType':'image/png','name':label+' eclipse seal '+key})
+        textures.append({'source':len(images)-1})
+    doc['images']=images;doc['textures']=textures
     if with_foil:
-        images=[];textures=[]
-        for key in ('color','metalrough','normal'):
-            view=add_data(maps[key]);images.append({'bufferView':view,'mimeType':'image/png','name':label+' eclipse seal '+key})
-            textures.append({'source':len(images)-1})
-        doc['images']=images;doc['textures']=textures
         doc['materials'].append({'name':'Blister | source-matched fine aluminium seal','doubleSided':True,
-          'pbrMetallicRoughness':{'baseColorFactor':[1,1,1,1],'baseColorTexture':{'index':0},
-            'metallicFactor':0.84,'roughnessFactor':1,'metallicRoughnessTexture':{'index':1}},
-          'normalTexture':{'index':2,'scale':0.34}})
+          'pbrMetallicRoughness':{'baseColorFactor':[1,1,1,1],'baseColorTexture':{'index':2},
+            'metallicFactor':0.84,'roughnessFactor':1,'metallicRoughnessTexture':{'index':3}},
+          'normalTexture':{'index':1,'scale':0.34}})
     while len(blob)%4:blob.append(0)
     doc['buffers'][0]['byteLength']=len(blob)
     encoded=json.dumps(doc,separators=(',',':')).encode()

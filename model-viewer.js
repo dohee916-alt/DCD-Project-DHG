@@ -80,7 +80,7 @@ async function mount(host, options = {}) {
     if (view === 'workbench' || view === 'rear') model.rotation.z = -Math.PI / 2;
     if (view === 'rear') model.rotation.y = Math.PI;
     if (view === 'consent') model.rotation.z = -8.5 * Math.PI / 180;
-    if (view === 'workbench') model.rotation.y = 0.75;
+    if (view === 'workbench') model.scale.z = -1; // wells recede below the open film face
     scene.add(model);
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());

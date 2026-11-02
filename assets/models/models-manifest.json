@@ -16,22 +16,22 @@
   },
   {
     "file": "blister-four-clear.glb",
-    "bytes": 465884,
+    "bytes": 790820,
     "vertices": 9104
   },
   {
     "file": "blister-four-foil.glb",
-    "bytes": 885408,
+    "bytes": 1136388,
     "vertices": 9280
   },
   {
     "file": "blister-single-clear.glb",
-    "bytes": 122936,
+    "bytes": 359404,
     "vertices": 2402
   },
   {
     "file": "blister-single-foil.glb",
-    "bytes": 435400,
+    "bytes": 618536,
     "vertices": 2542
   }
 ]
