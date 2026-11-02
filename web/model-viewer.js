@@ -28,43 +28,9 @@ function disposeAll() {
 function disposeItem(item) {
   item.live = false;
   if (item.motion) item.motion.resolve(false);
-  for (const figure of item.packedFigures || []) figure.texture.dispose();
   item.renderer.dispose();
   item.environment.dispose();
   item.pmrem.dispose();
-}
-
-function addPackedFigures(host, scene, camera, worldHeight) {
-  if (host.dataset.view !== 'workbench') return [];
-  const parent = host.parentElement;
-  const figures = [];
-  const worldWidth = worldHeight * host.clientWidth / host.clientHeight;
-  for (const canvas of parent.querySelectorAll(':scope > canvas.packed-figure')) {
-    // Keep the same composed doll image, but render it behind the formed film.
-    const rotated = document.createElement('canvas');
-    rotated.width = canvas.height;
-    rotated.height = canvas.width;
-    const context = rotated.getContext('2d');
-    context.translate(rotated.width, 0);
-    context.rotate(Math.PI / 2);
-    context.drawImage(canvas, 0, 0);
-    const texture = new THREE.CanvasTexture(rotated);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    const width = canvas.offsetHeight / host.clientWidth * worldWidth;
-    const height = canvas.offsetWidth / host.clientHeight * worldHeight;
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true,
-      depthWrite: false, side: THREE.DoubleSide });
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
-    plane.renderOrder = 1;
-    const x = canvas.offsetLeft + canvas.offsetWidth / 2 - host.offsetLeft;
-    const y = canvas.offsetTop + canvas.offsetHeight / 2 - host.offsetTop;
-    plane.position.set((x / host.clientWidth - 0.5) * worldWidth,
-      (0.5 - y / host.clientHeight) * worldHeight, 0);
-    scene.add(plane);
-    canvas.style.setProperty('opacity', '0', 'important');
-    figures.push({ texture, plane });
-  }
-  return figures;
 }
 
 async function mount(host, options = {}) {
@@ -117,11 +83,12 @@ async function mount(host, options = {}) {
     if (view === 'consent') model.rotation.z = -8.5 * Math.PI / 180;
     if (view === 'workbench') model.scale.z = -1; // wells recede below the open film face
     if (view === 'workbench') model.traverse(part => {
-      if (part.isMesh && part.name.startsWith('film-')) {
-        part.material = part.material.clone();
-        part.material.depthWrite = false;
-        part.renderOrder = 2;
-      }
+      if (!part.isMesh || !part.name.startsWith('film-')) return;
+      part.material = part.material.clone();
+      part.material.opacity = part.name.startsWith('film-well-') ? 0.22 : 0.08;
+      part.material.roughness = 0.05;
+      part.material.forceSinglePass = true;
+      part.material.depthWrite = false;
     });
     scene.add(model);
     const box = new THREE.Box3().setFromObject(model);
@@ -150,9 +117,8 @@ async function mount(host, options = {}) {
       if (drug) { drug.scale.y = 0.01; drug.position.y = 106; }
     }
 
-    const packedFigures = addPackedFigures(host, scene, camera, worldHeight);
     const item = { host, renderer, pmrem, environment, scene, model, camera,
-      packedFigures, live: true, motion: null };
+      live: true, motion: null };
     active.push(item);
     function frame(now) {
       if (!item.live || !host.isConnected) return;
