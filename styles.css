@@ -253,11 +253,12 @@
 .pack-clear-front{opacity:.7}
 .syringe-2d{overflow:visible;z-index:8;transform-origin:11px 148.5px}
 .syringe-2d img{position:absolute;display:block;object-fit:fill;pointer-events:none}
-.syringe-2d .syringe-plunger{z-index:0;translate:0 0}
-.syringe-2d .syringe-plunger.filled{translate:0 45px}
+.syringe-2d .syringe-plunger{z-index:1;translate:0 0}
 .syringe-2d .syringe-barrel{z-index:2}
-.syringe-drug-window{position:absolute;left:6px;top:74px;width:10px;height:91px;overflow:hidden;z-index:1;pointer-events:none}
-.syringe-2d .syringe-drug{width:100%;height:100%;opacity:.8;clip-path:inset(0 0 100% 0)}
+.syringe-drug-window{position:absolute;left:2px;top:78px;width:18px;height:69px;overflow:hidden;z-index:0;pointer-events:none}
+.syringe-2d .syringe-drug{position:absolute;max-width:none;object-fit:fill;opacity:1;clip-path:inset(0 0 100% 0)}
+.syringe-2d .syringe-drug.orange{left:-7px;top:0;width:32px;height:96px}
+.syringe-2d .syringe-drug.purple{left:0;top:-78px;width:18px;height:169px}
 .syringe-2d .syringe-drug.filled{clip-path:inset(0 0 0 0)}
 .syringe-tutorial{transform:none!important;opacity:1!important;mix-blend-mode:screen!important;object-fit:fill!important}
 .tutorial-to-bottle{--tx:-72px;--ty:-116px}
@@ -266,14 +267,11 @@
 @keyframes packSlideSmooth{from{translate:0 0}to{translate:380px 0}}
 .workbench-count,.paper-section{font-family:Arial,Helvetica,sans-serif!important;font-size:10px!important;font-weight:400!important;line-height:13px!important}
 
-/* Figma WEB04: the orange NORMAL hand sits below its SCREEN glow. Both exports
-   already contain the original 50% opacity. Move to the 30% target and reset. */
+/* One Figma orange hand, retaining the exported 50% opacity. Move to the
+   ghost hand's exact bounds, fade to 30%, then restart without reversing. */
 .syringe-guide{z-index:10;overflow:visible;pointer-events:none}
-.syringe-guide img{position:absolute;display:block;object-fit:fill;pointer-events:none}
 .syringe-guide-core{mix-blend-mode:normal;animation:handCoreTravel 1.5s cubic-bezier(.35,0,.65,1) infinite}
-.syringe-guide-glow{mix-blend-mode:screen;animation:handGlowTravel 1.5s cubic-bezier(.35,0,.65,1) infinite}
-@keyframes handCoreTravel{0%{translate:0 0;opacity:1}99.9%{translate:-89px -119px;opacity:0}100%{translate:-89px -119px;opacity:0}}
-@keyframes handGlowTravel{0%{translate:0 0;opacity:1}99.9%{translate:-89px -119px;opacity:.3}100%{translate:-89px -119px;opacity:.3}}
+@keyframes handCoreTravel{0%{translate:0 0;opacity:1}99.9%{translate:-106px -97px;opacity:.3}100%{translate:-106px -97px;opacity:.3}}
 .syringe-tip-marker{position:absolute;left:10.5px;top:29px;width:1px;height:1px;pointer-events:none;opacity:0}
 
 /* WEB09–11 exact Figma layer sizes and a continuous slow-feed/quick-release. */

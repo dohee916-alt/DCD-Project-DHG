@@ -6,7 +6,8 @@ const sides=['Nausea','Digestive Discomfort','Other Adverse Effects','Being Accu
 // WEB04 (Figma 334:1022): top-left, top-right, bottom-left, bottom-right.
 const packRect=[584,96,483,229];
 const packSlots=[[638,131,172,62],[843,131,172,62],[638,229,172,61],[843,229,172,61]];
-const bottleRects={purple:[90,45,107,82],orange:[89,146,107,82]};
+// Only the colored bulb is a valid source, never the empty neck or ring.
+const bottleLiquids={purple:{x:125,y:86,rx:32,ry:35},orange:{x:124,y:187,rx:32,ry:35}};
 const key='DCD_IMPLEMENTATION_1';
 const signaturePath='M2.50021 39.3162C3.97397 25.5131 15.0272 6.78039 32.7124 3.08321C57.2822 -2.05324 36.3968 27.7477 15.0272 52.6265C3.31169 66.2659 29.4323 61.4999 52.6083 32.6614C71.0303 9.7382 81.3467 24.5272 52.6083 61.4999';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -35,15 +36,13 @@ function glassButton(label,x,y,w,action,gray=false){
 function arrowButton(x,y,action,kind='12'){return '<button class="lay figma-arrow" '+box(x-22,y-11,94,94)+' data-action="'+action+'" aria-label="Next"><img src="assets/figma/'+(kind==='13'?'49c33':'634cb')+'.svg" alt=""></button>';}
 function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" data-view="'+view+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+' '+view+'"></canvas>';}
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
-function handGuide(){return group(0,0,0,0,'syringe-guide',
-  img(A.syringeGuideCore,158,251,164,177,'syringe-guide-core')+
-  img(A.syringeGuideHand,141,273,164,155,'syringe-guide-glow'));}
+function handGuide(){return img(A.syringeGuideCore,158,251,164,177,'syringe-guide syringe-guide-core');}
 function horizontalFigure(i,x,y,w,h,cls='',view='back'){return canvasFigure(i,x+(w-h)/2,y+(h-w)/2,h,w,cls,-90,view);}
 function syringeMarkup(cls=''){
   const color=s.loaded,liquid=color==='orange'?A.syringeLiquidOrange:A.syringeLiquidPurple;
   return group(270,125,22,297,'syringe syringe-2d '+cls,
-    img(A.syringePlunger,4,65,17,232,'syringe-plunger'+(color?' filled':''))+
-    '<div class="syringe-drug-window" aria-hidden="true"><img class="syringe-drug'+(color?' filled':'')+'" src="'+liquid+'" alt=""></div>'+
+    img(A.syringePlunger,4,65,17,232,'syringe-plunger')+
+    '<div class="syringe-drug-window" aria-hidden="true"><img class="syringe-drug '+(color||'empty')+(color?' filled':'')+'" src="'+liquid+'" alt=""></div>'+
     img(A.syringeBarrel,0,0,22,219,'syringe-barrel')+
     '<span class="syringe-tip-marker" aria-hidden="true"></span>');
 }
@@ -154,7 +153,8 @@ function beginPacking(){
   },1080);
 }
 
-const bottleMouth={purple:{x:191,y:86},orange:{x:190,y:187}};
+const bottleCore={purple:{x:125,y:86},orange:{x:124,y:187}};
+function baseNeedleTip(angle){const radians=angle*Math.PI/180;return{x:281+119.5*Math.sin(radians),y:273.5-119.5*Math.cos(radians)};}
 function syringeTipPoint(host){
   const marker=host?.querySelector('.syringe-tip-marker');
   if(!marker)return null;
@@ -164,8 +164,8 @@ function syringeTipPoint(host){
 function bottleTouched(tip){
   if(!tip)return null;
   for(const color of ['purple','orange']){
-    const [x,y,w,h]=bottleRects[color];
-    if(hit(tip,x-10,y-10,w+20,h+20))return color;
+    const {x,y,rx,ry}=bottleLiquids[color];
+    if(((tip.x-x)/rx)**2+((tip.y-y)/ry)**2<=1)return color;
   }
   return null;
 }
@@ -176,17 +176,14 @@ async function fillSyringe(color,host){
   if(s.figures[s.active].value===(color==='orange'?0:100)){moveSyringe(host,0,0,0,330);await pause(350);render();return;}
   s.loaded=color;s.firstFill=true;s.phase='filling';
   stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());
-  // Turn the needle left by 90 degrees at the bottle; injection keeps the release angle.
-  // The exported barrel has 29 transparent pixels above the visible needle tip.
-  const bottle=bottleMouth[color],dx=bottle.x-161.5,dy=bottle.y-273.5;
+  // Turn the needle left by 90 degrees and insert its visible tip into the liquid bulb.
+  const bottle=bottleCore[color],tip=baseNeedleTip(-90),dx=bottle.x-tip.x,dy=bottle.y-tip.y;
   moveSyringe(host,dx,dy,-90,220);await pause(240);
   if(s.page!=='workbench'||s.phase!=='filling')return;
-  const liquid=host.querySelector('.syringe-drug'),plunger=host.querySelector('.syringe-plunger');
+  const liquid=host.querySelector('.syringe-drug');
   liquid.src=color==='orange'?A.syringeLiquidOrange:A.syringeLiquidPurple;
-  await Promise.allSettled([
-    liquid.animate([{clipPath:'inset(0 0 100% 0)'},{clipPath:'inset(0 0 0 0)'}],{duration:M.fillMs||1200,easing:'ease-in-out',fill:'forwards'}).finished,
-    plunger.animate([{translate:'0 0'},{translate:'0 45px'}],{duration:M.fillMs||1200,easing:'ease-in-out',fill:'forwards'}).finished
-  ]);
+  liquid.className='syringe-drug '+color;
+  await liquid.animate([{clipPath:'inset(0 0 100% 0)'},{clipPath:'inset(0 0 0 0)'}],{duration:M.fillMs||1200,easing:'ease-in-out',fill:'forwards'}).finished;
   if(s.page!=='workbench'||s.phase!=='filling')return;
   moveSyringe(host,0,0,0,320);await pause(350);
   if(s.page==='workbench'&&s.phase==='filling'){s.phase='ready';save();render();}
@@ -195,17 +192,22 @@ async function inject(host){
   const color=s.loaded;if(!color||s.phase!=='ready')return;
   s.phase='injecting';s.firstInject=true;
   stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());
-  // The user's released position and angle stay fixed while the liquid empties.
+  // Put the visible needle tip into the doll before the automatic injection.
+  const angle=syringeInjectionAngle,tip=baseNeedleTip(angle),needleTarget={x:420,y:211};
+  moveSyringe(host,needleTarget.x-tip.x,needleTarget.y-tip.y,angle,220);
+  await pause(240);
+  if(s.page!=='workbench'||s.phase!=='injecting')return;
   const liquid=host.querySelector('.syringe-drug'),plunger=host.querySelector('.syringe-plunger');
   await Promise.allSettled([
     liquid.animate([{clipPath:'inset(0 0 0 0)'},{clipPath:'inset(0 0 100% 0)'}],{duration:M.injectionMs,easing:'ease-in-out',fill:'forwards'}).finished,
-    plunger.animate([{translate:'0 45px'},{translate:'0 0'}],{duration:M.injectionMs,easing:'ease-in-out',fill:'forwards'}).finished
+    plunger.animate([{translate:'0 0'},{translate:'0 -69px'}],{duration:M.injectionMs,easing:'ease-in-out',fill:'forwards'}).finished
   ]);
   if(s.page!=='workbench'||s.phase!=='injecting')return;
   const f=s.figures[s.active],before=f.value,target=clamp(before+(color==='orange'?-7:10),0,100);
   await animateFigureValue(s.active,before,target,510);
   if(s.page!=='workbench'||s.phase!=='injecting')return;
-  moveSyringe(host,0,0,0,320);await pause(350);
+  moveSyringe(host,0,0,0,320);
+  await plunger.animate([{translate:'0 -69px'},{translate:'0 0'}],{duration:320,easing:'ease-in-out',fill:'forwards'}).finished;
   if(s.page!=='workbench'||s.phase!=='injecting')return;
   f.value=target;f[color]++;s.used[color]=true;s.loaded=null;s.phase='ready';save();render();
 }
@@ -302,7 +304,7 @@ stage.addEventListener('change',e=>{let t=e.target;if(!t.matches('input[data-kin
 stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s.phase==='guide'){let rope=ropeAt(p);if(!rope)return;e.preventDefault();gesture.set(e.pointerId,{rope,start:p,type:e.pointerType||'mouse',pulled:false});stage.setPointerCapture(e.pointerId);return;}
 if(s.page!=='workbench'||s.phase!=='ready')return;let kind=null,index=-1;if(hit(p,261,125,40,297))kind='syringe';else if(hit(p,377,81,100,281))kind='doll';else{index=packSlots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();const el=kind==='syringe'?stage.querySelector('.syringe'):kind==='doll'?stage.querySelector('.active-figure'):stage.querySelector('canvas.packed-figure[data-figure="'+index+'"]');drag={kind,index,pointerId:e.pointerId,start:p,last:p,turnAnchorX:p.x,moved:false,angle:kind==='syringe'?45:0,el};if(el)el.classList.add('dragging');if(kind==='syringe'){s.handGuideDismissed=true;save();stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());if(el)el.style.transform='rotate(45deg)';}stage.setPointerCapture(e.pointerId);}});
 stage.addEventListener('pointermove',e=>{let p=localPoint(e);if(gesture.has(e.pointerId)){let g=gesture.get(e.pointerId);g.pulled=pullDistance(g,p)>=14;let active=[...gesture.values()],both=active.some(v=>v.rope==='upper'&&v.pulled)&&active.some(v=>v.rope==='lower'&&v.pulled),singlePointerMirror=g.type!=='touch'&&g.pulled;if((both||singlePointerMirror)&&s.page==='01'&&s.phase==='guide'){gesture.clear();setPage('01','rupture');}return;}
-if(!drag||drag.pointerId!==e.pointerId)return;drag.moved=true;let el=drag.el;if(el){el.style.translate=(p.x-drag.start.x)+'px '+(p.y-drag.start.y)+'px';if(drag.kind==='syringe'){let dx=p.x-drag.turnAnchorX;if(Math.abs(dx)>=36){drag.angle=dx<0?-45:45;drag.turnAnchorX=p.x;}el.style.transform='rotate('+drag.angle+'deg)';const tip=syringeTipPoint(el),color=!s.loaded&&bottleTouched(tip);if(color||(s.loaded&&tip&&hit(tip,377,81,100,281))){const action=color?()=>fillSyringe(color,el):()=>inject(el);drag=null;if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId);action();return;}}}drag.last=p;});
+if(!drag||drag.pointerId!==e.pointerId)return;drag.moved=true;let el=drag.el;if(el){el.style.translate=(p.x-drag.start.x)+'px '+(p.y-drag.start.y)+'px';if(drag.kind==='syringe'){let dx=p.x-drag.turnAnchorX;if(Math.abs(dx)>=36){drag.angle=dx<0?-45:45;drag.turnAnchorX=p.x;}el.style.transform='rotate('+drag.angle+'deg)';const tip=syringeTipPoint(el),color=!s.loaded&&bottleTouched(tip);if(color||(s.loaded&&tip&&hit(tip,377,81,100,281))){syringeInjectionAngle=drag.angle;const action=color?()=>fillSyringe(color,el):()=>inject(el);drag=null;if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId);action();return;}}}drag.last=p;});
 stage.addEventListener('pointerup',e=>{gesture.delete(e.pointerId);if(!drag||drag.pointerId!==e.pointerId)return;let p=localPoint(e),d=drag;drag=null;if(d.kind==='syringe'){syringeInjectionAngle=d.angle;
   const tip=syringeTipPoint(d.el),color=!s.loaded&&bottleTouched(tip);
   if(color)fillSyringe(color,d.el);
