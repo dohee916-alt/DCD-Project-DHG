@@ -64,16 +64,17 @@ async function mount(host, options = {}) {
     scene.add(rim);
 
     const model = gltf.scene.clone(true);
-    if (name.startsWith('blister-') && host.dataset.look === 'consent') model.traverse(part => {
+    if (name.startsWith('blister-')) model.traverse(part => {
       if (!part.isMesh || part.name !== 'film') return;
       part.material = part.material.clone();
       part.material.transmission = 0;
       part.material.transparent = true;
-      part.material.opacity = host.dataset.look === 'consent' ? 0.67 : 0.20;
+      part.material.opacity = host.dataset.look === 'consent' ? 0.67 :
+        view === 'workbench' ? 0.38 : 0.24;
       part.material.depthWrite = false;
       part.material.roughness = 0.16;
       part.material.side = THREE.DoubleSide;
-      part.material.color.setRGB(0.76, 0.86, 0.96);
+      part.material.color.setRGB(0.64, 0.75, 0.86);
     });
     if (host.dataset.look === 'consent') paintConsentFoil(model);
     if (view === 'workbench' || view === 'rear') model.rotation.z = -Math.PI / 2;
