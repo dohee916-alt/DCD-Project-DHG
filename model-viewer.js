@@ -47,25 +47,21 @@ function offsetIn(element, ancestor) {
 async function addWorkbenchBackdrop(host, scene, model, size, worldHeight) {
   const root = host.closest('.scene-content,.rotate-preview');
   const background = root?.querySelector('img.bg');
-  if (background?.decode) await background.decode().catch(() => {});
-  if (!host.isConnected) return null;
-  const surface = document.createElement('canvas');
-  surface.width = Math.max(1, Math.round(host.clientWidth * 2));
-  surface.height = Math.max(1, Math.round(host.clientHeight * 2));
-  const context = surface.getContext('2d');
-  context.fillStyle = '#d8e6f1';
-  context.fillRect(0, 0, surface.width, surface.height);
-  if (background?.naturalWidth) {
-    const hostOffset = offsetIn(host, root);
-    const bgOffset = offsetIn(background, root);
-    const sx = surface.width / host.clientWidth;
-    const sy = surface.height / host.clientHeight;
-    context.drawImage(background, (bgOffset.x - hostOffset.x) * sx,
-      (bgOffset.y - hostOffset.y) * sy,
-      background.clientWidth * sx, background.clientHeight * sy);
+  if (!window.DCD_WORKBENCH_BG) {
+    throw new Error('Missing workbench background texture');
   }
-  const texture = new THREE.CanvasTexture(surface);
+  const texture = await new Promise((resolve, reject) =>
+    new THREE.TextureLoader().load(window.DCD_WORKBENCH_BG, resolve, undefined, reject));
+  if (!host.isConnected) { texture.dispose(); return null; }
   texture.colorSpace = THREE.SRGBColorSpace;
+  const hostOffset = background ? offsetIn(host, root) : { x: 0, y: 0 };
+  const bgOffset = background ? offsetIn(background, root) : { x: 0, y: 0 };
+  const bgWidth = background?.clientWidth || host.clientWidth;
+  const bgHeight = background?.clientHeight || host.clientHeight;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.repeat.set(host.clientWidth / bgWidth, host.clientHeight / bgHeight);
+  texture.offset.set((hostOffset.x - bgOffset.x) / bgWidth,
+    (bgOffset.y + bgHeight - hostOffset.y - host.clientHeight) / bgHeight);
   const worldWidth = worldHeight * host.clientWidth / host.clientHeight;
   const geometry = new THREE.PlaneGeometry(worldWidth, worldHeight);
   const z = model.position.z - size.z / 2 - 0.8;
