@@ -20,6 +20,7 @@ window.DCD_ASSETS = Object.freeze({
   syringeLiquidOrange: "assets/figma-current/syringe-liquid-web04.png",
   syringeLiquidPurple: "assets/figma-current/syringe-layer13-web04.png",
   syringeGuideHand: "assets/figma-current/syringe-hand-active-web04.png",
+  syringeGuideCore: "assets/figma-current/syringe-hand-core-web04.png",
   gestureHand: "assets/figma/96571.webp",
   figure: (kind, state, view = "front") => `assets/figures-v2/doll-${String(kind).padStart(2, "0")}-level-${String(state).padStart(2, "0")}-${view}.png`
 });

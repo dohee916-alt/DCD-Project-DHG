@@ -265,3 +265,21 @@
 .page-08a .sliding-pack{animation:packSlideSmooth 1.08s cubic-bezier(.4,0,.7,1) both!important;will-change:translate}
 @keyframes packSlideSmooth{from{translate:0 0}to{translate:380px 0}}
 .workbench-count,.paper-section{font-family:Arial,Helvetica,sans-serif!important;font-size:10px!important;font-weight:400!important;line-height:13px!important}
+
+/* Figma WEB04: the orange NORMAL hand sits below its SCREEN glow. Both exports
+   already contain the original 50% opacity. Move to the 30% target and reset. */
+.syringe-guide{z-index:10;overflow:visible;pointer-events:none}
+.syringe-guide img{position:absolute;display:block;object-fit:fill;pointer-events:none}
+.syringe-guide-core{mix-blend-mode:normal;animation:handCoreTravel 1.5s cubic-bezier(.35,0,.65,1) infinite}
+.syringe-guide-glow{mix-blend-mode:screen;animation:handGlowTravel 1.5s cubic-bezier(.35,0,.65,1) infinite}
+@keyframes handCoreTravel{0%{translate:0 0;opacity:1}99.9%{translate:-89px -119px;opacity:0}100%{translate:-89px -119px;opacity:0}}
+@keyframes handGlowTravel{0%{translate:0 0;opacity:1}99.9%{translate:-89px -119px;opacity:.3}100%{translate:-89px -119px;opacity:.3}}
+.syringe-tip-marker{position:absolute;left:10.5px;top:29px;width:1px;height:1px;pointer-events:none;opacity:0}
+
+/* WEB09–11 exact Figma layer sizes and a continuous slow-feed/quick-release. */
+.ejecting-pack{animation:packExtrudeFigma 2.32s linear both!important}
+@keyframes packExtrudeFigma{0%{translate:0 0}47%{translate:106px 0}72%{translate:180px 0}85%{translate:218px 0}96%{translate:270px 0}100%{translate:270px 0}}
+.page-11 .rear-pack:not(.ejecting-pack){animation:none!important}
+.packed-copy.wave{font-family:Doto,Arial,sans-serif!important;font-size:16px!important;line-height:32px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:right!important;color:#d83a00}
+.packed-copy.wave span{display:inline-block;animation:packedLetterWaveFigma 1.24s ease-in-out infinite;vertical-align:top}
+@keyframes packedLetterWaveFigma{0%,42%,100%{translate:0 0}21%{translate:0 -5px}}
