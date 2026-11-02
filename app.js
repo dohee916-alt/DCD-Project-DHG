@@ -24,9 +24,9 @@ function glassButton(label,x,y,w,action,gray=false){
   return '<button class="lay consent-button figma-glass-button'+(gray?' gray':'')+'" '+box(x-shadow,y-top,w+shadow*2,gray?60:104)+' data-action="'+action+'" aria-label="'+label+'"><img src="assets/figma/'+asset+'" draggable="false" alt=""></button>';
 }
 function arrowButton(x,y,action,kind='12'){return '<button class="lay figma-arrow" '+box(x-22,y-11,94,94)+' data-action="'+action+'" aria-label="Next"><img src="assets/figma/'+(kind==='13'?'49c33':'634cb')+'.svg" alt=""></button>';}
-function canvasFigure(i,x,y,w,h,cls='',rot=0){return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+'"></canvas>';}
+function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" data-view="'+view+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+' '+view+'"></canvas>';}
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
-function horizontalFigure(i,x,y,w,h,cls=''){return canvasFigure(i,x+(w-h)/2,y+(h-w)/2,h,w,cls,90);}
+function horizontalFigure(i,x,y,w,h,cls='',view='back'){return canvasFigure(i,x+(w-h)/2,y+(h-w)/2,h,w,cls,90,view);}
 function setPage(p,phase='ready'){clearTimers();s.page=p;s.phase=phase;save();render();}
 function dimensions(){return ['00','01','02','03','ar'].includes(s.page)?[428,926]:[874,428];}
 function fit(){let [w,h]=dimensions(),v=document.querySelector('#viewport'),W=v.clientWidth,H=v.clientHeight,rotated=w>h&&W<H;scale=Math.min((rotated?H:W)/w,(rotated?W:H)/h);stage.style.width=w+'px';stage.style.height=h+'px';stage.style.clipPath='none';stage.style.transform='translate(-50%,-50%) rotate('+(rotated?90:0)+'deg) scale('+scale+')';stage.style.transformOrigin='center';stage.dataset.orientation=rotated?'rotated':'normal';offset={x:W/2,y:H/2};}
@@ -35,7 +35,7 @@ function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
 const ropes={upper:{line:[6,20,406,596],pull:[-74,-96]},lower:{line:[8,752,406,615],pull:[110,-44]}};
 function ropeAt(p){let closest=null,distance=Infinity;for(const [name,{line}] of Object.entries(ropes)){let [x1,y1,x2,y2]=line,t=clamp(((p.x-x1)*(x2-x1)+(p.y-y1)*(y2-y1))/((x2-x1)**2+(y2-y1)**2),0,1),d=Math.hypot(p.x-(x1+t*(x2-x1)),p.y-(y1+t*(y2-y1)));if(d<distance){closest=name;distance=d;}}return distance<=55?closest:null;}
 function pullDistance(g,p){let [dx,dy]=ropes[g.rope].pull,len=Math.hypot(dx,dy);return ((p.x-g.start.x)*dx+(p.y-g.start.y)*dy)/len;}
-function drawFigures(){stage.querySelectorAll('canvas[data-figure]').forEach(c=>{let i=+c.dataset.figure;window.DCDMorph.draw(c,s.figures[i].kind,s.figures[i].value);});}
+function drawFigures(){stage.querySelectorAll('canvas[data-figure]').forEach(c=>{let i=+c.dataset.figure;window.DCDMorph.draw(c,s.figures[i].kind,s.figures[i].value,c.dataset.view||'front');});}
 function animateFigureValue(index,from,to,duration=530){return new Promise(resolve=>{let start=null,last=-1;function frame(t){if(start===null)start=t;let u=Math.min((t-start)/duration,1),e=u*u*(3-2*u),value=from+(to-from)*e;if(Math.abs(value-last)>.35||u===1){s.figures[index].value=value;const c=stage.querySelector('canvas.active-figure');if(c&&c.isConnected)window.DCDMorph.draw(c,s.figures[index].kind,value);last=value;}if(u<1)requestAnimationFrame(frame);else{s.figures[index].value=to;resolve();}}requestAnimationFrame(frame);});}
 function introMarkup(p){let copy=['THE','BRAND','NEW','GLP-1'];let h=img(A.opening,0,0,428,926,'poster-art');if(s.phase==='intro')h+=text(copy.map((v,i)=>'<span class="impact headline-orange" style="animation-delay:'+(0.05+i*.115)+'s">'+v+'</span>').join(''),69,345,292,296,'title-stack');else if(p==='00')h+=text(copy.map(v=>'<span class="title-line headline-orange">'+v+'</span>').join(''),69,345,292,296,'title-stack fixed');
 h+='<div class="poster-dodge" aria-hidden="true"></div>';
@@ -44,17 +44,19 @@ else if(s.phase==='guide'){h+=text('PULL<br>THE STRINGS<br>APART',33,435,376,96,
 else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
 return h;}
 function resultMarkup(){let h=img(A.openingLastFrame||A.opening,0,0,428,926);h+='<div class="poster-dodge" aria-hidden="true"></div>';h+=text('THE PILL IS GONE..',78,139,292,22,'result-top');h+=text('OOPS!',-5,141,292,22,'oops');h+=text('LET’S MAKE OUR OWN!',68,809,292,22,'result-bottom');h+='<button type="button" class="lay figma-cta" data-action="start" style="left:132px;top:453px;width:166px;height:60px" aria-label="LET’S GO"><svg viewBox="0 0 166 60" width="166" height="60" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="cta-perimeter" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EA5A06"/><stop offset=".5048" stop-color="#F2DDDA"/><stop offset="1" stop-color="#E0480A"/></linearGradient><radialGradient id="cta-face" cx=".5" cy=".5" r=".65"><stop offset="0" stop-color="#FF630B" stop-opacity=".97"/><stop offset=".38" stop-color="#FF9142" stop-opacity=".91"/><stop offset=".7" stop-color="#FFBA91" stop-opacity=".91"/><stop offset="1" stop-color="#FFEDE0" stop-opacity=".96"/></radialGradient><radialGradient id="cta-glow"><stop offset="0" stop-color="#FF3300" stop-opacity=".43"/><stop offset=".45" stop-color="#FF571A" stop-opacity=".28"/><stop offset="1" stop-color="#FFCC99" stop-opacity="0"/></radialGradient><linearGradient id="cta-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset=".33" stop-color="#FFD4B2" stop-opacity=".8"/><stop offset="1" stop-color="#FFFFFF" stop-opacity=".58"/></linearGradient></defs><rect x=".5" y=".5" width="165" height="59" rx="29.5" fill="url(#cta-perimeter)"/><rect x="3" y="2.5" width="160" height="55" rx="27.5" fill="url(#cta-face)" stroke="#FFF2E3" stroke-opacity=".3"/><rect x="3" y="2.5" width="160" height="55" rx="27.5" fill="url(#cta-glow)"/><rect x=".5" y=".5" width="165" height="59" rx="29.5" fill="none" stroke="url(#cta-rim)" stroke-width=".5"/><text x="83" y="37" text-anchor="middle" fill="#FFFFFF" font-family="Source Sans 3,Arial,sans-serif" font-size="20" font-weight="700">LET’S GO</text></svg></button>';return h;}
-function workbenchMarkup(){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,303,29,249,373,'tray')+model('blister-four-clear',576,0,436,436,'workbench','pack');h+=img(A.purpleBottle,105,60,87,90,'bottle')+img(A.orangeBottle,102,149,93,88,'bottle');if(!s.firstInject)h+=text('GAIN<br>WEIGHT',205.7,87.5,62.8,34.4,'bottle-label')+text('LOOSE<br>WEIGHT',205.7,168.5,62.8,34.4,'bottle-label');
+function workbenchMarkup(){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,303,29,249,373,'tray')+img(A.packClearBack,576,0,436,436,'pack pack-image pack-clear-back');h+=img(A.purpleBottle,105,60,87,90,'bottle')+img(A.orangeBottle,102,149,93,88,'bottle');if(!(s.used.orange&&s.used.purple))h+=text('GAIN<br>WEIGHT',205.7,87.5,62.8,34.4,'bottle-label')+text('LOOSE<br>WEIGHT',205.7,168.5,62.8,34.4,'bottle-label');
 for(let i=0;i<4;i++)if(s.figures[i].packed){let slots=[[630,131,148,59],[817,130,148,60],[632,227,148,65],[817,229,148,59]],q=slots[i];h+=horizontalFigure(i,...q,'packed-figure');}
 h+=canvasFigure(s.active,374,83,105,266,'active-figure');h+=model('syringe-'+(s.loaded||'empty'),242,195,54,196,'syringe','syringe');
+if(!s.firstFill&&s.phase==='ready')h+=img(A.gestureHand,53,153,164,186,'syringe-tutorial tutorial-ghost tutorial-bottle-ghost')+img(A.gestureHand,141,273,164,155,'syringe-tutorial tutorial-hand tutorial-to-bottle')+img('assets/figma/17f97.svg',173.5,188,88.4,122.6,'syringe-tutorial tutorial-arrow');
+else if(s.firstFill&&!s.firstInject&&s.loaded&&s.phase==='ready')h+=img(A.gestureHand,303,147,164,186,'syringe-tutorial tutorial-ghost tutorial-doll-ghost')+img(A.gestureHand,53,160,164,186,'syringe-tutorial tutorial-hand tutorial-to-doll');
 if(f.value===0)h+=text('MINIMIZE',282,387,292,44,'doto guide-blink workbench-guide');if(f.value===100)h+=text('MAXIMIZE',282,387,292,44,'doto guide-blink workbench-guide');
 h+=text('DOLL '+(s.active+1)+'/4',399,29,100,14,'progress workbench-count');return h;}
-function rearPackMarkup(x,y,w,h,cls=''){return model('blister-four-foil',x,y,w,h,'rear','rear-pack '+cls);}
+function rearPackMarkup(x,y,w,h,cls=''){return img(A.packFoil,x,y,w,h,'rear-pack pack-image pack-foil '+cls);}
 function packingMarkup(){let h=img(A.workbenchBackground,52,0,874,428,'bg');if(['08a','08b'].includes(s.page)){h+=img(A.workbenchTray,303,29,249,373,'tray')+img(A.purpleBottle,105,60,87,90,'bottle')+img(A.orangeBottle,102,149,93,88,'bottle')+model('syringe-empty',242,195,54,196,'syringe','syringe staged-tool');
   let dx=s.page==='08a'?0:155,slots=[[630,131,148,59],[817,130,148,60],[632,227,148,65],[817,229,148,59]];
-  let inside=model('blister-four-clear',0,0,436,436,'workbench','pack')+slots.map((q,i)=>horizontalFigure(i,q[0]-576,q[1],q[2],q[3],'packed-figure')).join('');
+  let inside=img(A.packClearBack,0,0,436,436,'pack pack-image pack-clear-back')+slots.map((q,i)=>horizontalFigure(i,q[0]-576,q[1],q[2],q[3],'packed-figure')).join('');
   h+=group(576+dx,0,436,436,'pack-assembly sliding-pack',inside);return h;}
-h+=rearPackMarkup(s.page==='11'?271:52,0,437,428,s.page==='11'?'':'ejecting-pack');h+=img(A.machine,52,29,101,376,'machine');h+=text(waveText(s.page==='11'?'!!':'BEING PACKED..'),s.page==='11'?798.1:620.7,213.3,s.page==='11'?16.6:196.4,19,'packed-copy wave');return h;}
+h+=img(A.conveyor,139,79,520,270,'conveyor');h+=rearPackMarkup(s.page==='11'?271:52,0,437,428,s.page==='11'?'':'ejecting-pack');h+=img(A.machine,52,29,101,376,'machine');h+=text(waveText(s.page==='11'?'!!':'BEING PACKED..'),s.page==='11'?798.1:620.7,213.3,s.page==='11'?16.6:196.4,19,'packed-copy wave');return h;}
 function frontFigures(ox=0,oy=0,cls='front-figure'){let q=[[204,47,59,148],[304,49,65,148],[204,234,60,148],[308,234,59,148]],order=[0,2,3,1];return q.map((b,i)=>canvasFigure(order[i],b[0]-ox,b[1]-oy,b[2],b[3],cls)).join('');}
 function checklist(items,kind){return '<div class="options">'+items.map((v,i)=>'<label><input type="checkbox" data-kind="'+kind+'" data-index="'+i+'" '+(s[kind].includes(i)?'checked':'')+'><span>'+v+'</span></label>').join('')+'</div>';}
 function signatureMarkup(){
@@ -74,7 +76,7 @@ function signatureMarkup(){
 function prescriptionMarkup(){
   let page=s.page,side=['13','14','14done'].includes(page),raised=page==='14'||page==='14done';
   let h=img(A.workbenchBackground,52,0,874,428,'bg');
-  h+=group(61,-10,448,448,'pack-assembly front-pack',model('blister-four-clear',0,0,448,448,'front','pack')+frontFigures(61,-10));
+  h+=group(61,-10,448,448,'pack-assembly front-pack',img(A.packFoil,0,0,448,448,'pack-image pack-foil pack-foil-base')+frontFigures(61,-10)+img(A.packClearFront,0,0,448,448,'pack-image pack-clear-front'));
   let paper=img(A.clipboard,0,0,441,588,'clipboard');
   paper+=text('PRESCRIPTION',75,113,291,25,'paper-head');
   paper+=text('AVERAGE OF APPLIED GLP-1 : '+(s.figures.reduce((a,f)=>a+f.orange,0)/4).toFixed(1),75,156,291,25,'dose');
@@ -99,8 +101,7 @@ function consentMarkup(){
   paper+=text('Select the consequences you expect.',75,211,291,24,'paper-prompt');
   paper+='<div class="lay checklist consent-checklist" '+box(77,231,291,211)+'>'+checklist(sides,'side')+'</div>';
   h+=group(65,-46,441,588,'consent-prescription',group(0,0,441,588,'consent-ambient',paper));
-  let pack=model('blister-four-foil',0,0,448,448,'front','consent-pack','consent');
-  pack+=frontFigures(61,-10,'consent-figure');
+  let pack=img(A.packFoil,0,0,448,448,'pack-image pack-foil pack-foil-base')+frontFigures(61,-10,'consent-figure')+img(A.packClearFront,0,0,448,448,'pack-image pack-clear-front');
   h+=group(214.5,55.5,448,448,'consent-pack-assembly',group(0,0,448,448,'pack-ambient',pack));
   h+='<div class="orange-tint primary-tint"></div><div class="orange-tint deep-tint"></div>';
   h+=text(no?'Thank you<br>for Prescribing!':'DO YOU AGREE TO<br>TEST IT ON YOU?',no?604:593,151,264,64,'consent-copy');
@@ -113,7 +114,6 @@ stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h
 function finishRupture(){if(s.page==='01'&&s.phase==='rupture'){videoEnded=true;setPage('02');}}
 function runIntro(p){setPage(p,'intro');later(()=>{if(s.page===p&&s.phase==='intro'){s.phase=p==='00'?'loop':'guide';render();}},M.introMs);}
 function beginPacking(){
-  window.DCD3D?.preload('blister-four-foil')?.catch(error=>console.error('Foil pack preload failed',error));
   setPage('08a');later(()=>{
     if(s.page!=='08a')return;
     // Keep the same clear-pack WebGL canvas while 08A becomes 08B.
@@ -128,7 +128,6 @@ function beginPacking(){
           const label=stage.querySelector('.wave');if(label){label.innerHTML=waveText('!!');label.style.left='798.1px';label.style.width='16.6px';}
         }
           later(()=>{if(s.page==='11'){
-            stage.querySelector('.scene-content')?.classList.add('to-prescription');
             later(()=>{if(s.page==='11')setPage('12');},620);
           }},380);
         },850);
@@ -145,7 +144,7 @@ async function fillSyringe(color,host){
   if(s.phase!=='ready'||s.loaded)return;
   if(s.figures[s.active].value===(color==='orange'?0:100)){moveSyringe(host,0,0,0,330);await pause(350);render();return;}
   s.loaded=color;s.firstFill=true;s.phase='filling';
-  stage.querySelectorAll('.workbench-guide').forEach(n=>n.remove());
+  stage.querySelectorAll('.syringe-tutorial').forEach(n=>n.remove());
   // Turn the needle left by 90 degrees at the bottle; injection keeps the release angle.
   const bottle=bottleMouth[color],dx=bottle.x-(269-98),dy=bottle.y-293;
   moveSyringe(host,dx,dy,-90,220);await pause(240);
@@ -161,7 +160,7 @@ async function fillSyringe(color,host){
 async function inject(host){
   const color=s.loaded;if(!color||s.phase!=='ready')return;
   s.phase='injecting';s.firstInject=true;
-  stage.querySelectorAll('.workbench-guide,.bottle-label').forEach(n=>n.remove());
+  stage.querySelectorAll('.syringe-tutorial').forEach(n=>n.remove());
   // The user's exact released needle position and angle are retained during the whole injection.
   await window.DCD3D?.play(host,'inject',M.injectionMs);
   if(s.page!=='workbench'||s.phase!=='injecting')return;
@@ -218,7 +217,6 @@ function enterConsent(){
   paper.querySelector('.checklist')?.classList.add('consent-checklist');
   pack.classList.remove('front-pack');pack.classList.add('consent-pack-assembly');
   Object.assign(pack.style,{left:'214.5px',top:'55.5px'});
-  const packModel=pack.querySelector('.model-host');if(packModel){packModel.dataset.look='consent';window.DCD3D?.addConsentFoil(packModel);window.DCD3D?.setFilmOpacity(packModel,.67);}
   root.insertAdjacentHTML('beforeend','<div class="orange-tint primary-tint"></div><div class="orange-tint deep-tint"></div>'+text('DO YOU AGREE TO<br>TEST IT ON YOU?',593,151,264,64,'consent-copy')+glassButton('YES',608,241,112,'ar')+glassButton('NO',730,241,112,'decline',true));
   stage.className='stage page-15 phase-ready consent-entering';
   const animateFrom=(el,before,finishRotation=0)=>{

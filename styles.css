@@ -198,4 +198,26 @@
 .signature-flow-path{stroke-dasharray:44 56;stroke-dashoffset:44;animation:signatureInkFlow 2.7s linear infinite}
 @keyframes signatureInkFlow{from{stroke-dashoffset:44}to{stroke-dashoffset:-56}}
 .signature-flow{overflow:visible!important;pointer-events:none!important}
+
+/* The approved Figma pack layers replace WebGL pack renders. Their source art is
+   portrait; rotate the image inside its square Figma slot without stretching it. */
+.pack-image{object-fit:contain!important;transform:rotate(90deg);transform-origin:center;pointer-events:none}
+.pack-foil-base{z-index:0}
+.pack-assembly .front-figure,.consent-pack-assembly .consent-figure{z-index:1}
+.pack-clear-front{z-index:2}
+.conveyor{z-index:1;object-fit:fill}
+.page-09 .rear-pack,.page-10 .rear-pack,.page-11 .rear-pack{z-index:2}
+.page-09 .machine,.page-10 .machine,.page-11 .machine{z-index:3}
+.bottle{object-fit:contain}
+
+/* Show the original hand-only syringe tutorial until each action succeeds. */
+.syringe-tutorial{z-index:10;object-fit:contain;pointer-events:none;transform:rotate(57.7deg)}
+.tutorial-ghost{opacity:.25}
+.tutorial-hand{animation:tutorialMove 1.4s ease-in-out infinite alternate}
+.tutorial-to-bottle{--tx:-88px;--ty:-120px}
+.tutorial-to-doll{--tx:250px;--ty:-13px}
+.tutorial-arrow{opacity:.75;transform:rotate(35.1deg)}
+@keyframes tutorialMove{to{translate:var(--tx) var(--ty)}}
+/* The rear-to-front change will use the user's video when it is supplied. */
+.page-12 .pack-assembly,.page-12 .prescription-assembly{animation:none!important}
 .signature{z-index:13!important;touch-action:none;pointer-events:auto}

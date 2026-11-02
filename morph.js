@@ -1,14 +1,12 @@
-/* DCD doll morph: faithful to the approved doll_body_morph_fixed(1).html.
-   Transform complete image rows around a fixed center. Never cut the figure into
-   independently shifted alpha-bound strips: that tears facial/neck contours. */
+/* DCD doll morph: the same saved body value drives the paired front/back images.
+   Transform complete image rows around a fixed center, without slicing limbs. */
 window.DCDMorph = (() => {
   const W=346,H=873,CX=W/2,cache=new Map(),pending=new WeakMap();
   const ROWS=[0,58,109,148,173,202,237,269,307,344,380,417,460,504,557,622,690,755,820,872];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const mix=(a,b,t)=>a+(b-a)*t;
 
-  // The original approved preview used hand-smoothed width landmarks.
-  // Produce equivalent smooth landmarks once from the five existing figure states.
+  // Produce smooth width landmarks from each supplied silhouette.
   function median(values){
     values.sort((a,b)=>a-b);
     return values[Math.floor(values.length/2)] || 1;
@@ -29,8 +27,8 @@ window.DCDMorph = (() => {
     const t=clamp((y-ROWS[i])/(ROWS[i+1]-ROWS[i]),0,1);
     return mix(profile[i],profile[i+1],t);
   }
-  function source(kind,state){
-    const key=`${kind}-${state}`;
+  function source(kind,state,view){
+    const key=`${kind}-${state}-${view}`;
     if(cache.has(key))return cache.get(key);
     const promise=new Promise(resolve=>{
       const image=new Image();
@@ -51,19 +49,19 @@ window.DCDMorph = (() => {
         resolve({canvas:c,profile:widthProfile(edges)});
       };
       image.onerror=()=>{console.warn('[DCD] Figure image missing',key);resolve(null);};
-      image.src=window.DCD_ASSETS.figure(kind,state);
+      image.src=window.DCD_ASSETS.figure(kind,state,view);
     });
     cache.set(key,promise);
     return promise;
   }
-  async function draw(canvas,kind,value){
+  async function draw(canvas,kind,value,view='front'){
     if(!canvas)return;
     const request=(pending.get(canvas)||0)+1;
     pending.set(canvas,request);
-    const p=clamp(value,0,100)/25,lo=Math.floor(p),
-      hi=Math.min(4,Math.ceil(p)),t=p-lo,nearest=Math.round(p);
+    const p=clamp(value,0,100)*3/100,lo=Math.floor(p),
+      hi=Math.min(3,Math.ceil(p)),t=p-lo,nearest=Math.round(p);
     const [a,b,from]=await Promise.all([
-      source(kind,lo),source(kind,hi),source(kind,nearest)
+      source(kind,lo,view),source(kind,hi,view),source(kind,nearest,view)
     ]);
     if(!a||!b||!from||!canvas.isConnected||pending.get(canvas)!==request)return;
     if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
@@ -94,7 +92,7 @@ window.DCDMorph = (() => {
   }
   function drawVisible(root=document){
     root.querySelectorAll('canvas[data-figure]').forEach(c=>
-      draw(c,Number(c.dataset.figure),Number(c.dataset.value)));
+      draw(c,Number(c.dataset.figure),Number(c.dataset.value),c.dataset.view||'front'));
   }
   return {draw,drawVisible};
 })();

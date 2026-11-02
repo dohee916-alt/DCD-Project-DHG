@@ -1,0 +1,226 @@
+[
+  {
+    "doll": 1,
+    "level": 0,
+    "side": "back",
+    "file": "doll-01-level-00-back.png",
+    "source": "인형1_0000_Layer-7.png"
+  },
+  {
+    "doll": 1,
+    "level": 0,
+    "side": "front",
+    "file": "doll-01-level-00-front.png",
+    "source": "인형1_0001_Layer-8.png"
+  },
+  {
+    "doll": 1,
+    "level": 1,
+    "side": "back",
+    "file": "doll-01-level-01-back.png",
+    "source": "인형1_0002_Layer-6.png"
+  },
+  {
+    "doll": 1,
+    "level": 1,
+    "side": "front",
+    "file": "doll-01-level-01-front.png",
+    "source": "인형1_0003_Layer-5.png"
+  },
+  {
+    "doll": 1,
+    "level": 2,
+    "side": "back",
+    "file": "doll-01-level-02-back.png",
+    "source": "인형1_0004_Layer-4.png"
+  },
+  {
+    "doll": 1,
+    "level": 2,
+    "side": "front",
+    "file": "doll-01-level-02-front.png",
+    "source": "인형1_0005_Layer-3.png"
+  },
+  {
+    "doll": 1,
+    "level": 3,
+    "side": "back",
+    "file": "doll-01-level-03-back.png",
+    "source": "인형1_0006_Layer-2.png"
+  },
+  {
+    "doll": 1,
+    "level": 3,
+    "side": "front",
+    "file": "doll-01-level-03-front.png",
+    "source": "인형1_0007_Layer-1.png"
+  },
+  {
+    "doll": 2,
+    "level": 0,
+    "side": "front",
+    "file": "doll-02-level-00-front.png",
+    "source": "인형2_0000_Layer-16.png"
+  },
+  {
+    "doll": 2,
+    "level": 0,
+    "side": "back",
+    "file": "doll-02-level-00-back.png",
+    "source": "인형2_0001_Layer-15.png"
+  },
+  {
+    "doll": 2,
+    "level": 1,
+    "side": "front",
+    "file": "doll-02-level-01-front.png",
+    "source": "인형2_0002_Layer-14.png"
+  },
+  {
+    "doll": 2,
+    "level": 1,
+    "side": "back",
+    "file": "doll-02-level-01-back.png",
+    "source": "인형2_0003_Layer-13.png"
+  },
+  {
+    "doll": 2,
+    "level": 2,
+    "side": "front",
+    "file": "doll-02-level-02-front.png",
+    "source": "인형2_0004_Layer-12.png"
+  },
+  {
+    "doll": 2,
+    "level": 2,
+    "side": "back",
+    "file": "doll-02-level-02-back.png",
+    "source": "인형2_0005_Layer-11.png"
+  },
+  {
+    "doll": 2,
+    "level": 3,
+    "side": "front",
+    "file": "doll-02-level-03-front.png",
+    "source": "인형2_0006_Layer-10.png"
+  },
+  {
+    "doll": 2,
+    "level": 3,
+    "side": "back",
+    "file": "doll-02-level-03-back.png",
+    "source": "인형2_0007_Layer-9.png"
+  },
+  {
+    "doll": 3,
+    "level": 0,
+    "side": "front",
+    "file": "doll-03-level-00-front.png",
+    "source": "doll3_0000_Layer-8.png"
+  },
+  {
+    "doll": 3,
+    "level": 0,
+    "side": "back",
+    "file": "doll-03-level-00-back.png",
+    "source": "doll3_0001_Layer-7.png"
+  },
+  {
+    "doll": 3,
+    "level": 1,
+    "side": "front",
+    "file": "doll-03-level-01-front.png",
+    "source": "doll3_0002_Layer-6.png"
+  },
+  {
+    "doll": 3,
+    "level": 1,
+    "side": "back",
+    "file": "doll-03-level-01-back.png",
+    "source": "doll3_0003_Layer-5.png"
+  },
+  {
+    "doll": 3,
+    "level": 2,
+    "side": "front",
+    "file": "doll-03-level-02-front.png",
+    "source": "doll3_0004_Layer-4.png"
+  },
+  {
+    "doll": 3,
+    "level": 2,
+    "side": "back",
+    "file": "doll-03-level-02-back.png",
+    "source": "doll3_0005_Layer-3.png"
+  },
+  {
+    "doll": 3,
+    "level": 3,
+    "side": "front",
+    "file": "doll-03-level-03-front.png",
+    "source": "doll3_0006_Layer-2.png"
+  },
+  {
+    "doll": 3,
+    "level": 3,
+    "side": "back",
+    "file": "doll-03-level-03-back.png",
+    "source": "doll3_0007_Layer-1.png"
+  },
+  {
+    "doll": 4,
+    "level": 0,
+    "side": "front",
+    "file": "doll-04-level-00-front.png",
+    "source": "doll4_0000_Layer-16.png"
+  },
+  {
+    "doll": 4,
+    "level": 0,
+    "side": "back",
+    "file": "doll-04-level-00-back.png",
+    "source": "doll4_0001_Layer-15.png"
+  },
+  {
+    "doll": 4,
+    "level": 1,
+    "side": "front",
+    "file": "doll-04-level-01-front.png",
+    "source": "doll4_0002_Layer-14.png"
+  },
+  {
+    "doll": 4,
+    "level": 1,
+    "side": "back",
+    "file": "doll-04-level-01-back.png",
+    "source": "doll4_0003_Layer-13.png"
+  },
+  {
+    "doll": 4,
+    "level": 2,
+    "side": "front",
+    "file": "doll-04-level-02-front.png",
+    "source": "doll4_0004_Layer-12.png"
+  },
+  {
+    "doll": 4,
+    "level": 2,
+    "side": "back",
+    "file": "doll-04-level-02-back.png",
+    "source": "doll4_0005_Layer-11.png"
+  },
+  {
+    "doll": 4,
+    "level": 3,
+    "side": "front",
+    "file": "doll-04-level-03-front.png",
+    "source": "doll4_0006_Layer-10.png"
+  },
+  {
+    "doll": 4,
+    "level": 3,
+    "side": "back",
+    "file": "doll-04-level-03-back.png",
+    "source": "doll4_0007_Layer-9.png"
+  }
+]
