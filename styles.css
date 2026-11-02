@@ -125,7 +125,6 @@
 .figma-arrow{width:94px!important;height:94px!important;overflow:visible!important}
 .figma-arrow img{width:94px!important;height:94px!important;object-fit:contain!important}
 /* One stable doll sprite, no translucent layer crossfade. */
-.figure,.active-figure,.packed-figure,.front-figure,.consent-figure{opacity:1!important}
 /* Figma uses one 448px transparent package at x=61 y=-10, one 588px clipboard at x=416 y=-14. */
 .page-12 .front-pack,.page-13 .front-pack,.page-14 .front-pack,.page-14done .front-pack{height:448px!important}
 .page-12 .prescription-assembly,.page-13 .prescription-assembly,.page-14 .prescription-assembly,.page-14done .prescription-assembly{height:588px!important}
@@ -221,3 +220,30 @@
 /* The rear-to-front change will use the user's video when it is supplied. */
 .page-12 .pack-assembly,.page-12 .prescription-assembly{animation:none!important}
 .signature{z-index:13!important;touch-action:none;pointer-events:auto}
+
+/* Figma's exported PNGs retain the node's colour, contrast and alpha settings. */
+.pack-image{transform:none;object-fit:contain!important}
+.pack-clear-back{transform:rotate(180deg);filter:drop-shadow(2px 2px 4px rgba(0,0,0,.25))}
+.front-pack .pack-image,.consent-pack-assembly .pack-image{transform:rotate(90deg)}
+.tray{object-fit:contain}
+.bottle{object-fit:contain}
+
+/* One moving hand. The fingertip lands at the orange bottle mouth. */
+.syringe-tutorial{transform:none;mix-blend-mode:screen;opacity:1}
+.tutorial-hand{animation:tutorialMove 1.5s ease-in-out infinite alternate}
+.tutorial-to-bottle{--tx:-95px;--ty:-126px}
+.tutorial-to-doll{--tx:161px;--ty:-100px}
+.page-03 .rotate-guide{animation:blink 1s steps(1,end) 3}
+
+/* Smaller display type; guides remain 16px and dense labels stay at least 11px. */
+.title-stack{font-size:60px;line-height:1.12}
+.poster-cta,.result-top,.result-bottom{font-size:22px;line-height:24px}
+.oops{font-size:23px;line-height:24px}
+.consent-copy{font-size:26px;line-height:30px}
+.bottle-label{font-size:12px!important;line-height:14px!important}
+.progress,.workbench-count{font-size:12px}
+.wave{font-size:22px!important;line-height:28px!important}
+.page-09 .wave,.page-10 .wave{font-size:15px!important;line-height:19px!important}
+.paper-head{font-size:14px}
+.paper-section,.paper-prompt,.signature-guide{font-size:12px!important;line-height:15px!important}
+.front-pack .front-figure,.consent-pack-assembly .consent-figure{opacity:.77!important}

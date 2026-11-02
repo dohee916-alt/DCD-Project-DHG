@@ -94,5 +94,9 @@ window.DCDMorph = (() => {
     root.querySelectorAll('canvas[data-figure]').forEach(c=>
       draw(c,Number(c.dataset.figure),Number(c.dataset.value),c.dataset.view||'front'));
   }
-  return {draw,drawVisible};
+  async function preload(kind,value,view='back'){
+    const p=clamp(value,0,100)*3/100;
+    await Promise.all([source(kind,Math.floor(p),view),source(kind,Math.min(3,Math.ceil(p)),view),source(kind,Math.round(p),view)]);
+  }
+  return {draw,drawVisible,preload};
 })();
