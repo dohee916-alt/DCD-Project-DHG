@@ -64,7 +64,7 @@ async function mount(host, options = {}) {
     scene.add(rim);
 
     const model = gltf.scene.clone(true);
-    if (name.startsWith('blister-four')) model.traverse(part => {
+    if (name.startsWith('blister-') && host.dataset.look === 'consent') model.traverse(part => {
       if (!part.isMesh || part.name !== 'film') return;
       part.material = part.material.clone();
       part.material.transmission = 0;
