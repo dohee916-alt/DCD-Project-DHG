@@ -55,7 +55,7 @@ function syringeMarkup(cls=''){
     img(A.syringeBarrel,0,0,22,219,'syringe-barrel')+
     '<span class="syringe-tip-marker" aria-hidden="true"></span>');
 }
-function setPage(p,phase='ready'){clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
+function setPage(p,phase='ready'){if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
 function dimensions(){return ['00','01','02','03','ar','arOpen','arFace'].includes(s.page)?[428,926]:[874,428];}
 function fit(){let [w,h]=dimensions(),v=document.querySelector('#viewport'),W=v.clientWidth,H=v.clientHeight,rotated=false;v.classList.toggle('workbench-viewport',w>h);scale=Math.min((rotated?H:W)/w,(rotated?W:H)/h);stage.style.width=w+'px';stage.style.height=h+'px';stage.style.clipPath='none';stage.style.transform='translate(-50%,-50%) rotate('+(rotated?90:0)+'deg) scale('+scale+')';stage.style.transformOrigin='center';stage.dataset.orientation=rotated?'rotated':'normal';offset={x:W/2,y:H/2};}
 function localPoint(e){let r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;if(stage.dataset.orientation==='rotated'){let [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;return{x:w/2+(e.clientY-cy)/scale+dx,y:h/2-(e.clientX-cx)/scale};}return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};}
@@ -208,16 +208,12 @@ function arPackMarkup(){
   const slots=[[98,220,90,252],[241,220,90,252],[98,516,90,252],[240,516,90,252]],order=[0,2,3,1];
   let h='<div class="ar-pack-flip">';
   h+=group(48,145,334,704,'ar-pack-face ar-pack-back',img(A.arPackBack,3.5,5.4,328.5,693.2,'ar-pack-image'));
-  let front=img(A.arPackBack,3.5,5.4,328.5,693.2,'ar-pack-image ar-intact-foil');
-  front+=order.map((index,i)=>{const q=slots[i];return canvasFigure(index,q[0]-48,q[1]-145,q[2],q[3],'ar-pack-doll');}).join('');
-  front+=img(A.arPackClear,-.5,0,334,704,'ar-pack-image ar-intact-clear');
-  // Figma 04_AR / NewAR2: the crumpled inner plastic is behind the ripped
-  // front foil. Both images have ALREADY been rotated/cropped by Figma.
-  // Original visual coordinates relative to the 428x926 AR artboard:
-  // crumpled exported artboard-clipped at x51 y0 w329 h926; ripped x51 y167 w327 h660.
-  front+=img(A.arPackCrumpled,3,-145,329,926,'ar-pack-state ar-crumpled-stage');
-  front+=img(A.arPackRipped,3,22,327,660,'ar-pack-state ar-ripped-stage');
-  h+=group(48,145,334,704,'ar-pack-face ar-pack-front',front);
+  let front=img(A.arPackBack,51.5,150.4,328.5,693.2,'ar-intact-foil ar-original-foil');
+  front+='<canvas class="ar-foil-morph" width="428" height="926" aria-hidden="true"></canvas>';
+  front+=order.map((index,i)=>{const q=slots[i];return canvasFigure(index,q[0],q[1],q[2],q[3],'ar-pack-doll');}).join('');
+  front+=img(A.arPackClear,47.5,145,334,704,'ar-intact-clear ar-original-clear');
+  front+='<canvas class="ar-front-morph" width="428" height="926" aria-hidden="true"></canvas>';
+  h+='<div class="ar-pack-face ar-pack-front">'+front+'</div>';
   return h+'</div>';
 }
 function arMarkup(){
@@ -225,8 +221,82 @@ function arMarkup(){
   let h=img(A.arBackground,0,0,428,926,'ar-orange-background')+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
   h+=arPackMarkup();
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,29,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
-  // The four canvases inside the blister become the falling dolls; never redraw duplicates.
   return h;
+}
+// Independent front plastic and rear foil morph tracks share ONE exact progress value.
+// Render both layers in a common artboard coordinate system. Image alpha bounds are
+// registered to the original Figma blister rectangle to prevent doubled/misaligned packs.
+const arMorphAssets=new Map();
+let arMorphFrame=0;
+function loadArMorphAsset(src){
+  if(arMorphAssets.has(src))return arMorphAssets.get(src);
+  const pending=new Promise((resolve,reject)=>{
+    const im=new Image();im.onload=()=>resolve(im);
+    im.onerror=()=>reject(new Error('Missing AR image: '+src));im.src=src;
+  });
+  arMorphAssets.set(src,pending);
+  return pending;
+}
+function arRegisteredImage(im,rect){
+  const source=document.createElement('canvas');
+  source.width=im.naturalWidth;source.height=im.naturalHeight;
+  const scan=source.getContext('2d',{willReadFrequently:true});
+  scan.drawImage(im,0,0);
+  const pixels=scan.getImageData(0,0,source.width,source.height).data;
+  let x0=source.width,y0=source.height,x1=0,y1=0;
+  for(let y=0;y<source.height;y++)for(let x=0;x<source.width;x++){
+    if(pixels[(y*source.width+x)*4+3]<36)continue;
+    if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+  }
+  const c=document.createElement('canvas');c.width=428;c.height=926;
+  const ctx=c.getContext('2d');
+  if(x0<=x1&&y0<=y1){
+    ctx.drawImage(im,x0,y0,x1-x0+1,y1-y0+1,...rect);
+  }
+  return c;
+}
+async function morphArBlister(){
+  try{
+    const sources=[A.arPackBack,A.arPackRipped,A.arPackClear,A.arPackCrumpled];
+    const images=await Promise.all(sources.map(loadArMorphAsset));
+    if(s.page!=='arOpen')return;
+    const foil=stage.querySelector('.ar-foil-morph'),front=stage.querySelector('.ar-front-morph');
+    if(!foil||!front)return;
+    const rearBox=[51.5,150.4,328.5,693.2],frontBox=[47.5,145,334,704];
+    const layers=[
+      {canvas:foil,images:[arRegisteredImage(images[0],rearBox),arRegisteredImage(images[1],rearBox)],alpha:1},
+      {canvas:front,images:[arRegisteredImage(images[2],frontBox),arRegisteredImage(images[3],frontBox)],alpha:.7}
+    ];
+    const renderProgress=p=>{
+      for(const layer of layers){
+        const ctx=layer.canvas.getContext('2d');
+        ctx.clearRect(0,0,428,926);
+        ctx.globalAlpha=layer.alpha*(1-p);
+        ctx.drawImage(layer.images[0],0,0);
+        ctx.globalAlpha=layer.alpha*p;
+        ctx.drawImage(layer.images[1],0,0);
+        ctx.globalAlpha=1;
+      }
+    };
+    renderProgress(0);
+    foil.style.opacity='1';front.style.opacity='1';
+    stage.querySelectorAll('.ar-original-foil,.ar-original-clear').forEach(n=>n.style.opacity='0');
+    const duration=1650;let beginning=null;
+    function frame(now){
+      if(s.page!=='arOpen')return;
+      if(beginning===null)beginning=now;
+      const t=Math.min((now-beginning)/duration,1);
+      const p=t*t*(3-2*t);
+      renderProgress(p); // front/back use identical t AND easing each frame
+      if(t<1)arMorphFrame=requestAnimationFrame(frame);
+      else later(()=>{if(s.page==='arOpen')runArDollDrop();},190);
+    }
+    arMorphFrame=requestAnimationFrame(frame);
+  }catch(e){
+    console.error('[DCD] AR blister assets:',e);
+    // Never show a blank pack on an asset error.
+    if(s.page==='arOpen')later(()=>runArDollDrop(),1800);
+  }
 }
 function stopArCamera(){if(arCameraStream){arCameraStream.getTracks().forEach(track=>track.stop());arCameraStream=null;}arCameraReady=false;}
 window.addEventListener('pagehide',stopArCamera);
@@ -291,8 +361,8 @@ function runArDollDrop(){
   }
   arDropFrame=requestAnimationFrame(step);
 }
-function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';setPage('ar');askArCamera();}
-function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');later(()=>{if(s.page==='arOpen')runArDollDrop();},1750);}
+function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[A.arPackBack,A.arPackRipped,A.arPackClear,A.arPackCrumpled].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
+function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');morphArBlister();}
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;drawFigures();startNewTickers();if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
 function finishRupture(){if(s.page==='01'&&s.phase==='rupture'){videoEnded=true;setPage('02');}}
