@@ -469,3 +469,16 @@ canvas.figure{object-fit:contain!important}
 .page-arOpen .ar-pack-doll{animation:arDollRelease .26s .28s ease-in forwards}
 .ar-camera-status{position:absolute;left:32px;right:32px;bottom:108px;text-align:center;color:#2e2924;font:700 18px/24px Doto,Arial,sans-serif;z-index:11;pointer-events:none}
 .page-arFace .ar-camera-video:not([src]){background:#d8e6f1}
+
+
+/* Continuous morph between the supplied Figma AR still-image states.
+   Keep both existing PNG assets mounted and interpolate their opacity.
+   No generated video, no replacement art, no step() frame jumps. */
+.page-arOpen .ar-intact-clear,
+.page-arOpen .ar-intact-foil{animation:dcdBlisterIntactFade .64s cubic-bezier(.42,0,.58,1) both!important}
+.page-arOpen .ar-open-middle{animation:dcdBlisterMiddleMorph .72s cubic-bezier(.42,0,.58,1) both!important}
+.page-arOpen .ar-open-final{animation:dcdBlisterFinalMorph .82s .20s cubic-bezier(.42,0,.58,1) both!important}
+.page-arOpen .ar-pack-doll{animation:arDollRelease .40s .44s both!important}
+@keyframes dcdBlisterIntactFade{0%,14%{opacity:1}83%,100%{opacity:0}}
+@keyframes dcdBlisterMiddleMorph{0%,9%{opacity:0}58%,100%{opacity:1}}
+@keyframes dcdBlisterFinalMorph{0%,12%{opacity:0}85%,100%{opacity:1}}
