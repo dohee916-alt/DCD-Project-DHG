@@ -382,7 +382,7 @@
 .page-01 .guide-copy,.poster-click-guide{color:#f9f6f2!important}
 .syringe-2d .syringe-drug.orange{top:-6px}
 .bottle[src$="purple-flask-figma.png"]{object-fit:fill;mask-image:url('assets/figma-current/hd/bottle-purple-3x.png');-webkit-mask-image:url('assets/figma-current/hd/bottle-purple-3x.png');mask-size:100% 100%;-webkit-mask-size:100% 100%;mask-repeat:no-repeat;-webkit-mask-repeat:no-repeat}
-canvas.figure{object-fit:fill!important}
+canvas.figure{object-fit:contain!important}
 .new-section-prompt{animation:blink 1s steps(1,end) infinite}
 .ar-open-layer{inset:auto;overflow:hidden}
 .ar-open-middle{left:3px;top:22px;width:327px;height:660px}
