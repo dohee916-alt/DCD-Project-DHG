@@ -237,7 +237,12 @@ function loadArMorphAsset(src){
   arMorphAssets.set(src,pending);
   return pending;
 }
-function arRegisteredImage(im,rect){
+function arRegisteredImage(im,rect,normalize=false){
+  const c=document.createElement('canvas');c.width=428;c.height=926;
+  const ctx=c.getContext('2d');
+  // The intact asset must have the EXACT same geometry as the visible still.
+  // Cropping its alpha bbox and stretching it caused the pack to grow on tap.
+  if(!normalize){ctx.drawImage(im,...rect);return c;}
   const source=document.createElement('canvas');
   source.width=im.naturalWidth;source.height=im.naturalHeight;
   const scan=source.getContext('2d',{willReadFrequently:true});
@@ -248,12 +253,44 @@ function arRegisteredImage(im,rect){
     if(pixels[(y*source.width+x)*4+3]<36)continue;
     if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
   }
-  const c=document.createElement('canvas');c.width=428;c.height=926;
-  const ctx=c.getContext('2d');
-  if(x0<=x1&&y0<=y1){
-    ctx.drawImage(im,x0,y0,x1-x0+1,y1-y0+1,...rect);
-  }
+  if(x0<=x1&&y0<=y1)ctx.drawImage(im,x0,y0,x1-x0+1,y1-y0+1,...rect);
   return c;
+}
+// A third, geometric state between intact and fully collapsed: local scan-line
+// displacement inside the four thermoformed pill cavities, with fixed borders.
+function arCreasedIntermediate(source,kind){
+  const mid=document.createElement('canvas');mid.width=428;mid.height=926;
+  const ctx=mid.getContext('2d');ctx.drawImage(source,0,0);
+  const cavities=[
+    {cx:144,cy:330,rx:52,ry:125},{cx:285,cy:330,rx:52,ry:125},
+    {cx:144,cy:623,rx:52,ry:125},{cx:285,cy:623,rx:52,ry:125}
+  ];
+  const strength=kind==='plastic'?1:0.7;
+  for(let k=0;k<cavities.length;k++){
+    const {cx,cy,rx,ry}=cavities[k];
+    ctx.save();ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.clip();
+    ctx.clearRect(cx-rx-2,cy-ry-2,rx*2+4,ry*2+4);
+    for(let y=Math.ceil(cy-ry);y<cy+ry;y+=2){
+      const relative=(y-cy)/ry,edge=Math.sqrt(Math.max(0,1-relative*relative));
+      const pressure=Math.exp(-Math.pow((y-cy)/(ry*.54),2));
+      const squeeze=(3+11*pressure)*strength;
+      const offset=(Math.sin((y-cy)*.074+k*1.8)*4+Math.sin((y-cy)*.19+k)*2)*pressure*strength;
+      const x=cx-rx*edge, width=rx*2*edge;
+      if(width<1)continue;
+      ctx.drawImage(source,x,y,width,2,x+offset+squeeze,y,Math.max(1,width-2*squeeze),2);
+    }
+    // Fold edges show short, directional changes in glossy reflection.
+    ctx.lineCap='round';
+    for(let j=0;j<4;j++){
+      const yy=cy-72+j*44+((k+j)%2)*9;
+      const xx=cx+((j%2)?-32:27);
+      ctx.beginPath();ctx.moveTo(xx-13,yy-17);ctx.lineTo(xx+6,yy+1);ctx.lineTo(xx-6,yy+22);
+      ctx.strokeStyle=j%2?'rgba(255,255,255,.34)':'rgba(34,42,52,.14)';
+      ctx.lineWidth=j%2?2.4:1.4;ctx.stroke();
+    }
+    ctx.restore();
+  }
+  return mid;
 }
 async function morphArBlister(){
   try{
@@ -266,25 +303,31 @@ async function morphArBlister(){
     // Interpolate registered pixels (premultiplied alpha) rather than overlay
     // two translucent PNGs: overlapped alpha blending made mid-frames vanish.
     const layers=[
-      {canvas:foil,images:[arRegisteredImage(images[0],rearBox),arRegisteredImage(images[1],rearBox)],alpha:1},
-      {canvas:front,images:[arRegisteredImage(images[2],frontBox),arRegisteredImage(images[3],frontBox)],alpha:.7}
+      {canvas:foil,images:[arRegisteredImage(images[0],rearBox),arRegisteredImage(images[1],rearBox,true)],alpha:1,kind:'foil'},
+      {canvas:front,images:[arRegisteredImage(images[2],frontBox),arRegisteredImage(images[3],frontBox,true)],alpha:.7,kind:'plastic'}
     ].map(layer=>{
       const ctx=layer.canvas.getContext('2d');
       return {...layer,ctx,
         a:layer.images[0].getContext('2d').getImageData(0,0,428,926).data,
+        middle:arCreasedIntermediate(layer.images[0],layer.kind).getContext('2d').getImageData(0,0,428,926).data,
         b:layer.images[1].getContext('2d').getImageData(0,0,428,926).data,
         frame:ctx.createImageData(428,926)};
     });
     const renderProgress=p=>{
-      const inverse=1-p;
+      // Both surfaces traverse intact -> geometrically creased -> torn in
+      // lockstep, with the same phase, bounds and stationary external frame.
+      const phase=p<.48?p/.48:(p-.48)/.52;
+      const first=p<.48;
+      const inverse=1-phase;
       for(const layer of layers){
-        const {a,b,frame,alpha}=layer,out=frame.data;
+        const {a,middle,b,frame,alpha}=layer,out=frame.data;
+        const from=first?a:middle,to=first?middle:b;
         for(let i=0;i<out.length;i+=4){
-          const aw=a[i+3]*inverse,bw=b[i+3]*p,total=aw+bw;
+          const aw=from[i+3]*inverse,bw=to[i+3]*phase,total=aw+bw;
           if(total<.001){out[i]=0;out[i+1]=0;out[i+2]=0;out[i+3]=0;continue;}
-          out[i]=(a[i]*aw+b[i]*bw)/total;
-          out[i+1]=(a[i+1]*aw+b[i+1]*bw)/total;
-          out[i+2]=(a[i+2]*aw+b[i+2]*bw)/total;
+          out[i]=(from[i]*aw+to[i]*bw)/total;
+          out[i+1]=(from[i+1]*aw+to[i+1]*bw)/total;
+          out[i+2]=(from[i+2]*aw+to[i+2]*bw)/total;
           out[i+3]=total*alpha;
         }
         layer.ctx.putImageData(frame,0,0);
