@@ -27,6 +27,8 @@ window.DCD_ASSETS = Object.freeze({
   arPackClear: "assets/figma-current/hd/ar-pack-intact-clear.png",
   arPackOpenFront: "assets/figma-current/hd/ar-pack-open-front.png",
   arPackOpenFoil: "assets/figma-current/hd/ar-pack-open-foil.png",
+  arPackCrumpled: "assets/figma-current/hd/ar-blister-crumpled-figma-aligned.png",
+  arPackRipped: "assets/figma-current/hd/ar-blister-ripped-figma-aligned.png",
   arBackground: "assets/figma-current/hd/ar-background-figma.png",
   arFaceRing: "assets/figma-current/hd/ar-face-ring.svg",
   gestureHand: "assets/figma/96571.webp",
