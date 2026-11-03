@@ -21,7 +21,7 @@ window.DCD_ASSETS = Object.freeze({
   syringePlunger: "assets/figma-current/hd/plunger-figma3x.png",
   syringeLiquidOrange: "assets/figma-current/hd/liquidOrange-figma2x.png",
   syringeLiquidPurple: "assets/figma-current/hd/liquidPurple-figma2x.png",
-  syringeGuideCore: "assets/figma-current/hd/guide-hand-current.png",
+  syringeGuideCore: "assets/figma-current/hd/guide-hand-figma-new05-2x.png",
   arPackBack: "assets/figma-current/hd/ar-pack-intact-back.png",
   arPackClear: "assets/figma-current/hd/ar-pack-intact-clear.png",
   arPackOpenFront: "assets/figma-current/hd/ar-pack-open-front.png",
