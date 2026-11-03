@@ -532,3 +532,9 @@ canvas.figure{object-fit:contain!important}
 .new-options input:checked+.new-checked-asset{display:block!important;z-index:1}
 /* Prevent re-rendered label typing animations from hiding an already selected square. */
 .new-options label:has(input:checked){clip-path:none!important}
+
+
+/* AR doll continuity: the same four canvases remain visible behind the
+   deformation until the real tear is open, then move into the foreground. */
+.page-arOpen .ar-pack-doll{animation:none!important;opacity:1!important}
+.page-arOpen .ar-falling-doll{animation:none!important;opacity:1!important;z-index:5!important}
