@@ -271,7 +271,7 @@
 /* One Figma orange hand, retaining the exported 50% opacity. Move to the
    ghost hand's exact bounds, fade to 30%, then restart without reversing. */
 .syringe-guide{z-index:10;overflow:visible;pointer-events:none}
-.syringe-tip-marker{position:absolute;left:10.5px;top:23.5px;width:1px;height:1px;pointer-events:none;opacity:0}
+.syringe-tip-marker{position:absolute;left:10.5px;top:1px;width:1px;height:1px;pointer-events:none;opacity:0}
 
 /* WEB09–11 exact Figma layer sizes and a continuous slow-feed/quick-release. */
 .ejecting-pack{animation:packExtrudeFigma 2.32s linear both!important}
@@ -455,5 +455,5 @@ canvas.figure{object-fit:fill!important}
 .syringe-injection-guide{animation:dcdGuideToFigure 1.5s ease-in-out infinite!important}
 .pack-guide-hand{transform:none;animation:dcdGuideToPack 1.55s ease-in-out infinite!important}
 @keyframes dcdGuideToBottle{0%{translate:0 0;opacity:.7}99.9%{translate:-128px -111px;opacity:.3}100%{translate:0 0;opacity:.7}}
-@keyframes dcdGuideToFigure{0%{translate:0 0;opacity:.7}99.9%{translate:218px 24px;opacity:.3}100%{translate:0 0;opacity:.7}}
+@keyframes dcdGuideToFigure{0%{translate:0 0;opacity:.7}99.9%{translate:147px -87px;opacity:.3}100%{translate:0 0;opacity:.7}}
 @keyframes dcdGuideToPack{0%{translate:0 0;opacity:.7}99.9%{translate:310px -28px;opacity:.3}100%{translate:0 0;opacity:.7}}
