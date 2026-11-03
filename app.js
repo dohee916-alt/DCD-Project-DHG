@@ -366,14 +366,20 @@ async function animatePackActive(el){
   if(!el){packActive();return;}
   s.phase='packing';const i=s.active,f=s.figures[i],q=packSlots[i];
   const back=el.cloneNode(false);back.classList.remove('active-figure','dragging');back.classList.add('packing-back');back.dataset.view='back';back.style.opacity='0';back.style.pointerEvents='none';el.parentElement.appendChild(back);
-  await window.DCDMorph.preload(f.kind,f.value,'back');
-  await window.DCDMorph.draw(back,f.kind,f.value,'back');
-  if(s.page!=='workbench'||s.phase!=='packing'){back.remove();return;}
-  const sx=377+100/2,sy=81+281/2,tx=q[0]+q[2]/2,ty=q[1]+q[3]/2;
+  // Start movement immediately on release; loading the back image must not
+  // freeze the doll at the drop point. Its front-facing pixels are a fallback.
+  back.getContext('2d').drawImage(el,0,0);
+  window.DCDMorph.draw(back,f.kind,f.value,'back');
+  const sx=activeDollRect.x+activeDollRect.w/2,sy=activeDollRect.y+activeDollRect.h/2;
+  const tx=q[0]+q[2]/2,ty=q[1]+q[3]/2;
   const from=el.style.translate||'0px 0px',to=(tx-sx)+'px '+(ty-sy)+'px';
+  // Exact geometric destination: after -90deg, source height becomes slot width
+  // and source width becomes slot height. A uniform .61 scale caused a size snap.
+  const scaleX=q[3]/activeDollRect.w,scaleY=q[2]/activeDollRect.h;
+  const endScale='scale('+scaleX+','+scaleY+')';
   const timing={duration:650,easing:'cubic-bezier(.25,.7,.2,1)',fill:'forwards'};
-  const a=el.animate([{offset:0,translate:from,transform:'rotate(0deg) rotateY(0deg) scale(1)',opacity:1},{offset:.4,translate:to,transform:'rotate(-90deg) rotateY(35deg) scale(.61)',opacity:1},{offset:.65,translate:to,transform:'rotate(-90deg) rotateY(82deg) scale(.61)',opacity:0},{offset:1,translate:to,transform:'rotate(-90deg) rotateY(82deg) scale(.61)',opacity:0}],timing);
-  const b=back.animate([{offset:0,translate:from,transform:'rotate(0deg) rotateY(-82deg) scale(1)',opacity:0},{offset:.4,translate:to,transform:'rotate(-90deg) rotateY(-82deg) scale(.61)',opacity:0},{offset:.65,translate:to,transform:'rotate(-90deg) rotateY(-35deg) scale(.61)',opacity:1},{offset:1,translate:to,transform:'rotate(-90deg) rotateY(0deg) scale(.61)',opacity:1}],timing);
+  const a=el.animate([{offset:0,translate:from,transform:'rotate(0deg) rotateY(0deg) scale(1)',opacity:1},{offset:.4,translate:to,transform:'rotate(-90deg) rotateY(35deg) '+endScale,opacity:1},{offset:.65,translate:to,transform:'rotate(-90deg) rotateY(82deg) '+endScale,opacity:0},{offset:1,translate:to,transform:'rotate(-90deg) rotateY(82deg) '+endScale,opacity:0}],timing);
+  const b=back.animate([{offset:0,translate:from,transform:'rotate(0deg) rotateY(-82deg) scale(1)',opacity:0},{offset:.4,translate:to,transform:'rotate(-90deg) rotateY(-82deg) '+endScale,opacity:0},{offset:.65,translate:to,transform:'rotate(-90deg) rotateY(-35deg) '+endScale,opacity:1},{offset:1,translate:to,transform:'rotate(-90deg) rotateY(0deg) '+endScale,opacity:1}],timing);
   await Promise.allSettled([a.finished,b.finished]);
   if(s.page==='workbench'&&s.phase==='packing'){s.phase='ready';packActive();}
 }
