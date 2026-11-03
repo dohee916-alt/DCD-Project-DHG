@@ -42,7 +42,11 @@ function waveText(value){return [...value].map((letter,i)=>'<span style="animati
 function handGuide(){return img(A.syringeGuideCore,163,240,164,185,'syringe-guide syringe-guide-core');}
 function injectionHandGuide(){return img(A.syringeGuideCore,163,238,164,185,'syringe-guide syringe-injection-guide');}
 function packHandGuide(){return img(A.syringeGuideCore,302,153,164,185,'pack-guide-hand')+text('DRAG HERE WHEN FINISHED',615,323,292,44,'doto guide-blink pack-guide-copy');}
-function horizontalFigure(i,x,y,w,h,cls='',view='back'){return canvasFigure(i,x+(w-h)/2,y+(h-w)/2,h,w,cls,-90,view);}
+function horizontalFigure(i,x,y,w,h,cls='',view='back'){
+  // Keep the 172px long axis exact and preserve the original doll aspect ratio.
+  const long=w,short=long*activeDollRect.w/activeDollRect.h;
+  return canvasFigure(i,x+w/2-short/2,y+h/2-long/2,short,long,cls,-90,view);
+}
 function syringeMarkup(cls=''){
   const color=s.loaded,liquid=color==='orange'?A.syringeLiquidOrange:A.syringeLiquidPurple;
   return group(270,125,22,297,'syringe syringe-2d '+cls,
@@ -68,7 +72,7 @@ else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto 
 else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
 return h;}
 function resultMarkup(){const root='assets/figma-current/hd/';return img(A.posterResult,0,0,428,926,'poster-art poster-result-art')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+img(root+'poster-tagline-base.svg',64.5,858.5,299,17,'poster-tagline-result-svg')+img(root+'poster-tagline.svg',64.5,858.5,299,17,'poster-tagline-result-svg')+text('CLICK THE PACK TO START',26,808,376,96,'doto guide-blink poster-click-guide')+'<button class="full-hit" data-action="start" aria-label="Start"></button>';}
-function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.packClearBack,0,0,packRect[2],packRect[3],'pack pack-image pack-clear-back');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack'+(s.firstInject?' with-pack-shadow':''),packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,88,141,110,85,'bottle');if(!(s.used.orange&&s.used.purple))h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label')+text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label');
+function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.packClearBack,0,0,packRect[2],packRect[3],'pack pack-image pack-clear-back');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack',packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,88,141,110,85,'bottle');if(!(s.used.orange&&s.used.purple))h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label')+text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label');
 if(!f.packed)h+=canvasFigure(s.active,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h,'active-figure');h+=syringeMarkup();
 if(showTutorial&&!s.handGuideDismissed&&!s.firstFill&&s.phase==='ready')h+=handGuide();
 if(showTutorial&&s.loaded&&!s.firstInject&&s.phase==='ready')h+=injectionHandGuide();
@@ -375,13 +379,24 @@ async function animatePackActive(el){
   const sx=activeDollRect.x+activeDollRect.w/2,sy=activeDollRect.y+activeDollRect.h/2;
   const tx=q[0]+q[2]/2,ty=q[1]+q[3]/2;
   const from=el.style.translate||'0px 0px',to=(tx-sx)+'px '+(ty-sy)+'px';
-  // Exact geometric destination: after -90deg, source height becomes slot width
-  // and source width becomes slot height. A uniform .61 scale caused a size snap.
-  const scaleX=q[3]/activeDollRect.w,scaleY=q[2]/activeDollRect.h;
-  const endScale='scale('+scaleX+','+scaleY+')';
-  const timing={duration:650,easing:'cubic-bezier(.25,.7,.2,1)',fill:'forwards'};
-  const a=el.animate([{offset:0,translate:from,transform:'rotate(0deg) rotateY(0deg) scale(1)',opacity:1},{offset:.4,translate:to,transform:'rotate(-90deg) rotateY(35deg) '+endScale,opacity:1},{offset:.65,translate:to,transform:'rotate(-90deg) rotateY(82deg) '+endScale,opacity:0},{offset:1,translate:to,transform:'rotate(-90deg) rotateY(82deg) '+endScale,opacity:0}],timing);
-  const b=back.animate([{offset:0,translate:from,transform:'rotate(0deg) rotateY(-82deg) scale(1)',opacity:0},{offset:.4,translate:to,transform:'rotate(-90deg) rotateY(-82deg) '+endScale,opacity:0},{offset:.65,translate:to,transform:'rotate(-90deg) rotateY(-35deg) '+endScale,opacity:1},{offset:1,translate:to,transform:'rotate(-90deg) rotateY(0deg) '+endScale,opacity:1}],timing);
+  // Preserve native proportions from pickup to the exact slot-height finish.
+  // RotateY crushed the body; a partial early translate froze it mid-motion.
+  const targetScale=q[2]/activeDollRect.h;
+  const endTransform='rotate(-90deg) scale('+targetScale+')';
+  const [fx,fy]=from.split(' ').map(parseFloat);
+  const midTranslate=(fx+(tx-sx-fx)*.5)+'px '+(fy+(ty-sy-fy)*.5)+'px';
+  const midTransform='rotate(-45deg) scale('+(1+targetScale)/2+')';
+  const timing={duration:650,easing:'linear',fill:'forwards'};
+  const a=el.animate([
+    {offset:0,translate:from,transform:'rotate(0deg) scale(1)',opacity:1},
+    {offset:.5,translate:midTranslate,transform:midTransform,opacity:1},
+    {offset:1,translate:to,transform:endTransform,opacity:0}
+  ],timing);
+  const b=back.animate([
+    {offset:0,translate:from,transform:'rotate(0deg) scale(1)',opacity:0},
+    {offset:.5,translate:midTranslate,transform:midTransform,opacity:0},
+    {offset:1,translate:to,transform:endTransform,opacity:1}
+  ],timing);
   await Promise.allSettled([a.finished,b.finished]);
   if(s.page==='workbench'&&s.phase==='packing'){s.phase='ready';packActive();}
 }
