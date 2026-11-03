@@ -213,7 +213,7 @@ function arPackMarkup(open=false){
   return h+'</div>';
 }
 function arMarkup(){
-  if(s.page==='arFace')return '<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
+  if(s.page==='arFace')return '<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring')+(!arCameraReady?'<div class="ar-camera-status" role="status">'+(arCameraError?'CAMERA ACCESS REQUIRED':'CONNECTING CAMERA')+'</div><button class="ar-camera-retry" data-action="retryCamera">ENABLE CAMERA</button>':'');
   let h=img(A.arBackground,0,0,428,926,'ar-orange-background')+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
   h+=arPackMarkup(s.page==='arOpen');
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,29,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
@@ -225,15 +225,15 @@ function arMarkup(){
 function stopArCamera(){if(arCameraStream){arCameraStream.getTracks().forEach(track=>track.stop());arCameraStream=null;}arCameraReady=false;}
 window.addEventListener('pagehide',stopArCamera);
 function attachArCamera(){const video=stage.querySelector('.ar-camera-video');if(video&&arCameraStream){video.srcObject=arCameraStream;video.play().catch(()=>{});}}
-function finishArIfReady(){if(s.page==='arOpen'&&arDropFinished&&arCameraReady){setPage('arFace');attachArCamera();}}
+function finishArIfReady(){if(s.page==='arOpen'&&arDropFinished){setPage('arFace');attachArCamera();}}
 async function askArCamera(){
   arCameraError='';
   if(!navigator.mediaDevices?.getUserMedia){arCameraError='Camera unavailable';return;}
   try{
     arCameraStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'user'}}});
-    if(s.page!=='arOpen'){stopArCamera();return;}
-    arCameraReady=true;finishArIfReady();
-  }catch(error){if(s.page!=='arOpen')return;arCameraError=error?.name||'Camera unavailable';}
+    if(!['ar','arOpen','arFace'].includes(s.page)){stopArCamera();return;}
+    arCameraReady=true;attachArCamera();finishArIfReady();
+  }catch(error){if(!['ar','arOpen','arFace'].includes(s.page))return;arCameraError=error?.name||'Camera unavailable';if(s.page==='arFace')render();}
 }
 function runArDollDrop(){
   const nodes=[...stage.querySelectorAll('.ar-falling-doll')],origin=[[103,244],[245,244],[103,512],[245,512]];
@@ -246,11 +246,11 @@ function runArDollDrop(){
     }
     for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){const a=bodies[i],b=bodies[j],dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy)||1,min=a.r+b.r;if(dist>=min)continue;const nx=dx/dist,ny=dy/dist,overlap=(min-dist)/2;a.x-=nx*overlap;b.x+=nx*overlap;a.y-=ny*overlap;b.y+=ny*overlap;const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rel<0){const impulse=-rel*.56;a.vx-=impulse*nx;b.vx+=impulse*nx;a.vy-=impulse*ny;b.vy+=impulse*ny;}}
     bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+b.y+'px) rotate('+b.angle+'deg)';});
-    if(elapsed<3300)arDropFrame=requestAnimationFrame(step);else{arDropFinished=true;askArCamera();}
+    if(elapsed<3300)arDropFrame=requestAnimationFrame(step);else{arDropFinished=true;finishArIfReady();}
   }
   arDropFrame=requestAnimationFrame(step);
 }
-function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';setPage('ar');}
+function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';setPage('ar');askArCamera();}
 function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');later(()=>{if(s.page==='arOpen')runArDollDrop();},420);}
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;drawFigures();startNewTickers();if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
@@ -461,7 +461,7 @@ async function advanceNewPrescription(){
   setPage(from==='12'?'13':'14',from==='12'?'typing':'ready');
   if(from==='12')later(()=>{if(s.page==='13'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);
 }
-function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
+function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();if(a==='retryCamera'&&s.page==='arFace'){arCameraError='';askArCamera();}}
 stage.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('change',e=>{let t=e.target;if(!t.matches('input[data-kind]'))return;let kind=t.dataset.kind,n=+t.dataset.index;let set=new Set(s[kind]);t.checked?set.add(n):set.delete(n);s[kind]=[...set];save();render();});
 stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s.phase==='guide'){let rope=ropeAt(p);if(!rope)return;e.preventDefault();gesture.set(e.pointerId,{rope,start:p,type:e.pointerType||'mouse',pulled:false});stage.setPointerCapture(e.pointerId);return;}
