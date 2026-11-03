@@ -208,10 +208,12 @@ function arPackMarkup(){
   const slots=[[98,220,90,252],[241,220,90,252],[98,516,90,252],[240,516,90,252]],order=[0,2,3,1];
   let h='<div class="ar-pack-flip">';
   h+=group(48,145,334,704,'ar-pack-face ar-pack-back',img(A.arPackBack,3.5,5.4,328.5,693.2,'ar-pack-image'));
-  let front=img(A.arPackBack,51.5,150.4,328.5,693.2,'ar-intact-foil ar-original-foil');
+  // Figma left-bottom overlapped stack (origin -2567,3285); coordinates here
+  // are the same layers translated into the 428x926 AR frame. Never crop.
+  let front=img(A.arOverlayFoilStates[0],49.522,150.363,328.482,693.166,'ar-intact-foil ar-original-foil');
   front+='<canvas class="ar-foil-morph" width="428" height="926" aria-hidden="true"></canvas>';
   front+=order.map((index,i)=>{const q=slots[i];return canvasFigure(index,q[0],q[1],q[2],q[3],'ar-pack-doll');}).join('');
-  front+=img(A.arPackClear,47.5,145,334,704,'ar-intact-clear ar-original-clear');
+  front+=img(A.arOverlayFrontStates[0],47.5,145,333.845,703.892,'ar-intact-clear ar-original-clear');
   front+='<canvas class="ar-front-morph" width="428" height="926" aria-hidden="true"></canvas>';
   h+='<div class="ar-pack-face ar-pack-front">'+front+'</div>';
   return h+'</div>';
@@ -223,125 +225,94 @@ function arMarkup(){
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,29,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
   return h;
 }
-// Independent front plastic and rear foil morph tracks share ONE exact progress value.
-// Render both layers in a common artboard coordinate system. Image alpha bounds are
-// registered to the original Figma blister rectangle to prevent doubled/misaligned packs.
+// The exact SIX layers overlapped at the left-bottom of the Figma AR canvas.
+// Three foil states and three front-plastic states progress in parallel.
 const arMorphAssets=new Map();
 let arMorphFrame=0;
 function loadArMorphAsset(src){
   if(arMorphAssets.has(src))return arMorphAssets.get(src);
-  const pending=new Promise((resolve,reject)=>{
-    const im=new Image();im.onload=()=>resolve(im);
-    im.onerror=()=>reject(new Error('Missing AR image: '+src));im.src=src;
+  const promise=new Promise((resolve,reject)=>{
+    const im=new Image();
+    im.onload=()=>resolve(im);
+    im.onerror=()=>reject(new Error('Missing AR state: '+src));
+    im.src=src;
   });
-  arMorphAssets.set(src,pending);
-  return pending;
+  arMorphAssets.set(src,promise);
+  return promise;
 }
-function arRegisteredImage(im,rect){
-  const c=document.createElement('canvas');c.width=428;c.height=926;
-  c.getContext('2d').drawImage(im,...rect);
-  return c;
-}
-// A third, geometric state between intact and fully collapsed: local scan-line
-// displacement inside the four thermoformed pill cavities, with fixed borders.
-function arCreasedIntermediate(source,kind){
-  const mid=document.createElement('canvas');mid.width=428;mid.height=926;
-  const ctx=mid.getContext('2d');ctx.drawImage(source,0,0);
-  const cavities=[
-    {cx:144,cy:330,rx:52,ry:125},{cx:285,cy:330,rx:52,ry:125},
-    {cx:144,cy:623,rx:52,ry:125},{cx:285,cy:623,rx:52,ry:125}
-  ];
-  const strength=kind==='plastic'?1:0.7;
-  for(let k=0;k<cavities.length;k++){
-    const {cx,cy,rx,ry}=cavities[k];
-    ctx.save();ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.clip();
-    ctx.clearRect(cx-rx-2,cy-ry-2,rx*2+4,ry*2+4);
-    for(let y=Math.ceil(cy-ry);y<cy+ry;y+=2){
-      const relative=(y-cy)/ry,edge=Math.sqrt(Math.max(0,1-relative*relative));
-      const pressure=Math.exp(-Math.pow((y-cy)/(ry*.54),2));
-      const squeeze=(3+11*pressure)*strength;
-      const offset=(Math.sin((y-cy)*.074+k*1.8)*4+Math.sin((y-cy)*.19+k)*2)*pressure*strength;
-      const x=cx-rx*edge, width=rx*2*edge;
-      if(width<1)continue;
-      ctx.drawImage(source,x,y,width,2,x+offset+squeeze,y,Math.max(1,width-2*squeeze),2);
-    }
-    // Fold edges show short, directional changes in glossy reflection.
-    ctx.lineCap='round';
-    for(let j=0;j<4;j++){
-      const yy=cy-72+j*44+((k+j)%2)*9;
-      const xx=cx+((j%2)?-32:27);
-      ctx.beginPath();ctx.moveTo(xx-13,yy-17);ctx.lineTo(xx+6,yy+1);ctx.lineTo(xx-6,yy+22);
-      ctx.strokeStyle=j%2?'rgba(255,255,255,.34)':'rgba(34,42,52,.14)';
-      ctx.lineWidth=j%2?2.4:1.4;ctx.stroke();
-    }
-    ctx.restore();
-  }
-  return mid;
+function arPlacedFrame(im,rect){
+  const canvas=document.createElement('canvas');
+  canvas.width=428;canvas.height=926;
+  // Keep all transparent margins. Cropping alpha pixels or fitting to a
+  // generic rectangle changes the apparent pack size between frames.
+  canvas.getContext('2d').drawImage(im,rect[0],rect[1],rect[2],rect[3]);
+  return canvas;
 }
 async function morphArBlister(){
   try{
-    const sources=[A.arPackBack,A.arPackRipped,A.arPackClear,A.arPackCrumpled];
-    const images=await Promise.all(sources.map(loadArMorphAsset));
+    const imgs=await Promise.all([
+      ...A.arOverlayFoilStates,...A.arOverlayFrontStates
+    ].map(loadArMorphAsset));
     if(s.page!=='arOpen')return;
-    const foil=stage.querySelector('.ar-foil-morph'),front=stage.querySelector('.ar-front-morph');
-    if(!foil||!front)return;
-    const rearBox=[51.5,150.4,328.5,693.2],frontBox=[47.5,145,334,704];
-    // Figma NewAR2 image92 is the 327x660 ripped-foil layer at (51,167).
-    // image95 export is the 329x926 artboard-clipped plastic layer at (51,0).
-    // These are already composited and positioned in the original AR artboard.
-    // Never crop their alpha bounding boxes or rescale them to initial bounds.
-    const tornFoilBox=[51,167,327,660],collapsedPlasticBox=[51,0,329,926];
-    // Interpolate registered pixels (premultiplied alpha) rather than overlay
-    // two translucent PNGs: overlapped alpha blending made mid-frames vanish.
+    const foil=stage.querySelector('.ar-foil-morph');
+    const plastic=stage.querySelector('.ar-front-morph');
+    if(!foil||!plastic)return;
+    // Exact Figma absolute positions of 784:217/216/215, 784:218/219/220
+    // translated from shared origin (-2567,3285) to (47.5,145).
+    const foilRects=[
+      [49.522,150.363,328.482,693.166],
+      [49.5,166,329,660],
+      [48.5,167,327,660]
+    ];
+    const plasticRects=[
+      [47.5,145,333.845,703.892],
+      [48.5,-70,329,1133],
+      [50.5,-71,327,1133]
+    ];
     const layers=[
-      {canvas:foil,images:[arRegisteredImage(images[0],rearBox),arRegisteredImage(images[1],tornFoilBox)],alpha:1,kind:'foil'},
-      {canvas:front,images:[arRegisteredImage(images[2],frontBox),arRegisteredImage(images[3],collapsedPlasticBox)],alpha:.7,kind:'plastic'}
+      {canvas:foil,images:imgs.slice(0,3),rects:foilRects,opacity:1},
+      {canvas:plastic,images:imgs.slice(3,6),rects:plasticRects,opacity:.7}
     ].map(layer=>{
       const ctx=layer.canvas.getContext('2d');
-      return {...layer,ctx,
-        a:layer.images[0].getContext('2d').getImageData(0,0,428,926).data,
-        middle:arCreasedIntermediate(layer.images[0],layer.kind).getContext('2d').getImageData(0,0,428,926).data,
-        b:layer.images[1].getContext('2d').getImageData(0,0,428,926).data,
-        frame:ctx.createImageData(428,926)};
+      const samples=layer.images.map((im,i)=>
+        arPlacedFrame(im,layer.rects[i]).getContext('2d').getImageData(0,0,428,926).data);
+      return {...layer,ctx,samples,pixels:ctx.createImageData(428,926)};
     });
-    const renderProgress=p=>{
-      // Both surfaces traverse intact -> geometrically creased -> torn in
-      // lockstep, with the same phase, bounds and stationary external frame.
-      const phase=p<.48?p/.48:(p-.48)/.52;
-      const first=p<.48;
-      const inverse=1-phase;
+    function renderProgress(p){
+      const section=Math.min(1,Math.floor(p*2));
+      const local=p>=1?1:p*2-section;
+      const oneMinus=1-local;
       for(const layer of layers){
-        const {a,middle,b,frame,alpha}=layer,out=frame.data;
-        const from=first?a:middle,to=first?middle:b;
+        const src=layer.samples[section],dest=layer.samples[section+1],out=layer.pixels.data;
         for(let i=0;i<out.length;i+=4){
-          const aw=from[i+3]*inverse,bw=to[i+3]*phase,total=aw+bw;
-          if(total<.001){out[i]=0;out[i+1]=0;out[i+2]=0;out[i+3]=0;continue;}
-          out[i]=(from[i]*aw+to[i]*bw)/total;
-          out[i+1]=(from[i+1]*aw+to[i+1]*bw)/total;
-          out[i+2]=(from[i+2]*aw+to[i+2]*bw)/total;
-          out[i+3]=total*alpha;
+          const a=src[i+3]*oneMinus,b=dest[i+3]*local,sum=a+b;
+          if(sum<.0001){out[i]=0;out[i+1]=0;out[i+2]=0;out[i+3]=0;continue;}
+          out[i]=(src[i]*a+dest[i]*b)/sum;
+          out[i+1]=(src[i+1]*a+dest[i+1]*b)/sum;
+          out[i+2]=(src[i+2]*a+dest[i+2]*b)/sum;
+          out[i+3]=sum*layer.opacity;
         }
-        layer.ctx.putImageData(frame,0,0);
+        layer.ctx.putImageData(layer.pixels,0,0);
       }
-    };
+    }
     renderProgress(0);
-    foil.style.opacity='1';front.style.opacity='1';
+    foil.style.opacity='1';plastic.style.opacity='1';
     stage.querySelectorAll('.ar-original-foil,.ar-original-clear').forEach(n=>n.style.opacity='0');
-    const duration=1650;let beginning=null;
-    function frame(now){
+    let begin=null;
+    function step(time){
       if(s.page!=='arOpen')return;
-      if(beginning===null)beginning=now;
-      const t=Math.min((now-beginning)/duration,1);
+      if(begin===null)begin=time;
+      const t=Math.min((time-begin)/1650,1);
+      // ONE progression clock for both sides, all three Figma states.
       const p=t*t*(3-2*t);
-      renderProgress(p); // front/back use identical t AND easing each frame
-      if(t<1)arMorphFrame=requestAnimationFrame(frame);
+      renderProgress(p);
+      if(t<1)arMorphFrame=requestAnimationFrame(step);
       else later(()=>{if(s.page==='arOpen')runArDollDrop();},190);
     }
-    arMorphFrame=requestAnimationFrame(frame);
-  }catch(e){
-    console.error('[DCD] AR blister assets:',e);
-    // Never show a blank pack on an asset error.
-    if(s.page==='arOpen')later(()=>runArDollDrop(),1800);
+    arMorphFrame=requestAnimationFrame(step);
+  }catch(error){
+    console.error('[DCD] AR three-state images unavailable:',error);
+    // Do not animate a different set of images or silently skip to a fall.
   }
 }
 function stopArCamera(){if(arCameraStream){arCameraStream.getTracks().forEach(track=>track.stop());arCameraStream=null;}arCameraReady=false;}
@@ -407,7 +378,7 @@ function runArDollDrop(){
   }
   arDropFrame=requestAnimationFrame(step);
 }
-function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[A.arPackBack,A.arPackRipped,A.arPackClear,A.arPackCrumpled].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
+function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[...A.arOverlayFoilStates,...A.arOverlayFrontStates].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
 function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');morphArBlister();}
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;drawFigures();startNewTickers();if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
