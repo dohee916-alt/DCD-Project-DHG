@@ -497,7 +497,7 @@ canvas.figure{object-fit:contain!important}
 .page-08a .pack-clear-back,.page-08b .pack-clear-back,
 .page-08a .syringe-plunger,.page-08b .syringe-plunger,
 .page-08a .syringe-barrel,.page-08b .syringe-barrel{
-  mix-blend-mode:multiply!important;
+  mix-blend-mode:darken!important;
 }
 /* Prevent the opaque image matte from hiding items behind the blister. */
 .page-workbench .workbench-pack,.page-08a .pack-assembly,.page-08b .pack-assembly{isolation:auto}
@@ -526,3 +526,9 @@ canvas.figure{object-fit:contain!important}
 @keyframes dcdArDollAppear{from{opacity:0}to{opacity:1}}
 /* Undo erroneous auxiliary camera status controls from the prior implementation. */
 .ar-camera-status,.ar-camera-retry{display:none!important}
+
+/* Selected prescription checkboxes: restore the visible Figma gradient square. */
+.new-options input:checked{background:linear-gradient(180deg,#ffe5dc 0%,#f3541b 100%)!important;border:1px solid #f5a386!important;box-shadow:0 2px 5px rgba(210,78,78,.12)!important}
+.new-options input:checked+.new-checked-asset{display:block!important;z-index:1}
+/* Prevent re-rendered label typing animations from hiding an already selected square. */
+.new-options label:has(input:checked){clip-path:none!important}
