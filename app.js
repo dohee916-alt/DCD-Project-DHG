@@ -7,7 +7,7 @@ const sides=['Nausea','Digestive Discomfort','Other Adverse Effects','Being Accu
 const packRect=[589,99,471,224];
 const packSlots=[[638,134,172,62],[843,134,172,62],[638,229,172,61],[843,229,172,61]];
 // Only the colored bulb is a valid source, never the empty neck or ring.
-const bottleLiquids={purple:{x:125,y:86,rx:19,ry:21},orange:{x:129,y:174,rx:19,ry:21}};
+const bottleLiquids={purple:{x:125,y:86,rx:39,ry:34},orange:{x:129,y:174,rx:39,ry:34}};
 const key='DCD_IMPLEMENTATION_1';
 const signaturePath='M2.50021 39.3162C3.97397 25.5131 15.0272 6.78039 32.7124 3.08321C57.2822 -2.05324 36.3968 27.7477 15.0272 52.6265C3.31169 66.2659 29.4323 61.4999 52.6083 32.6614C71.0303 9.7382 81.3467 24.5272 52.6083 61.4999';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -38,7 +38,7 @@ function arrowButton(x,y,action,kind='12'){return '<button class="lay figma-arro
 function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" data-view="'+view+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+' '+view+'"></canvas>';}
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
 function handGuide(){return img(A.syringeGuideCore,163,240,164,185,'syringe-guide syringe-guide-core');}
-function injectionHandGuide(){return img(A.syringeGuideCore,90,129,164,185,'syringe-guide syringe-injection-guide');}
+function injectionHandGuide(){return img(A.syringeGuideCore,163,238,164,185,'syringe-guide syringe-injection-guide');}
 function packHandGuide(){return img(A.syringeGuideCore,384,153,164,185,'pack-guide-hand')+text('DRAG HERE WHEN FINISHED',615,323,292,44,'doto guide-blink pack-guide-copy');}
 function horizontalFigure(i,x,y,w,h,cls='',view='back'){return canvasFigure(i,x+(w-h)/2,y+(h-w)/2,h,w,cls,-90,view);}
 function syringeMarkup(cls=''){
@@ -69,7 +69,7 @@ function resultMarkup(){const root='assets/figma-current/hd/';return img(A.poste
 function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.packClearBack,0,0,packRect[2],packRect[3],'pack pack-image pack-clear-back');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack'+(s.firstInject?' with-pack-shadow':''),packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,88,141,110,85,'bottle');if(!(s.used.orange&&s.used.purple))h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label')+text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label');
 if(!f.packed)h+=canvasFigure(s.active,377,81,100,281,'active-figure');h+=syringeMarkup();
 if(showTutorial&&!s.handGuideDismissed&&!s.firstFill&&s.phase==='ready')h+=handGuide();
-if(showTutorial&&s.loaded&&s.phase==='ready')h+=injectionHandGuide();
+if(showTutorial&&s.loaded&&!s.firstInject&&s.phase==='ready')h+=injectionHandGuide();
 if(showTutorial&&s.firstInject&&!s.packGuideDone&&!s.figures.some(v=>v.packed)&&s.phase==='ready')h+=packHandGuide();
 if(f.value===0)h+=text('MINIMIZE',282,392,292,44,'doto guide-blink workbench-guide');if(f.value===100)h+=text('MAXIMIZE',282,389,292,44,'doto guide-blink workbench-guide');
 h+=text('DOLL '+(s.active+1)+'/4',282,29,292,44,'progress workbench-count');return h;}
