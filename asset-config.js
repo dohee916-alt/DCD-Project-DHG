@@ -7,7 +7,7 @@ window.DCD_ASSETS = Object.freeze({
   openingBreakVideo: null, // Set when the approved rupture motion file exists.
   openingLastFrame: null,
   workbenchBackground: "assets/figma-render/workbench-bg@2x.png",
-  workbenchTray: "assets/figma-current/hd/web04-tray-hd.png",
+  workbenchTray: "assets/figma-current/hd/web04-tray-figma-adjusted-2x.png",
   packClearBack: "assets/figma-current/hd/web04-pack-clear-current.png",
   packClearFront: "assets/figma-current/blister-clear-front-figma.png",
   packFoil: "assets/figma-current/blister-foil-figma.png",
