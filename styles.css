@@ -482,3 +482,22 @@ canvas.figure{object-fit:contain!important}
 @keyframes dcdBlisterIntactFade{0%,14%{opacity:1}83%,100%{opacity:0}}
 @keyframes dcdBlisterMiddleMorph{0%,9%{opacity:0}58%,100%{opacity:1}}
 @keyframes dcdBlisterFinalMorph{0%,12%{opacity:0}85%,100%{opacity:1}}
+
+
+/* WEB04: source exports contain opaque white matte pixels.
+   Multiply the exact original high-resolution images over the approved backdrop,
+   so the rectangular matte no longer covers the canvas. */
+.page-workbench .tray,
+.page-workbench .bottle,
+.page-workbench .workbench-pack .pack-clear-back,
+.page-workbench .syringe-plunger,
+.page-workbench .syringe-barrel,
+.page-08a .tray,.page-08b .tray,
+.page-08a .bottle,.page-08b .bottle,
+.page-08a .pack-clear-back,.page-08b .pack-clear-back,
+.page-08a .syringe-plunger,.page-08b .syringe-plunger,
+.page-08a .syringe-barrel,.page-08b .syringe-barrel{
+  mix-blend-mode:multiply!important;
+}
+/* Prevent the opaque image matte from hiding items behind the blister. */
+.page-workbench .workbench-pack,.page-08a .pack-assembly,.page-08b .pack-assembly{isolation:auto}
