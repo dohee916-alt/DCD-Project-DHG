@@ -290,7 +290,7 @@
 .workbench-pack{z-index:2;overflow:visible}
 .pack-guide-hand{z-index:10;pointer-events:none;object-fit:fill;mix-blend-mode:screen;transform:scaleX(-1);opacity:.5;animation:packGuideTravel 1.55s ease-in-out infinite}
 @keyframes packGuideTravel{0%{translate:0 0;opacity:.5}99.9%{translate:278px -37px;opacity:.15}100%{translate:0 0;opacity:.5}}
-.pack-guide-copy{z-index:11!important;color:#d83a00!important;font-family:Doto,Arial,sans-serif!important;font-size:16px!important;line-height:24px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:center!important}
+.pack-guide-copy{z-index:11!important;color:#d83a00!important;font-family:Doto,Arial,sans-serif!important;font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:center!important}
 .syringe-guide-core{mix-blend-mode:normal!important;animation:handCoreTravelVisible 1.5s ease-in-out infinite!important}
 .syringe-guide-ghost{mix-blend-mode:normal!important;opacity:.25!important}
 @keyframes handCoreTravelVisible{0%{translate:0 0;opacity:.8}99.9%{translate:-89px -119px;opacity:.4}100%{translate:0 0;opacity:.8}}
@@ -305,10 +305,9 @@
 @keyframes posterFrameOnce{0%,49.9%{opacity:0}50%,100%{opacity:1}}
 .poster-tagline{z-index:4;color:#a02a00;font:700 22px/22px 'Source Sans 3',Arial,sans-serif;text-align:center;opacity:.8}
 .poster-result-oops,.poster-result-next{z-index:4;color:#d83a00;font:700 22px/22px 'Source Sans 3',Arial,sans-serif;text-align:center}
-.poster-result-oops{animation:posterOopsLand .55s cubic-bezier(.2,.8,.25,1.1) both,posterOopsFade .2s 1.08s forwards}
+.poster-result-oops{animation:posterOopsFade .2s 1.08s forwards}
 .poster-result-next{opacity:0;animation:posterNext .16s 1.28s forwards}
 .poster-click-guide{z-index:5;font-size:16px;line-height:24px}
-@keyframes posterOopsLand{0%{translate:0 -120px;opacity:0}70%{translate:0 0;opacity:1}84%{translate:0 -5px}100%{translate:0 0;opacity:1}}
 @keyframes posterOopsFade{to{opacity:0}}
 @keyframes posterNext{to{opacity:1}}
 .new-pack-assembly{z-index:1;overflow:visible}
@@ -343,9 +342,6 @@
 .new-consent-copy{z-index:7;color:#d83a00;font:700 22px/30px 'Source Sans 3',Arial,sans-serif;text-align:center}
 .poster-gradient-wash{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.26),transparent 31%,rgba(102,39,10,.16));mix-blend-mode:multiply}
 .poster-word{z-index:3;object-fit:contain}
-.poster-word-enter{opacity:0;animation:posterWordLand .15s steps(1,end) both}
-.poster-word-enter.word-0{animation-delay:.06s}.poster-word-enter.word-1{animation-delay:.35s}.poster-word-enter.word-2{animation-delay:.64s}.poster-word-enter.word-3{animation-delay:.93s}
-@keyframes posterWordLand{from{opacity:0;translate:0 -20px}to{opacity:1;translate:0 0}}
 .poster-cta-svg,.poster-tagline-svg{z-index:5;object-fit:contain}
 .gesture{animation:gestureOneWay 1.4s ease-in-out infinite!important}
 @keyframes gestureOneWay{0%{translate:0 0;opacity:1}99.9%{translate:var(--gx) var(--gy);opacity:.3}100%{translate:var(--gx) var(--gy);opacity:.3}}
@@ -360,7 +356,7 @@
 .new-signature-trace{z-index:6;pointer-events:none;opacity:.95}
 .new-signature-trace path{animation:signatureTraceTravel 1.6s linear infinite}
 @keyframes signatureTraceTravel{to{stroke-dashoffset:-100}}
-.poster-result-art{object-fit:cover!important;object-position:center}
+.poster-result-art{object-fit:fill!important;object-position:center}
 .poster-result-wash{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(115deg,rgba(139,25,0,.65),transparent 60%);mix-blend-mode:multiply}
 .poster-gradient{position:absolute;width:510px;height:942px;z-index:2;pointer-events:none}
 .poster-gradient-a{left:-48px;top:0;mix-blend-mode:multiply;background:linear-gradient(206.26252277234065deg,#fff 13.526%,rgba(255,255,255,0) 37.155%,#c25100 93.712%)}
@@ -377,9 +373,10 @@
 .workbench-pack .pack-clear-back{filter:none!important}
 .workbench-pack.with-pack-shadow .pack-clear-back{filter:drop-shadow(2px 2px 4px rgba(0,0,0,.25))!important}
 .workbench-pack ~ .active-figure{filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
-.syringe-guide-core,.syringe-guide-upper{mix-blend-mode:normal!important;opacity:.5;animation:figmaHandMove 1.5s cubic-bezier(.35,0,.65,1) infinite!important}
-.syringe-guide-core{--hand-dx:17px;--hand-dy:-22px}
-.syringe-guide-upper{--hand-dx:3px;--hand-dy:-19px}
-@keyframes figmaHandMove{0%{translate:0 0;opacity:.5}99.9%{translate:var(--hand-dx) var(--hand-dy);opacity:.3}100%{translate:0 0;opacity:.5}}
-.poster-result-oops{animation:none!important}
+.syringe-guide-core{mix-blend-mode:normal!important;opacity:.5;animation:figmaHandMove 1.5s cubic-bezier(.35,0,.65,1) infinite!important}
+@keyframes figmaHandMove{0%{translate:0 0;opacity:.5}99.9%{translate:-89px -119px;opacity:.15}100%{translate:0 0;opacity:.5}}
+.poster-tagline-result-svg{z-index:4;object-fit:contain}
+.poster-click-guide,.page-01 .guide-copy{color:#fff!important;font-family:Doto,Arial,sans-serif!important;font-size:16px!important;line-height:32px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
+.gesture-left{--gx:-69px;--gy:-111px}
+.gesture-right{--gx:90px;--gy:99px}
 .new-options input:checked{border:1px solid #ffd2c4;background:linear-gradient(180deg,rgba(255,229,220,.5) 0%,rgba(243,84,27,.5) 58.654%);box-shadow:0 11.392px 22.336px rgba(209,78,78,.09);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
