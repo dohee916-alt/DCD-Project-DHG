@@ -210,8 +210,8 @@ function arPackMarkup(){
   // Figma 04_AR / NewAR2: the crumpled inner plastic is behind the ripped
   // front foil. Both images have ALREADY been rotated/cropped by Figma.
   // Original visual coordinates relative to the 428x926 AR artboard:
-  // crumpled x51 y-70 w329 h926; ripped x51 y167 w327 h660.
-  front+=img(A.arPackCrumpled,3,-215,329,926,'ar-pack-state ar-crumpled-stage');
+  // crumpled exported artboard-clipped at x51 y0 w329 h926; ripped x51 y167 w327 h660.
+  front+=img(A.arPackCrumpled,3,-145,329,926,'ar-pack-state ar-crumpled-stage');
   front+=img(A.arPackRipped,3,22,327,660,'ar-pack-state ar-ripped-stage');
   h+=group(48,145,334,704,'ar-pack-face ar-pack-front',front);
   return h+'</div>';
