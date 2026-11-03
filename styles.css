@@ -457,3 +457,15 @@ canvas.figure{object-fit:contain!important}
 @keyframes dcdGuideToBottle{0%{translate:0 0;opacity:1}99.9%{translate:-128px -111px;opacity:.43}100%{translate:0 0;opacity:1}}
 @keyframes dcdGuideToFigure{0%{translate:0 0;opacity:1}99.9%{translate:147px -87px;opacity:.43}100%{translate:0 0;opacity:1}}
 @keyframes dcdGuideToPack{0%{translate:0 0;opacity:1}99.9%{translate:297px -28px;opacity:.43}100%{translate:0 0;opacity:1}}
+
+
+/* WEB 15/16 -> portrait AR: preserve the Figma art while making the handoff legible. */
+.page-ar .ar-orange-background,.page-ar .ar-headline{animation:dcdArEnter .42s ease-out both}
+@keyframes dcdArEnter{from{opacity:.15}to{opacity:1}}
+/* Figma NewAR1 -> NewAR2 intact blister, crushed/open layer and released contents. */
+.page-arOpen .ar-open-middle{animation:arMiddle .28s steps(1,end) both}
+.page-arOpen .ar-open-final{animation:arFinal .38s .30s steps(1,end) both}
+.page-arOpen .ar-intact-clear,.page-arOpen .ar-intact-foil{animation:arIntactAway .32s .22s ease-in forwards}
+.page-arOpen .ar-pack-doll{animation:arDollRelease .26s .28s ease-in forwards}
+.ar-camera-status{position:absolute;left:32px;right:32px;bottom:108px;text-align:center;color:#2e2924;font:700 18px/24px Doto,Arial,sans-serif;z-index:11;pointer-events:none}
+.page-arFace .ar-camera-video:not([src]){background:#d8e6f1}
