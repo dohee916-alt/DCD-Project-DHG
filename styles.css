@@ -381,9 +381,5 @@
 .syringe-guide-core{--hand-dx:17px;--hand-dy:-22px}
 .syringe-guide-upper{--hand-dx:3px;--hand-dy:-19px}
 @keyframes figmaHandMove{0%{translate:0 0;opacity:.5}99.9%{translate:var(--hand-dx) var(--hand-dy);opacity:.3}100%{translate:0 0;opacity:.5}}
-.syringe-preview-part{z-index:2;transform:rotate(-90deg);transform-origin:center;pointer-events:none;object-fit:fill}
-.syringe-preview-barrel{opacity:.8}
 .poster-result-oops{animation:none!important}
 .new-options input:checked{border:1px solid #ffd2c4;background:linear-gradient(180deg,rgba(255,229,220,.5) 0%,rgba(243,84,27,.5) 58.654%);box-shadow:0 11.392px 22.336px rgba(209,78,78,.09);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
-.syringe-guide-inject{z-index:10;pointer-events:none;mix-blend-mode:normal;animation:figmaInjectionHandMove 1.5s cubic-bezier(.35,0,.65,1) infinite}
-@keyframes figmaInjectionHandMove{0%{translate:0 0;opacity:.5}99.9%{translate:250px -13px;opacity:.3}100%{translate:0 0;opacity:.5}}
