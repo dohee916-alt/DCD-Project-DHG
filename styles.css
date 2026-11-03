@@ -256,10 +256,11 @@
 .syringe-2d .syringe-plunger{z-index:1;translate:0 0}
 .syringe-2d .syringe-barrel{z-index:2}
 .syringe-drug-window{position:absolute;left:2px;top:78px;width:18px;height:69px;overflow:hidden;z-index:0;pointer-events:none}
-.syringe-2d .syringe-drug{position:absolute;max-width:none;object-fit:fill;opacity:1;clip-path:inset(0 0 100% 0)}
+.syringe-2d .syringe-drug{position:absolute;max-width:none;object-fit:fill;opacity:1}
 .syringe-2d .syringe-drug.orange{left:-7px;top:0;width:32px;height:96px}
 .syringe-2d .syringe-drug.purple{left:0;top:-78px;width:18px;height:169px}
-.syringe-2d .syringe-drug.filled{clip-path:inset(0 0 0 0)}
+.syringe-drug-window{clip-path:inset(0 0 100% 0)}
+.syringe-drug-window.filled{clip-path:inset(0 0 0 0)}
 .syringe-tutorial{transform:none!important;opacity:1!important;mix-blend-mode:screen!important;object-fit:fill!important}
 .tutorial-to-bottle{--tx:-72px;--ty:-116px}
 .tutorial-to-doll{--tx:159px;--ty:-93px}
@@ -272,7 +273,7 @@
 .syringe-guide{z-index:10;overflow:visible;pointer-events:none}
 .syringe-guide-core{mix-blend-mode:normal;animation:handCoreTravel 1.5s cubic-bezier(.35,0,.65,1) infinite}
 @keyframes handCoreTravel{0%{translate:0 0;opacity:1}99.9%{translate:-106px -97px;opacity:.3}100%{translate:-106px -97px;opacity:.3}}
-.syringe-tip-marker{position:absolute;left:10.5px;top:29px;width:1px;height:1px;pointer-events:none;opacity:0}
+.syringe-tip-marker{position:absolute;left:10.5px;top:23.5px;width:1px;height:1px;pointer-events:none;opacity:0}
 
 /* WEB09–11 exact Figma layer sizes and a continuous slow-feed/quick-release. */
 .ejecting-pack{animation:packExtrudeFigma 2.32s linear both!important}
@@ -290,8 +291,93 @@
 .pack-guide-hand{z-index:10;pointer-events:none;object-fit:fill;mix-blend-mode:screen;transform:scaleX(-1);opacity:.5;animation:packGuideTravel 1.55s ease-in-out infinite}
 @keyframes packGuideTravel{0%{translate:0 0;opacity:.5}99.9%{translate:278px -37px;opacity:.15}100%{translate:0 0;opacity:.5}}
 .pack-guide-copy{z-index:11!important;color:#d83a00!important;font-family:Doto,Arial,sans-serif!important;font-size:16px!important;line-height:24px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:center!important}
-.syringe-guide-core{mix-blend-mode:screen!important;animation:handCoreTravelFigma 1.5s ease-in-out infinite!important}
-@keyframes handCoreTravelFigma{0%{translate:0 0;opacity:.5}99.9%{translate:-106px -97px;opacity:.2}100%{translate:0 0;opacity:.5}}
+.syringe-guide-core{mix-blend-mode:normal!important;animation:handCoreTravelVisible 1.5s ease-in-out infinite!important}
+.syringe-guide-ghost{mix-blend-mode:normal!important;opacity:.25!important}
+@keyframes handCoreTravelVisible{0%{translate:0 0;opacity:.8}99.9%{translate:-89px -119px;opacity:.4}100%{translate:0 0;opacity:.8}}
+.pack-guide-hand{mix-blend-mode:normal!important;opacity:.75}
+#viewport.workbench-viewport{background:#d8e6f1 url('assets/figma-render/workbench-bg@2x.png') center/cover no-repeat}
+.poster-primary,.poster-alternate{object-fit:fill;filter:none!important;transform:none!important}
+.poster-alternate{opacity:0;z-index:1}
+#stage.page-00.phase-loop .poster-alternate{animation:posterFrameLoop 1.4s steps(1,end) infinite!important}
+#stage.page-01.phase-intro .poster-alternate{animation:posterFrameOnce .9s .25s steps(1,end) forwards!important}
+#stage.page-01.phase-guide .poster-alternate{opacity:1}
+@keyframes posterFrameLoop{0%,49.9%{opacity:0}50%,100%{opacity:1}}
+@keyframes posterFrameOnce{0%,49.9%{opacity:0}50%,100%{opacity:1}}
+.poster-tagline{z-index:4;color:#a02a00;font:700 22px/22px 'Source Sans 3',Arial,sans-serif;text-align:center;opacity:.8}
+.poster-result-oops,.poster-result-next{z-index:4;color:#d83a00;font:700 22px/22px 'Source Sans 3',Arial,sans-serif;text-align:center}
+.poster-result-oops{animation:posterOopsLand .55s cubic-bezier(.2,.8,.25,1.1) both,posterOopsFade .2s 1.08s forwards}
+.poster-result-next{opacity:0;animation:posterNext .16s 1.28s forwards}
+.poster-click-guide{z-index:5;font-size:16px;line-height:24px}
+@keyframes posterOopsLand{0%{translate:0 -120px;opacity:0}70%{translate:0 0;opacity:1}84%{translate:0 -5px}100%{translate:0 0;opacity:1}}
+@keyframes posterOopsFade{to{opacity:0}}
+@keyframes posterNext{to{opacity:1}}
+.new-pack-assembly{z-index:1;overflow:visible}
+.new-pack-layer{transform:rotate(90deg);transform-origin:center;object-fit:fill}
+.new-pack-foil{z-index:0}
+.new-pack-figure{z-index:1}
+.new-pack-clear{z-index:2;opacity:.7}
+.new-prescription-title{z-index:5;writing-mode:vertical-rl;transform:rotate(180deg);font:700 26px/25px 'Source Sans 3',Arial,sans-serif;color:#2b333d;white-space:nowrap}
+.new-brand-name{z-index:5;font:700 16px/15px Arial,sans-serif;color:#2b333d}
+.new-ticker{z-index:6;overflow:hidden;color:#2b333d;pointer-events:none}
+.new-ticker-track{position:absolute;left:0;width:25px;will-change:translate}
+.new-ticker-track span{display:block;width:25px;height:max-content;writing-mode:vertical-rl;white-space:nowrap;font:700 15px/25px Arial,sans-serif}
+.new-ticker.reverse .new-ticker-track span{transform:rotate(180deg)}
+.new-prescription-dose{z-index:6;color:#d83a00;font:700 16px/18px Arial,sans-serif}
+.new-prescription-dose{white-space:nowrap}
+.new-section-title{z-index:6;color:#2b333d;font:400 10px/24px Arial,sans-serif}
+.new-section-prompt{z-index:6;color:#d83a00;font:900 10px/24px Doto,Arial,sans-serif}
+.new-options{z-index:7;display:grid;grid-template-rows:repeat(8,24px);font:400 12px/24px Arial,sans-serif;color:#302b27;pointer-events:auto}
+.new-options label{display:flex;align-items:center;gap:6px;white-space:nowrap;cursor:pointer}
+.new-options input{appearance:none;width:12px;height:12px;margin:0;border:1px solid #2b333d;background:transparent;flex:none;cursor:pointer}
+.new-options input:checked{background:#d83a00;border-color:#d83a00}
+.new-ui-button{z-index:9;padding:0;border:0;background:transparent;pointer-events:auto}
+.new-ui-button img{display:block;width:100%;height:100%;object-fit:fill}
+.new-ui-button.disabled{filter:grayscale(1);opacity:.55;cursor:default}
+.new-signature-sample{z-index:5;opacity:.4}
+.new-signature-canvas,.new-signature-ink{z-index:8;touch-action:none;pointer-events:auto}
+.new-signature-guide{z-index:7;font-size:16px;line-height:25px;text-align:center}
+.new-orange-tint{z-index:4;background:#d83a00;mix-blend-mode:color;pointer-events:none}
+.page-15 .new-orange-tint{animation:newTintIn 1s ease-out both}
+.page-16 .new-orange-tint{opacity:1;background:#e94807}
+@keyframes newTintIn{from{opacity:0}to{opacity:1}}
+.new-consent-copy{z-index:7;color:#d83a00;font:700 22px/30px 'Source Sans 3',Arial,sans-serif;text-align:center}
+.poster-gradient-wash{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.26),transparent 31%,rgba(102,39,10,.16));mix-blend-mode:multiply}
+.poster-word{z-index:3;object-fit:contain}
+.poster-word-enter{opacity:0;animation:posterWordLand .15s steps(1,end) both}
+.poster-word-enter.word-0{animation-delay:.06s}.poster-word-enter.word-1{animation-delay:.35s}.poster-word-enter.word-2{animation-delay:.64s}.poster-word-enter.word-3{animation-delay:.93s}
+@keyframes posterWordLand{from{opacity:0;translate:0 -20px}to{opacity:1;translate:0 0}}
+.poster-cta-svg,.poster-tagline-svg{z-index:5;object-fit:contain}
+.gesture{animation:gestureOneWay 1.4s ease-in-out infinite!important}
+@keyframes gestureOneWay{0%{translate:0 0;opacity:1}99.9%{translate:var(--gx) var(--gy);opacity:.3}100%{translate:var(--gx) var(--gy);opacity:.3}}
+.new-pack-assembly{z-index:5}
+.new-dose-group{z-index:6;white-space:nowrap}
+.new-dose-value{left:76px!important;width:240px!important}
+.new-orange-tint{z-index:1;mix-blend-mode:color;opacity:.68}
+.page-15 .new-orange-tint{animation:newTintIn 1s ease-out both}
+.page-16 .new-orange-tint{opacity:.85}
+.new-consent-copy{color:#000;font-size:26px;line-height:32px}
+.new-signature-guide{font-size:10px!important;line-height:12px!important;font-weight:900!important}
+.new-signature-trace{z-index:6;pointer-events:none;opacity:.95}
+.new-signature-trace path{animation:signatureTraceTravel 1.6s linear infinite}
+@keyframes signatureTraceTravel{to{stroke-dashoffset:-100}}
+.poster-result-art{object-fit:cover!important;object-position:center}
+.poster-result-wash{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(115deg,rgba(139,25,0,.65),transparent 60%);mix-blend-mode:multiply}
+.poster-gradient{position:absolute;width:510px;height:942px;z-index:2;pointer-events:none}
+.poster-gradient-a{left:-48px;top:0;mix-blend-mode:multiply;background:linear-gradient(206.26252277234065deg,#fff 13.526%,rgba(255,255,255,0) 37.155%,#c25100 93.712%)}
+.poster-gradient-b{left:-41px;top:-2px;mix-blend-mode:multiply;background:linear-gradient(264.6865816573264deg,#fff 21.631%,rgba(255,255,255,0) 42.094%,#cf4900 91.073%)}
+.poster-gradient-c{left:-34px;top:-8px;mix-blend-mode:multiply;background:linear-gradient(266.4413399504181deg,#fff 22.18%,rgba(255,255,255,0) 45.617%,#9e4f00 101.71%)}
+.poster-gradient-d{left:-48px;top:0;mix-blend-mode:lighten;background:linear-gradient(206.26252277234065deg,rgba(255,255,255,.8) 13.526%,rgba(255,255,255,0) 37.155%,rgba(158,42,0,0) 93.712%)}
+.phase-loop .poster-primary{animation:none!important}
+.page-15 .new-prescription-title,.page-16 .new-prescription-title{color:#d83a00}
+.new-brand-name{font-size:15px}
+.phase-typing .new-section-title,.phase-typing .new-section-prompt{overflow:hidden;white-space:nowrap;clip-path:inset(0 100% 0 0);animation:typeReveal .5s steps(28,end) both}
+.phase-typing .new-section-prompt{animation-delay:.42s}
+.phase-typing .new-options label{clip-path:inset(0 100% 0 0);animation:typeReveal .25s steps(25,end) both;animation-delay:calc(.85s + var(--line-index) * .12s)}
+@keyframes typeReveal{to{clip-path:inset(0 0 0 0)}}
 .workbench-pack .pack-clear-back{filter:none!important}
 .workbench-pack.with-pack-shadow .pack-clear-back{filter:drop-shadow(2px 2px 4px rgba(0,0,0,.25))!important}
 .workbench-pack ~ .active-figure{filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
+.syringe-guide-core,.syringe-guide-upper{mix-blend-mode:normal!important;opacity:.5;animation:figmaHandMove 1.5s cubic-bezier(.35,0,.65,1) infinite!important}
+.syringe-guide-core{--hand-dx:17px;--hand-dy:-22px}
+.syringe-guide-upper{--hand-dx:3px;--hand-dy:-19px}
+@keyframes figmaHandMove{0%{translate:0 0;opacity:.5}99.9%{translate:var(--hand-dx) var(--hand-dy);opacity:.3}100%{translate:0 0;opacity:.5}}
