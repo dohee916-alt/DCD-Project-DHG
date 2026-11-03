@@ -104,7 +104,7 @@ function prescriptionMarkup(){
   h+=group(61,-10,448,448,'pack-assembly front-pack',img(A.packFoil,0,0,448,448,'pack-image pack-foil pack-foil-base')+frontFigures(61,-10)+img(A.packClearFront,0,0,448,448,'pack-image pack-clear-front'));
   let paper=img(A.clipboard,0,0,441,588,'clipboard');
   paper+=text('PRESCRIPTION',75,113,291,25,'paper-head');
-  paper+=text('AVERAGE OF APPLIED GLP-1 : '+(s.figures.reduce((a,f)=>a+f.orange,0)/4).toFixed(1),75,156,291,25,'dose');
+  paper+=text('SUM OF APPLIED GLP-1 : '+(s.figures.reduce((a,f)=>a+f.orange,0)).toFixed(1),75,156,291,25,'dose');
   paper+=text(side?'POSSIBLE SIDE EFFECTS':'EXPECTED EFFECTS',75,194,291,25,'paper-section');
   paper+=text(side?'Select the consequences you expect.':'Select the effects you expect.',75,211,291,24,'paper-prompt');
   paper+='<div class="lay checklist" '+box(77,231,291,211)+'>'+checklist(side?sides:effects,side?'side':'expected')+'</div>';
@@ -118,10 +118,10 @@ function prescriptionMarkup(){
 }
 function consentMarkup(){
   let no=s.page==='16',h=img(A.workbenchBackground,52,0,874,428,'bg');
-  let dose=(s.figures.reduce((a,f)=>a+f.orange,0)/4).toFixed(1);
+  let dose=(s.figures.reduce((a,f)=>a+f.orange,0)).toFixed(1);
   let paper=img(A.consentClipboardBase,0,0,441,588,'consent-paper');
   paper+=text('PRESCRIPTION',165,113,130,25,'paper-head');
-  paper+=text('AVERAGE OF APPLIED GLP-1 : '+dose,75,156,291,25,'dose');
+  paper+=text('SUM OF APPLIED GLP-1 : '+dose,75,156,291,25,'dose');
   paper+=text('POSSIBLE SIDE EFFECTS',75,194,291,25,'paper-section');
   paper+=text('Select the consequences you expect.',75,211,291,24,'paper-prompt');
   paper+='<div class="lay checklist consent-checklist" '+box(77,231,291,211)+'>'+checklist(sides,'side')+'</div>';
