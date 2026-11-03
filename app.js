@@ -200,26 +200,28 @@ function bindNewSignature(){
   c.onpointermove=e=>{if(!drawing)return;const p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved)stage.querySelectorAll('.new-signature-sample,.new-signature-trace,.new-signature-guide').forEach(n=>n.remove());moved=true;};
   c.onpointerup=e=>{e.stopPropagation();drawing=false;if(!moved)return;signatureInk=c.toDataURL('image/png');s.signed=true;setPage('14done');};
 }
-function arPackMarkup(open=false){
+function arPackMarkup(){
   const slots=[[98,220,90,252],[241,220,90,252],[98,516,90,252],[240,516,90,252]],order=[0,2,3,1];
   let h='<div class="ar-pack-flip">';
   h+=group(48,145,334,704,'ar-pack-face ar-pack-back',img(A.arPackBack,3.5,5.4,328.5,693.2,'ar-pack-image'));
   let front=img(A.arPackBack,3.5,5.4,328.5,693.2,'ar-pack-image ar-intact-foil');
   front+=order.map((index,i)=>{const q=slots[i];return canvasFigure(index,q[0]-48,q[1]-145,q[2],q[3],'ar-pack-doll');}).join('');
   front+=img(A.arPackClear,-.5,0,334,704,'ar-pack-image ar-intact-clear');
-  front+='<div class="ar-open-layer ar-open-middle"><div class="ar-open-rotator"><img src="'+A.arPackOpenFront+'" alt=""></div></div>';
-  front+='<div class="ar-open-layer ar-open-final"><div class="ar-open-rotator"><img src="'+A.arPackOpenFoil+'" alt=""></div></div>';
+  // Figma 04_AR / NewAR2: the crumpled inner plastic is behind the ripped
+  // front foil. Both images have ALREADY been rotated/cropped by Figma.
+  // Original visual coordinates relative to the 428x926 AR artboard:
+  // crumpled x51 y-70 w329 h926; ripped x51 y167 w327 h660.
+  front+=img(A.arPackCrumpled,3,-215,329,926,'ar-pack-state ar-crumpled-stage');
+  front+=img(A.arPackRipped,3,22,327,660,'ar-pack-state ar-ripped-stage');
   h+=group(48,145,334,704,'ar-pack-face ar-pack-front',front);
   return h+'</div>';
 }
 function arMarkup(){
-  if(s.page==='arFace')return '<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring')+(!arCameraReady?'<div class="ar-camera-status" role="status">'+(arCameraError?'CAMERA ACCESS REQUIRED':'CONNECTING CAMERA')+'</div><button class="ar-camera-retry" data-action="retryCamera">ENABLE CAMERA</button>':'');
+  if(s.page==='arFace')return '<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
   let h=img(A.arBackground,0,0,428,926,'ar-orange-background')+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
-  h+=arPackMarkup(s.page==='arOpen');
+  h+=arPackMarkup();
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,29,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
-  if(s.page==='arOpen'){
-    h+='<div class="ar-falling-dolls">'+[0,2,3,1].map((index,i)=>canvasFigure(index,0,0,96,241,'ar-falling-doll ar-falling-'+i)).join('')+'</div>';
-  }
+  if(s.page==='arOpen')h+='<div class="ar-falling-dolls">'+[0,2,3,1].map((index,i)=>canvasFigure(index,0,0,96,241,'ar-falling-doll ar-falling-'+i)).join('')+'</div>';
   return h;
 }
 function stopArCamera(){if(arCameraStream){arCameraStream.getTracks().forEach(track=>track.stop());arCameraStream=null;}arCameraReady=false;}
@@ -251,7 +253,7 @@ function runArDollDrop(){
   arDropFrame=requestAnimationFrame(step);
 }
 function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';setPage('ar');askArCamera();}
-function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');later(()=>{if(s.page==='arOpen')runArDollDrop();},1080);}
+function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');later(()=>{if(s.page==='arOpen')runArDollDrop();},1750);}
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;drawFigures();startNewTickers();if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
 function finishRupture(){if(s.page==='01'&&s.phase==='rupture'){videoEnded=true;setPage('02');}}
@@ -467,7 +469,7 @@ async function advanceNewPrescription(){
   setPage(from==='12'?'13':'14',from==='12'?'typing':'ready');
   if(from==='12')later(()=>{if(s.page==='13'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);
 }
-function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();if(a==='retryCamera'&&s.page==='arFace'){arCameraError='';askArCamera();}}
+function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
 stage.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('change',e=>{let t=e.target;if(!t.matches('input[data-kind]'))return;let kind=t.dataset.kind,n=+t.dataset.index;let set=new Set(s[kind]);t.checked?set.add(n):set.delete(n);s[kind]=[...set];save();render();});
 stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s.phase==='guide'){let rope=ropeAt(p);if(!rope)return;e.preventDefault();gesture.set(e.pointerId,{rope,start:p,type:e.pointerType||'mouse',pulled:false});stage.setPointerCapture(e.pointerId);return;}
