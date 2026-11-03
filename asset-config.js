@@ -8,7 +8,7 @@ window.DCD_ASSETS = Object.freeze({
   openingLastFrame: null,
   workbenchBackground: "assets/figma-render/workbench-bg@2x.png",
   workbenchTray: "assets/figma-current/hd/web04-tray-hd.png",
-  packClearBack: "assets/figma-current/blister-clear-back-web04.png",
+  packClearBack: "assets/figma-current/hd/web04-pack-clear-current.png",
   packClearFront: "assets/figma-current/blister-clear-front-figma.png",
   packFoil: "assets/figma-current/blister-foil-figma.png",
   conveyor: "assets/figma-current/conveyor-figma.png",

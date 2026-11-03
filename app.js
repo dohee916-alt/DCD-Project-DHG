@@ -4,7 +4,7 @@ const A=window.DCD_ASSETS, M=window.DCD_MOTION, stage=document.querySelector('#s
 const effects=['Weight Loss','Appetite Control','Changes in Body Shape','Confidence in Appearance','Improved Self-Image','Improved Blood Sugar Control','Reduced Weight-Related Health Risks','Better Metabolic Health'];
 const sides=['Nausea','Digestive Discomfort','Other Adverse Effects','Being Accused of Cheating','Having My Effort Dismissed','Being Judged for Using Medication','Being Pressured to Explain My Choice','Fear of Weight Regain'];
 // WEB04 (Figma 334:1022): top-left, top-right, bottom-left, bottom-right.
-const packRect=[584,96,483,229];
+const packRect=[589,99,471,224];
 const packSlots=[[638,131,172,62],[843,131,172,62],[638,229,172,61],[843,229,172,61]];
 // Only the colored bulb is a valid source, never the empty neck or ring.
 const bottleLiquids={purple:{x:125,y:86,rx:32,ry:35},orange:{x:129,y:174,rx:24,ry:26}};
