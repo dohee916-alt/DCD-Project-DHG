@@ -253,7 +253,15 @@ function arRegisteredImage(im,rect,normalize=false){
     if(pixels[(y*source.width+x)*4+3]<36)continue;
     if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
   }
-  if(x0<=x1&&y0<=y1)ctx.drawImage(im,x0,y0,x1-x0+1,y1-y0+1,...rect);
+  if(x0<=x1&&y0<=y1){
+    // Keep each PNG's pixel scale uniform. Previously the alpha crop was
+    // forced to fill BOTH dimensions of rect, enlarging the rear pack.
+    const croppedW=x1-x0+1,croppedH=y1-y0+1;
+    const scale=Math.min(rect[2]/croppedW,rect[3]/croppedH);
+    const drawW=croppedW*scale,drawH=croppedH*scale;
+    const dx=rect[0]+(rect[2]-drawW)/2,dy=rect[1]+(rect[3]-drawH)/2;
+    ctx.drawImage(im,x0,y0,croppedW,croppedH,dx,dy,drawW,drawH);
+  }
   return c;
 }
 // A third, geometric state between intact and fully collapsed: local scan-line
