@@ -142,7 +142,7 @@ function newTicker(x,reverse=false){
   const copy='>> THE BRAND NEW GLP-1    >> EASIEST CUT FOR YOUR DIET    ';
   return '<div class="lay new-ticker'+(reverse?' reverse':'')+'" '+box(x,0,25,428)+' aria-hidden="true"><div class="new-ticker-track"><span>'+copy+'</span><span>'+copy+'</span></div></div>';
 }
-function startNewTickers(){stage.querySelectorAll('.new-ticker-track').forEach(track=>{const first=track.firstElementChild,distance=first?.offsetHeight||0;if(!distance)return;track.style.top=-Math.min(425,Math.round(distance*.42))+'px';track.animate([{translate:'0 0'},{translate:'0 -'+distance+'px'}],{duration:distance*26,easing:'linear',iterations:Infinity});});}
+function startNewTickers(){stage.querySelectorAll('.new-ticker-track').forEach(track=>{const first=track.firstElementChild,distance=first?.offsetHeight||0;if(!distance)return;track.style.top=(track.parentElement.classList.contains('reverse')?-426:-425)+'px';track.animate([{translate:'0 0'},{translate:'0 -'+distance+'px'}],{duration:distance*26,easing:'linear',iterations:Infinity});});}
 function newButton(label,action,x,y,disabled=false){
   const source=label==='YES'?'yesButtonAlpha.png':label==='NO'?'noButtonAlpha.png':label==='TEST IT'?'testButtonAlpha.png':'nextButtonAlpha.png';
   const wide=label==='TEST IT'?140:label==='NEXT'?67:134;

@@ -315,16 +315,16 @@
 .new-pack-foil{z-index:0}
 .new-pack-figure{z-index:1}
 .new-pack-clear{z-index:2;opacity:.7}
-.new-prescription-title{z-index:5;writing-mode:vertical-rl;transform:rotate(180deg);font:700 26px/25px 'Source Sans 3',Arial,sans-serif;color:#2b333d;white-space:nowrap}
-.new-brand-name{z-index:5;font:700 16px/15px Arial,sans-serif;color:#2b333d}
+.new-prescription-title{z-index:5;writing-mode:vertical-rl;transform:rotate(180deg);text-align:right;font:700 26px/32px 'Source Sans 3',Arial,sans-serif;color:#2b333d;white-space:nowrap}
+.new-brand-name{z-index:5;font:700 15px/18px Arial,sans-serif;color:#2b333d}
 .new-ticker{z-index:6;overflow:hidden;color:#2b333d;pointer-events:none}
 .new-ticker-track{position:absolute;left:0;width:25px;will-change:translate}
 .new-ticker-track span{display:block;width:25px;height:max-content;writing-mode:vertical-rl;white-space:nowrap;font:700 15px/25px Arial,sans-serif}
 .new-ticker.reverse .new-ticker-track span{transform:rotate(180deg)}
 .new-prescription-dose{z-index:6;color:#d83a00;font:700 16px/18px Arial,sans-serif}
 .new-prescription-dose{white-space:nowrap}
-.new-section-title{z-index:6;color:#2b333d;font:400 10px/24px Arial,sans-serif}
-.new-section-prompt{z-index:6;color:#d83a00;font:900 10px/24px Doto,Arial,sans-serif}
+.new-section-title{z-index:6;color:#2b333d;font:400 10px/14px Arial,sans-serif}
+.new-section-prompt{z-index:6;color:#d83a00;font:900 10px/12px Doto,Arial,sans-serif}
 .new-options{z-index:7;display:grid;grid-template-rows:repeat(8,24px);font:400 12px/24px Arial,sans-serif;color:#302b27;pointer-events:auto}
 .new-options label{display:flex;align-items:center;gap:6px;white-space:nowrap;cursor:pointer}
 .new-options input{appearance:none;width:12px;height:12px;margin:0;border:1px solid #2b333d;background:transparent;flex:none;cursor:pointer}
@@ -365,7 +365,6 @@
 .poster-gradient-d{left:-48px;top:0;mix-blend-mode:lighten;background:linear-gradient(206.26252277234065deg,rgba(255,255,255,.8) 13.526%,rgba(255,255,255,0) 37.155%,rgba(158,42,0,0) 93.712%)}
 .phase-loop .poster-primary{animation:none!important}
 .page-15 .new-prescription-title,.page-16 .new-prescription-title{color:#d83a00}
-.new-brand-name{font-size:15px}
 .phase-typing .new-section-title,.phase-typing .new-section-prompt{overflow:hidden;white-space:nowrap;clip-path:inset(0 100% 0 0);animation:typeReveal .5s steps(28,end) both}
 .phase-typing .new-section-prompt{animation-delay:.42s}
 .phase-typing .new-options label{clip-path:inset(0 100% 0 0);animation:typeReveal .25s steps(25,end) both;animation-delay:calc(.85s + var(--line-index) * .12s)}
