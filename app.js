@@ -225,7 +225,7 @@ function arMarkup(){
   let h=img(A.arBackground,0,0,428,926,'ar-orange-background')+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
   h+=arPackMarkup();
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,29,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
-  if(s.page==='arOpen')h+='<div class="ar-falling-dolls">'+[0,2,3,1].map((index,i)=>canvasFigure(index,0,0,96,241,'ar-falling-doll ar-falling-'+i)).join('')+'</div>';
+  // The four canvases inside the blister become the falling dolls; never redraw duplicates.
   return h;
 }
 function stopArCamera(){if(arCameraStream){arCameraStream.getTracks().forEach(track=>track.stop());arCameraStream=null;}arCameraReady=false;}
@@ -242,17 +242,52 @@ async function askArCamera(){
   }catch(error){if(!['ar','arOpen','arFace'].includes(s.page))return;arCameraError=error?.name||'Camera unavailable';if(s.page==='arFace')render();}
 }
 function runArDollDrop(){
-  const nodes=[...stage.querySelectorAll('.ar-falling-doll')],origin=[[103,244],[245,244],[103,512],[245,512]];
-  const bodies=nodes.map((node,i)=>({node,x:origin[i][0],y:origin[i][1],vx:[-1.8,1.2,-.6,1.7][i],vy:-[3,2,1,2][i],angle:[-18,12,-8,20][i],spin:[-.8,.65,-.55,.7][i],r:39}));
+  if(s.page!=='arOpen')return;
+  // Use the EXACT existing pack canvases. Reparent them instead of fading them
+  // away and independently recreating smaller figures at arbitrary positions.
+  const pack=stage.querySelector('.ar-pack-front');
+  const nodes=[...(pack?.querySelectorAll('.ar-pack-doll')||[])];
+  const slotPositions=[[98,220],[241,220],[98,516],[240,516]];
+  if(nodes.length!==4){arDropFinished=true;finishArIfReady();return;}
+  const bodies=nodes.map((node,i)=>{
+    const [x,y]=slotPositions[i];
+    node.classList.remove('ar-pack-doll');
+    node.classList.add('ar-falling-doll','ar-falling-'+i);
+    stage.appendChild(node);
+    Object.assign(node.style,{
+      left:'0px',top:'0px',width:'90px',height:'252px',opacity:'1',
+      transformOrigin:'50% 72%',animation:'none',pointerEvents:'none',
+      transform:'translate('+x+'px,'+y+'px) rotate(0deg)'
+    });
+    return {node,x,y,vx:[-1.0,1.1,-.7,.9][i],vy:[-1,-1.4,-.7,-1.2][i],
+      angle:0,spin:[-.55,.6,-.45,.5][i],r:39};
+  });
+  // The torn Figma overlay stays in place; only its original contents drop.
   let previous=0,elapsed=0;
-  function step(now){if(s.page!=='arOpen')return;const dt=Math.min((now-previous||16.7)/16.7,2);previous=now;elapsed+=dt*16.7;
-    for(const b of bodies){b.vy+=.43*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.angle+=b.spin*dt;b.vx*=.997;
-      if(b.x<5){b.x=5;b.vx=Math.abs(b.vx)*.6;}if(b.x>327){b.x=327;b.vx=-Math.abs(b.vx)*.6;}
+  function step(now){
+    if(s.page!=='arOpen')return;
+    const dt=Math.min((now-previous||16.7)/16.7,2);
+    previous=now;elapsed+=dt*16.7;
+    for(const b of bodies){
+      b.vy+=.43*dt;
+      b.x+=b.vx*dt;b.y+=b.vy*dt;b.angle+=b.spin*dt;b.vx*=.997;
+      if(b.x<5){b.x=5;b.vx=Math.abs(b.vx)*.6;}
+      if(b.x>327){b.x=327;b.vx=-Math.abs(b.vx)*.6;}
       if(b.y>685){b.y=685;b.vy=-Math.abs(b.vy)*.28;b.vx*=.86;b.spin*=.82;}
     }
-    for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){const a=bodies[i],b=bodies[j],dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy)||1,min=a.r+b.r;if(dist>=min)continue;const nx=dx/dist,ny=dy/dist,overlap=(min-dist)/2;a.x-=nx*overlap;b.x+=nx*overlap;a.y-=ny*overlap;b.y+=ny*overlap;const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rel<0){const impulse=-rel*.56;a.vx-=impulse*nx;b.vx+=impulse*nx;a.vy-=impulse*ny;b.vy+=impulse*ny;}}
+    for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){
+      const a=bodies[i],b=bodies[j],dx=b.x-a.x,dy=b.y-a.y,
+        dist=Math.hypot(dx,dy)||1,min=a.r+b.r;
+      if(dist>=min)continue;
+      const nx=dx/dist,ny=dy/dist,overlap=(min-dist)/2;
+      a.x-=nx*overlap;b.x+=nx*overlap;a.y-=ny*overlap;b.y+=ny*overlap;
+      const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+      if(rel<0){const impulse=-rel*.56;a.vx-=impulse*nx;b.vx+=impulse*nx;
+        a.vy-=impulse*ny;b.vy+=impulse*ny;}
+    }
     bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+b.y+'px) rotate('+b.angle+'deg)';});
-    if(elapsed<3300)arDropFrame=requestAnimationFrame(step);else{arDropFinished=true;finishArIfReady();}
+    if(elapsed<3300)arDropFrame=requestAnimationFrame(step);
+    else{arDropFinished=true;finishArIfReady();}
   }
   arDropFrame=requestAnimationFrame(step);
 }
