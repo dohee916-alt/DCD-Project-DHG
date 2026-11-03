@@ -271,8 +271,6 @@
 /* One Figma orange hand, retaining the exported 50% opacity. Move to the
    ghost hand's exact bounds, fade to 30%, then restart without reversing. */
 .syringe-guide{z-index:10;overflow:visible;pointer-events:none}
-.syringe-guide-core{mix-blend-mode:normal;animation:handCoreTravel 1.5s cubic-bezier(.35,0,.65,1) infinite}
-@keyframes handCoreTravel{0%{translate:0 0;opacity:1}99.9%{translate:-106px -97px;opacity:.3}100%{translate:-106px -97px;opacity:.3}}
 .syringe-tip-marker{position:absolute;left:10.5px;top:23.5px;width:1px;height:1px;pointer-events:none;opacity:0}
 
 /* WEB09–11 exact Figma layer sizes and a continuous slow-feed/quick-release. */
@@ -288,13 +286,7 @@
 .bottle-label{color:#000!important;font-family:Doto,Arial,sans-serif!important;font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:left!important}
 .syringe-2d .syringe-barrel{opacity:.8}
 .workbench-pack{z-index:2;overflow:visible}
-.pack-guide-hand{z-index:10;pointer-events:none;object-fit:fill;mix-blend-mode:screen;transform:scaleX(-1);opacity:.5;animation:packGuideTravel 1.55s ease-in-out infinite}
-@keyframes packGuideTravel{0%{translate:0 0;opacity:.5}99.9%{translate:278px -37px;opacity:.15}100%{translate:0 0;opacity:.5}}
 .pack-guide-copy{z-index:11!important;color:#d83a00!important;font-family:Doto,Arial,sans-serif!important;font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:right!important}
-.syringe-guide-core{mix-blend-mode:normal!important;animation:handCoreTravelVisible 1.5s ease-in-out infinite!important}
-.syringe-guide-ghost{mix-blend-mode:normal!important;opacity:.25!important}
-@keyframes handCoreTravelVisible{0%{translate:0 0;opacity:.8}99.9%{translate:-89px -119px;opacity:.4}100%{translate:0 0;opacity:.8}}
-.pack-guide-hand{mix-blend-mode:normal!important;opacity:.75}
 #viewport.workbench-viewport{background:#d8e6f1 url('assets/figma-render/workbench-bg@2x.png') center/cover no-repeat}
 .poster-primary,.poster-alternate{object-fit:fill;filter:none!important;transform:none!important}
 .poster-alternate{opacity:0;z-index:1}
@@ -351,7 +343,8 @@
 .new-pack-assembly{z-index:5}
 .new-dose-group{z-index:6;white-space:nowrap}
 .new-dose-value{left:76px!important;width:240px!important}
-.new-orange-tint{z-index:1;mix-blend-mode:color;opacity:.68}
+.new-orange-tint{z-index:1;mix-blend-mode:color;background:none!important;opacity:1;pointer-events:none}
+.new-orange-tint::before{content:"";position:absolute;inset:0;background:#d83a00;mix-blend-mode:hard-light;pointer-events:none}
 .page-15 .new-orange-tint{animation:newTintIn 1s ease-out both}
 .page-16 .new-orange-tint{opacity:.85}
 .new-consent-copy{color:#000;font-size:26px;line-height:32px}
@@ -375,8 +368,6 @@
 .workbench-pack .pack-clear-back{filter:none!important}
 .workbench-pack.with-pack-shadow .pack-clear-back{filter:drop-shadow(2px 2px 4px rgba(0,0,0,.25))!important}
 .workbench-pack ~ .active-figure{filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
-.syringe-guide-core{mix-blend-mode:normal!important;opacity:.5;animation:figmaHandMove 1.5s cubic-bezier(.35,0,.65,1) infinite!important}
-@keyframes figmaHandMove{0%{translate:0 0;opacity:.5}99.9%{translate:-89px -119px;opacity:.15}100%{translate:0 0;opacity:.5}}
 .poster-tagline-result-svg{z-index:4;object-fit:contain}
 .poster-click-guide,.page-01 .guide-copy{color:#fff!important;font-family:Doto,Arial,sans-serif!important;font-size:16px!important;line-height:32px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
 .gesture-left{--gx:-69px;--gy:-111px}
@@ -390,18 +381,9 @@
 .phase-typing .new-options label{animation-duration:.45s;animation-delay:calc(1.05s + var(--line-index) * .18s)}
 .page-01 .guide-copy,.poster-click-guide{color:#f9f6f2!important}
 .syringe-2d .syringe-drug.orange{top:-6px}
-.syringe-guide-core{mix-blend-mode:screen!important}
-@keyframes figmaHandMove{0%{translate:0 0;opacity:.5}99.9%{translate:-103px -116px;opacity:.2}100%{translate:0 0;opacity:.5}}
-.pack-guide-hand{mix-blend-mode:screen!important;opacity:.5!important}
 .bottle[src$="purple-flask-figma.png"]{object-fit:fill;mask-image:url('assets/figma-current/hd/bottle-purple-3x.png');-webkit-mask-image:url('assets/figma-current/hd/bottle-purple-3x.png');mask-size:100% 100%;-webkit-mask-size:100% 100%;mask-repeat:no-repeat;-webkit-mask-repeat:no-repeat}
 canvas.figure{object-fit:fill!important}
 .new-section-prompt{animation:blink 1s steps(1,end) infinite}
-.syringe-guide-core{opacity:.7;mix-blend-mode:normal!important;animation:figmaHandMove 1.5s ease-in-out infinite!important}
-@keyframes figmaHandMove{0%{translate:0 0;opacity:.7}99.9%{translate:-128px -111px;opacity:.3}100%{translate:0 0;opacity:.7}}
-.syringe-injection-guide{z-index:10;opacity:.7;mix-blend-mode:normal;animation:injectionHandMove 1.5s ease-in-out infinite}
-@keyframes injectionHandMove{0%{translate:0 0;opacity:.7}99.9%{translate:218px 24px;opacity:.3}100%{translate:0 0;opacity:.7}}
-.pack-guide-hand{transform:none;mix-blend-mode:normal!important;opacity:.7!important;animation:packGuideTravel 1.55s ease-in-out infinite!important}
-@keyframes packGuideTravel{0%{translate:0 0;opacity:.7}99.9%{translate:310px -28px;opacity:.3}100%{translate:0 0;opacity:.7}}
 .ar-open-layer{inset:auto;overflow:hidden}
 .ar-open-middle{left:3px;top:22px;width:327px;height:660px}
 .ar-open-final{left:3px;top:-215px;width:329px;height:1133px}
@@ -466,3 +448,12 @@ canvas.figure{object-fit:fill!important}
 .ar-camera-wash{position:absolute;inset:0;background:rgba(216,230,241,.2);pointer-events:none}
 .ar-face-copy{z-index:4;color:#2e2924;font-size:22px;line-height:30px;font-weight:900}
 .ar-face-ring{z-index:4}
+
+/* Exact Figma hand guides: one moving image per guide; fade 70% to 30%, then jump to the start. */
+.syringe-guide,.pack-guide-hand{z-index:10;pointer-events:none;overflow:visible;object-fit:fill;mix-blend-mode:normal!important}
+.syringe-guide-core{animation:dcdGuideToBottle 1.5s ease-in-out infinite!important}
+.syringe-injection-guide{animation:dcdGuideToFigure 1.5s ease-in-out infinite!important}
+.pack-guide-hand{transform:none;animation:dcdGuideToPack 1.55s ease-in-out infinite!important}
+@keyframes dcdGuideToBottle{0%{translate:0 0;opacity:.7}99.9%{translate:-128px -111px;opacity:.3}100%{translate:0 0;opacity:.7}}
+@keyframes dcdGuideToFigure{0%{translate:0 0;opacity:.7}99.9%{translate:218px 24px;opacity:.3}100%{translate:0 0;opacity:.7}}
+@keyframes dcdGuideToPack{0%{translate:0 0;opacity:.7}99.9%{translate:310px -28px;opacity:.3}100%{translate:0 0;opacity:.7}}
