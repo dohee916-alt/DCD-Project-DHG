@@ -263,19 +263,31 @@ async function morphArBlister(){
     const foil=stage.querySelector('.ar-foil-morph'),front=stage.querySelector('.ar-front-morph');
     if(!foil||!front)return;
     const rearBox=[51.5,150.4,328.5,693.2],frontBox=[47.5,145,334,704];
+    // Interpolate registered pixels (premultiplied alpha) rather than overlay
+    // two translucent PNGs: overlapped alpha blending made mid-frames vanish.
     const layers=[
       {canvas:foil,images:[arRegisteredImage(images[0],rearBox),arRegisteredImage(images[1],rearBox)],alpha:1},
       {canvas:front,images:[arRegisteredImage(images[2],frontBox),arRegisteredImage(images[3],frontBox)],alpha:.7}
-    ];
+    ].map(layer=>{
+      const ctx=layer.canvas.getContext('2d');
+      return {...layer,ctx,
+        a:layer.images[0].getContext('2d').getImageData(0,0,428,926).data,
+        b:layer.images[1].getContext('2d').getImageData(0,0,428,926).data,
+        frame:ctx.createImageData(428,926)};
+    });
     const renderProgress=p=>{
+      const inverse=1-p;
       for(const layer of layers){
-        const ctx=layer.canvas.getContext('2d');
-        ctx.clearRect(0,0,428,926);
-        ctx.globalAlpha=layer.alpha*(1-p);
-        ctx.drawImage(layer.images[0],0,0);
-        ctx.globalAlpha=layer.alpha*p;
-        ctx.drawImage(layer.images[1],0,0);
-        ctx.globalAlpha=1;
+        const {a,b,frame,alpha}=layer,out=frame.data;
+        for(let i=0;i<out.length;i+=4){
+          const aw=a[i+3]*inverse,bw=b[i+3]*p,total=aw+bw;
+          if(total<.001){out[i]=0;out[i+1]=0;out[i+2]=0;out[i+3]=0;continue;}
+          out[i]=(a[i]*aw+b[i]*bw)/total;
+          out[i+1]=(a[i+1]*aw+b[i+1]*bw)/total;
+          out[i+2]=(a[i+2]*aw+b[i+2]*bw)/total;
+          out[i+3]=total*alpha;
+        }
+        layer.ctx.putImageData(frame,0,0);
       }
     };
     renderProgress(0);
