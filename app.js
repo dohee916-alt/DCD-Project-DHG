@@ -37,6 +37,7 @@ function arrowButton(x,y,action,kind='12'){return '<button class="lay figma-arro
 function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" data-view="'+view+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+' '+view+'"></canvas>';}
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
 function handGuide(){return img(A.syringeGuideCore,52,154,164,186,'syringe-guide syringe-guide-upper')+img(A.syringeGuideCore,141,273,164,186,'syringe-guide syringe-guide-core');}
+function injectionHandGuide(){return img(A.syringeGuideCore,53,160,164,186,'syringe-guide syringe-guide-inject');}
 function packHandGuide(){return img(A.syringeGuideCore,386,162,164,186,'pack-guide-hand')+text('DRAG HERE WHEN FINISHED',601,326,292,44,'doto guide-blink pack-guide-copy');}
 function horizontalFigure(i,x,y,w,h,cls='',view='back'){return canvasFigure(i,x+(w-h)/2,y+(h-w)/2,h,w,cls,-90,view);}
 function syringeMarkup(cls=''){
@@ -46,6 +47,12 @@ function syringeMarkup(cls=''){
     '<div class="syringe-drug-window'+(color?' filled':'')+'" aria-hidden="true"><img class="syringe-drug '+(color||'empty')+'" src="'+liquid+'" alt=""></div>'+ 
     img(A.syringeBarrel,0,0,22,219,'syringe-barrel')+
     '<span class="syringe-tip-marker" aria-hidden="true"></span>');
+}
+function horizontalSyringe(y){
+  // WEB04 Figma groups 617:625 and 617:628: barrel 219×22 at x117,
+  // plunger 232×17 at x182. Keep the exported parts at their native ratio.
+  return img(A.syringePlunger,289.5,y-106.5,17,232,'syringe-preview-part syringe-preview-plunger')
+    +img(A.syringeBarrel,215.5,y-98.5,22,219,'syringe-preview-part syringe-preview-barrel');
 }
 function setPage(p,phase='ready'){clearTimers();s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},1850);}
 function dimensions(){return ['00','01','02','03','ar'].includes(s.page)?[428,926]:[874,428];}
@@ -64,9 +71,9 @@ else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto 
 else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
 return h;}
 function resultMarkup(){return img(A.posterResult,0,0,428,926,'poster-art poster-result-art')+'<div class="poster-result-wash"></div>'+text('OOPS! THE PILL IS GONE..',68,98,292,22,'poster-result-oops')+text('LET’S MAKE OUR OWN',68,98,292,22,'poster-result-next')+text('EASIEST CUT FOR YOUR DIET',52,856,324,22,'poster-tagline')+text('CLICK THE PACK TO START',26,808,376,96,'doto guide-blink poster-click-guide')+'<button class="full-hit" data-action="start" aria-label="Start"></button>';}
-function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.packClearBack,0,0,packRect[2],packRect[3],'pack pack-image pack-clear-back');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack'+(s.firstInject?' with-pack-shadow':''),packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,89,146,107,82,'bottle');if(!s.firstInject)h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label')+text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label');
+function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.packClearBack,0,0,packRect[2],packRect[3],'pack pack-image pack-clear-back');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack'+(s.firstInject?' with-pack-shadow':''),packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,89,146,107,82,'bottle');if(showTutorial&&!s.firstFill)h+=horizontalSyringe(81)+horizontalSyringe(163);if(!s.firstInject)h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label')+text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label');
 if(!f.packed)h+=canvasFigure(s.active,377,81,100,281,'active-figure');h+=syringeMarkup();
-if(showTutorial&&!s.handGuideDismissed&&s.phase==='ready')h+=handGuide();
+if(showTutorial&&s.phase==='ready')h+=s.firstFill?(s.loaded?injectionHandGuide():''):handGuide();
 if(showTutorial&&s.firstInject&&!s.packGuideDone&&!s.figures.some(v=>v.packed)&&s.phase==='ready')h+=packHandGuide();
 if(f.value===0)h+=text('MINIMIZE',282,387,292,44,'doto guide-blink workbench-guide');if(f.value===100)h+=text('MAXIMIZE',282,387,292,44,'doto guide-blink workbench-guide');
 h+=text('DOLL '+(s.active+1)+'/4',282,29,292,44,'progress workbench-count');return h;}
@@ -263,12 +270,12 @@ async function fillSyringe(color,host){
   moveSyringe(host,0,0,0,320);await pause(350);
   if(s.page==='workbench'&&s.phase==='filling'){s.phase='ready';save();render();}
 }
-async function inject(host){
+async function inject(host,contact){
   const color=s.loaded;if(!color||s.phase!=='ready')return;
   s.phase='injecting';s.firstInject=true;
   stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());
-  // Put the visible needle tip into the doll before the automatic injection.
-  const angle=90,tip=baseNeedleTip(angle),needleTarget={x:414,y:211};
+  // Rotate around the actual contact point; a fixed target makes the needle jump.
+  const angle=90,tip=baseNeedleTip(angle),needleTarget=contact||{x:414,y:211};
   moveSyringe(host,needleTarget.x-tip.x,needleTarget.y-tip.y,angle,220);
   await pause(240);
   if(s.page!=='workbench'||s.phase!=='injecting')return;
@@ -391,13 +398,13 @@ function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')star
 stage.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('change',e=>{let t=e.target;if(!t.matches('input[data-kind]'))return;let kind=t.dataset.kind,n=+t.dataset.index;let set=new Set(s[kind]);t.checked?set.add(n):set.delete(n);s[kind]=[...set];save();render();});
 stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s.phase==='guide'){let rope=ropeAt(p);if(!rope)return;e.preventDefault();gesture.set(e.pointerId,{rope,start:p,type:e.pointerType||'mouse',pulled:false});stage.setPointerCapture(e.pointerId);return;}
-if(s.page!=='workbench'||s.phase!=='ready')return;let kind=null,index=-1;if(hit(p,261,125,40,297))kind='syringe';else if(hit(p,377,81,100,281))kind='doll';else{index=packSlots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();const el=kind==='syringe'?stage.querySelector('.syringe'):kind==='doll'?stage.querySelector('.active-figure'):stage.querySelector('canvas.packed-figure[data-figure="'+index+'"]');drag={kind,index,pointerId:e.pointerId,start:p,last:p,turnAnchorX:p.x,moved:false,angle:kind==='syringe'?45:0,el};if(el)el.classList.add('dragging');if(kind==='syringe'){s.handGuideDismissed=true;save();stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());if(el)el.style.transform='rotate(45deg)';}stage.setPointerCapture(e.pointerId);}});
+if(s.page!=='workbench'||s.phase!=='ready')return;let kind=null,index=-1;if(hit(p,261,125,40,297))kind='syringe';else if(hit(p,377,81,100,281))kind='doll';else{index=packSlots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();const el=kind==='syringe'?stage.querySelector('.syringe'):kind==='doll'?stage.querySelector('.active-figure'):stage.querySelector('canvas.packed-figure[data-figure="'+index+'"]');drag={kind,index,pointerId:e.pointerId,start:p,last:p,turnAnchorX:p.x,moved:false,angle:kind==='syringe'?45:0,el};if(el)el.classList.add('dragging');if(kind==='syringe'&&el)el.style.transform='rotate(45deg)';stage.setPointerCapture(e.pointerId);}});
 stage.addEventListener('pointermove',e=>{let p=localPoint(e);if(gesture.has(e.pointerId)){let g=gesture.get(e.pointerId);g.pulled=pullDistance(g,p)>=14;let active=[...gesture.values()],both=active.some(v=>v.rope==='upper'&&v.pulled)&&active.some(v=>v.rope==='lower'&&v.pulled),singlePointerMirror=g.type!=='touch'&&g.pulled;if((both||singlePointerMirror)&&s.page==='01'&&s.phase==='guide'){gesture.clear();setPage('01','rupture');}return;}
-if(!drag||drag.pointerId!==e.pointerId)return;drag.moved=true;let el=drag.el;if(el){el.style.translate=(p.x-drag.start.x)+'px '+(p.y-drag.start.y)+'px';if(drag.kind==='syringe'){let dx=p.x-drag.turnAnchorX;if(Math.abs(dx)>=36){drag.angle=dx<0?-45:45;drag.turnAnchorX=p.x;}el.style.transform='rotate('+drag.angle+'deg)';const tip=syringeTipPoint(el),color=!s.loaded&&bottleTouched(tip);if(color||(s.loaded&&abdomenTouched(tip))){syringeInjectionAngle=drag.angle;const action=color?()=>fillSyringe(color,el):()=>inject(el);drag=null;if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId);action();return;}}}drag.last=p;});
+if(!drag||drag.pointerId!==e.pointerId)return;drag.moved=true;let el=drag.el;if(el){el.style.translate=(p.x-drag.start.x)+'px '+(p.y-drag.start.y)+'px';if(drag.kind==='syringe'){let dx=p.x-drag.turnAnchorX;if(Math.abs(dx)>=36){drag.angle=dx<0?-45:45;drag.turnAnchorX=p.x;}el.style.transform='rotate('+drag.angle+'deg)';const tip=syringeTipPoint(el),color=!s.loaded&&bottleTouched(tip);if(color||(s.loaded&&abdomenTouched(tip))){syringeInjectionAngle=drag.angle;const action=color?()=>fillSyringe(color,el):()=>inject(el,tip);drag=null;if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId);action();return;}}}drag.last=p;});
 stage.addEventListener('pointerup',e=>{gesture.delete(e.pointerId);if(!drag||drag.pointerId!==e.pointerId)return;let p=localPoint(e),d=drag;drag=null;if(d.kind==='syringe'){syringeInjectionAngle=d.angle;
   const tip=syringeTipPoint(d.el),color=!s.loaded&&bottleTouched(tip);
   if(color)fillSyringe(color,d.el);
-  else if(s.loaded&&abdomenTouched(tip))inject(d.el);else render();
+  else if(s.loaded&&abdomenTouched(tip))inject(d.el,tip);else render();
 }else if(d.kind==='doll'){if(hit(p,...packRect))animatePackActive(d.el);else render();}else if(d.kind==='packed'){if(hit(p,308,39,237,355))unpack(d.index);else render();}});
 stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){drag=null;render();}});
 function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};}
