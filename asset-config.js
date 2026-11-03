@@ -29,6 +29,8 @@ window.DCD_ASSETS = Object.freeze({
   arPackOpenFoil: "assets/figma-current/hd/ar-pack-open-foil.png",
   arPackCrumpled: "assets/figma-current/hd/ar-blister-crumpled-figma-aligned.png",
   arPackRipped: "assets/figma-current/hd/ar-blister-ripped-figma-aligned.png",
+  arOverlayFoilStates: ["assets/figma-current/hd/ar-overlap-foil-0.png","assets/figma-current/hd/ar-overlap-foil-1.png","assets/figma-current/hd/ar-overlap-foil-2.png"],
+  arOverlayFrontStates: ["assets/figma-current/hd/ar-overlap-front-0.png","assets/figma-current/hd/ar-overlap-front-1.png","assets/figma-current/hd/ar-overlap-front-2.png"],
   arBackground: "assets/figma-current/hd/ar-background-figma.png",
   arFaceRing: "assets/figma-current/hd/ar-face-ring.svg",
   gestureHand: "assets/figma/96571.webp",
