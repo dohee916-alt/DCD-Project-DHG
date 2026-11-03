@@ -237,31 +237,9 @@ function loadArMorphAsset(src){
   arMorphAssets.set(src,pending);
   return pending;
 }
-function arRegisteredImage(im,rect,normalize=false){
+function arRegisteredImage(im,rect){
   const c=document.createElement('canvas');c.width=428;c.height=926;
-  const ctx=c.getContext('2d');
-  // The intact asset must have the EXACT same geometry as the visible still.
-  // Cropping its alpha bbox and stretching it caused the pack to grow on tap.
-  if(!normalize){ctx.drawImage(im,...rect);return c;}
-  const source=document.createElement('canvas');
-  source.width=im.naturalWidth;source.height=im.naturalHeight;
-  const scan=source.getContext('2d',{willReadFrequently:true});
-  scan.drawImage(im,0,0);
-  const pixels=scan.getImageData(0,0,source.width,source.height).data;
-  let x0=source.width,y0=source.height,x1=0,y1=0;
-  for(let y=0;y<source.height;y++)for(let x=0;x<source.width;x++){
-    if(pixels[(y*source.width+x)*4+3]<36)continue;
-    if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
-  }
-  if(x0<=x1&&y0<=y1){
-    // Keep each PNG's pixel scale uniform. Previously the alpha crop was
-    // forced to fill BOTH dimensions of rect, enlarging the rear pack.
-    const croppedW=x1-x0+1,croppedH=y1-y0+1;
-    const scale=Math.min(rect[2]/croppedW,rect[3]/croppedH);
-    const drawW=croppedW*scale,drawH=croppedH*scale;
-    const dx=rect[0]+(rect[2]-drawW)/2,dy=rect[1]+(rect[3]-drawH)/2;
-    ctx.drawImage(im,x0,y0,croppedW,croppedH,dx,dy,drawW,drawH);
-  }
+  c.getContext('2d').drawImage(im,...rect);
   return c;
 }
 // A third, geometric state between intact and fully collapsed: local scan-line
@@ -308,11 +286,16 @@ async function morphArBlister(){
     const foil=stage.querySelector('.ar-foil-morph'),front=stage.querySelector('.ar-front-morph');
     if(!foil||!front)return;
     const rearBox=[51.5,150.4,328.5,693.2],frontBox=[47.5,145,334,704];
+    // Figma NewAR2 image92 is the 327x660 ripped-foil layer at (51,167).
+    // image95 export is the 329x926 artboard-clipped plastic layer at (51,0).
+    // These are already composited and positioned in the original AR artboard.
+    // Never crop their alpha bounding boxes or rescale them to initial bounds.
+    const tornFoilBox=[51,167,327,660],collapsedPlasticBox=[51,0,329,926];
     // Interpolate registered pixels (premultiplied alpha) rather than overlay
     // two translucent PNGs: overlapped alpha blending made mid-frames vanish.
     const layers=[
-      {canvas:foil,images:[arRegisteredImage(images[0],rearBox),arRegisteredImage(images[1],rearBox,true)],alpha:1,kind:'foil'},
-      {canvas:front,images:[arRegisteredImage(images[2],frontBox),arRegisteredImage(images[3],frontBox,true)],alpha:.7,kind:'plastic'}
+      {canvas:foil,images:[arRegisteredImage(images[0],rearBox),arRegisteredImage(images[1],tornFoilBox)],alpha:1,kind:'foil'},
+      {canvas:front,images:[arRegisteredImage(images[2],frontBox),arRegisteredImage(images[3],collapsedPlasticBox)],alpha:.7,kind:'plastic'}
     ].map(layer=>{
       const ctx=layer.canvas.getContext('2d');
       return {...layer,ctx,
