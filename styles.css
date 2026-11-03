@@ -388,6 +388,45 @@
 .page-16 .new-orange-tint{opacity:1;background:#d83a00}
 .new-signature-trace path{animation-duration:2.8s}
 .phase-typing .new-options label{animation-duration:.45s;animation-delay:calc(1.05s + var(--line-index) * .18s)}
+.page-01 .guide-copy,.poster-click-guide{color:#f9f6f2!important}
+.syringe-2d .syringe-drug.orange{top:-6px}
+.syringe-guide-core{mix-blend-mode:screen!important}
+@keyframes figmaHandMove{0%{translate:0 0;opacity:.5}99.9%{translate:-103px -116px;opacity:.2}100%{translate:0 0;opacity:.5}}
+.pack-guide-hand{mix-blend-mode:screen!important;opacity:.5!important}
+.bottle[src$="purple-flask-figma.png"]{object-fit:fill;mask-image:url('assets/figma-current/hd/bottle-purple-3x.png');-webkit-mask-image:url('assets/figma-current/hd/bottle-purple-3x.png');mask-size:100% 100%;-webkit-mask-size:100% 100%;mask-repeat:no-repeat;-webkit-mask-repeat:no-repeat}
+canvas.figure{object-fit:fill!important}
+.new-section-prompt{animation:blink 1s steps(1,end) infinite}
+.syringe-guide-core{opacity:.7;mix-blend-mode:normal!important;animation:figmaHandMove 1.5s ease-in-out infinite!important}
+@keyframes figmaHandMove{0%{translate:0 0;opacity:.7}99.9%{translate:-128px -111px;opacity:.3}100%{translate:0 0;opacity:.7}}
+.syringe-injection-guide{z-index:10;opacity:.7;mix-blend-mode:normal;animation:injectionHandMove 1.5s ease-in-out infinite}
+@keyframes injectionHandMove{0%{translate:0 0;opacity:.7}99.9%{translate:218px 24px;opacity:.3}100%{translate:0 0;opacity:.7}}
+.pack-guide-hand{transform:none;mix-blend-mode:normal!important;opacity:.7!important;animation:packGuideTravel 1.55s ease-in-out infinite!important}
+@keyframes packGuideTravel{0%{translate:0 0;opacity:.7}99.9%{translate:310px -28px;opacity:.3}100%{translate:0 0;opacity:.7}}
+.ar-open-layer{inset:auto;overflow:hidden}
+.ar-open-middle{left:3px;top:22px;width:327px;height:660px}
+.ar-open-final{left:3px;top:-215px;width:329px;height:1133px}
+.ar-open-rotator{position:absolute;overflow:hidden}
+.ar-open-middle .ar-open-rotator{left:-166.5px;top:166.5px;width:660px;height:327px;transform:rotate(90deg)}
+.ar-open-final .ar-open-rotator{left:-402px;top:402px;width:1133px;height:329px;transform:rotate(-90deg)}
+.ar-open-middle .ar-open-rotator img{left:-243px;top:-321px;width:1145px;height:648px;max-width:none;transform:none}
+.ar-open-final .ar-open-rotator img{left:0;top:-330px;width:1133px;height:659px;max-width:none;transform:none}
+.ar-falling-dolls,.ar-falling-dolls.released{z-index:2}
+.ar-headline{left:45px!important;top:93px!important;width:362px!important;height:25px!important}
+.new-section-title{font:400 12px/15px Arial,sans-serif!important;color:#2b333d!important}
+.page-13.phase-typing .new-flow-content{animation:prescriptionContentRise 1.25s cubic-bezier(.2,.7,.2,1) both}
+@keyframes prescriptionContentRise{from{translate:0 310px}to{translate:0 0}}
+.phase-typing .new-options label{animation-duration:.55s;animation-delay:calc(1.3s + var(--line-index) * .27s)}
+.new-orange-gradient{z-index:1;pointer-events:none;opacity:1}
+.new-orange-gradient>div{position:absolute;left:216px;top:-216px;width:510px;height:942px;transform:rotate(90deg);transform-origin:center}
+.new-orange-gradient.grad-one{mix-blend-mode:multiply}
+.new-orange-gradient.grad-one>div{background:linear-gradient(206.26252277234065deg,#fff 13.526%,rgba(255,255,255,0) 37.155%,#c25100 93.712%)}
+.new-orange-gradient.grad-two{mix-blend-mode:multiply}
+.new-orange-gradient.grad-two>div{background:linear-gradient(264.6865816573264deg,#fff 21.631%,rgba(255,255,255,0) 42.094%,#cf4900 91.073%)}
+.new-orange-gradient.grad-three{mix-blend-mode:multiply}
+.new-orange-gradient.grad-three>div{background:linear-gradient(266.4413399504181deg,#fff 22.18%,rgba(255,255,255,0) 45.617%,#9e4f00 101.71%)}
+.new-orange-gradient.grad-four{mix-blend-mode:lighten}
+.new-orange-gradient.grad-four>div{background:linear-gradient(206.26252277234065deg,rgba(255,255,255,.8) 13.526%,rgba(255,255,255,0) 37.155%,rgba(158,42,0,0) 93.712%)}
+.page-15 .new-orange-gradient{animation:newTintIn 1.25s ease-out both}
 .phase-typing .new-section-title,.phase-typing .new-section-prompt{animation-duration:.75s}
 .ar-orange-background{z-index:0;object-fit:fill}
 .ar-headline{z-index:9;color:#d83a00;font:700 25px/29px 'Source Sans 3',Arial,sans-serif;text-align:center;white-space:nowrap}
