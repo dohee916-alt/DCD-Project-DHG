@@ -163,7 +163,7 @@ function newPrescriptionMarkup(){
     const items=side?sides:effects,selected=side?s.side:s.expected,kind=side?'side':'expected';
     let content=text(side?'POSSIBLE SIDE EFFECTS':'EXPECTED EFFECTS',524,43,291,24,'new-section-title');
     content+=text(side?'Select the consequences you expect.':'Select the effects you expect.',524,62,291,24,'new-section-prompt');
-    content+='<div class="lay new-options" '+box(525,94,291,213)+'>'+items.map((item,i)=>'<label style="--line-index:'+i+'"><input type="checkbox" data-kind="'+kind+'" data-index="'+i+'" '+(selected.includes(i)?'checked':'')+'><span>'+item+'</span></label>').join('')+'</div>';
+    content+='<div class="lay new-options" '+box(525,94,291,213)+'>'+items.map((item,i)=>'<label style="--line-index:'+i+'"><input type="checkbox" data-kind="'+kind+'" data-index="'+i+'" '+(selected.includes(i)?'checked':'')+'><img class="new-checked-asset" src="assets/figma-current/hd/checkbox-checked.svg" alt="" aria-hidden="true"><span>'+item+'</span></label>').join('')+'</div>';
     h+=group(0,0,926,428,'new-flow-content',content);
     h+=newButton('NEXT','next',827,347,!selected.length);
   }else if(sign){
