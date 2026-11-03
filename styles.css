@@ -290,7 +290,7 @@
 .workbench-pack{z-index:2;overflow:visible}
 .pack-guide-hand{z-index:10;pointer-events:none;object-fit:fill;mix-blend-mode:screen;transform:scaleX(-1);opacity:.5;animation:packGuideTravel 1.55s ease-in-out infinite}
 @keyframes packGuideTravel{0%{translate:0 0;opacity:.5}99.9%{translate:278px -37px;opacity:.15}100%{translate:0 0;opacity:.5}}
-.pack-guide-copy{z-index:11!important;color:#d83a00!important;font-family:Doto,Arial,sans-serif!important;font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:center!important}
+.pack-guide-copy{z-index:11!important;color:#d83a00!important;font-family:Doto,Arial,sans-serif!important;font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:right!important}
 .syringe-guide-core{mix-blend-mode:normal!important;animation:handCoreTravelVisible 1.5s ease-in-out infinite!important}
 .syringe-guide-ghost{mix-blend-mode:normal!important;opacity:.25!important}
 @keyframes handCoreTravelVisible{0%{translate:0 0;opacity:.8}99.9%{translate:-89px -119px;opacity:.4}100%{translate:0 0;opacity:.8}}
@@ -312,6 +312,7 @@
 @keyframes posterNext{to{opacity:1}}
 .new-pack-assembly{z-index:1;overflow:visible}
 .new-pack-layer{transform:rotate(90deg);transform-origin:center;object-fit:fill}
+.new-pack-layer.new-pack-vertical{transform:none}
 .new-pack-foil{z-index:0}
 .new-pack-figure{z-index:1}
 .new-pack-clear{z-index:2;opacity:.7}
@@ -321,7 +322,7 @@
 .new-ticker-track{position:absolute;left:0;width:25px;will-change:translate}
 .new-ticker-track span{display:block;width:25px;height:max-content;writing-mode:vertical-rl;white-space:nowrap;font:700 15px/25px Arial,sans-serif}
 .new-ticker.reverse .new-ticker-track span{transform:rotate(180deg)}
-.new-prescription-dose{z-index:6;color:#d83a00;font:700 16px/18px Arial,sans-serif}
+.new-prescription-dose{z-index:6;color:#d83a00;font:700 15px/18px Arial,sans-serif}
 .new-prescription-dose{white-space:nowrap}
 .new-section-title{z-index:6;color:#2b333d;font:400 10px/14px Arial,sans-serif}
 .new-section-prompt{z-index:6;color:#d83a00;font:900 10px/12px Doto,Arial,sans-serif}
@@ -381,3 +382,48 @@
 .gesture-left{--gx:-69px;--gy:-111px}
 .gesture-right{--gx:90px;--gy:99px}
 .new-options input:checked{border-color:transparent;background:transparent;box-shadow:none}
+.page-01 .guide-copy,.poster-click-guide,.new-section-prompt,.new-signature-guide,.pack-guide-copy,.packed-copy.wave,.workbench-guide,.rotate-guide{color:#2e2924!important}
+.workbench-guide{font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important}
+.page-15 .new-orange-tint{opacity:1;background:#d83a00;animation:newTintIn 1.25s ease-out both}
+.page-16 .new-orange-tint{opacity:1;background:#d83a00}
+.new-signature-trace path{animation-duration:2.8s}
+.phase-typing .new-options label{animation-duration:.45s;animation-delay:calc(1.05s + var(--line-index) * .18s)}
+.phase-typing .new-section-title,.phase-typing .new-section-prompt{animation-duration:.75s}
+.ar-orange-background{z-index:0;object-fit:fill}
+.ar-headline{z-index:9;color:#d83a00;font:700 25px/29px 'Source Sans 3',Arial,sans-serif;text-align:center;white-space:nowrap}
+.ar-pack-flip{position:absolute;inset:0;z-index:3;transform-style:preserve-3d;perspective:850px;animation:arPackArrive .72s cubic-bezier(.16,.86,.25,1.04) both}
+.ar-pack-face{transform-style:preserve-3d;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.ar-pack-back{transform:rotateY(180deg)}
+.ar-pack-front{transform:rotateY(0deg)}
+.ar-pack-image{width:100%;height:100%;object-fit:fill}
+.ar-intact-foil{z-index:0}
+.ar-pack-doll{z-index:1}
+.ar-intact-clear{z-index:2;opacity:.7}
+.ar-open-layer{position:absolute;inset:0;z-index:3;opacity:0;overflow:visible;pointer-events:none}
+.ar-open-layer img{position:absolute;object-fit:fill}
+.ar-open-middle img{left:-427px;top:186px;width:1192px;height:332px;transform:rotate(90deg)}
+.ar-open-final img{left:-399px;top:187px;width:1133px;height:329px;transform:rotate(-90deg)}
+.ar-open-middle{z-index:3}
+.ar-open-final{z-index:4}
+.page-arOpen .ar-open-middle{animation:arMiddle .72s ease-in-out both}
+.page-arOpen .ar-open-final{animation:arFinal .9s .35s ease-in-out both}
+.page-arOpen .ar-intact-clear,.page-arOpen .ar-intact-foil{animation:arIntactAway .68s ease-out both}
+.page-arOpen .ar-pack-doll{animation:arDollRelease .45s .45s both}
+.page-arOpen .ar-pack-flip{animation:none}
+@keyframes arPackArrive{from{transform:perspective(850px) rotateY(-180deg) scale(1.65) translateY(26px)}72%{transform:perspective(850px) rotateY(-15deg) scale(.96)}to{transform:perspective(850px) rotateY(0) scale(1)}}
+@keyframes arMiddle{0%,8%{opacity:0}25%,100%{opacity:1}}
+@keyframes arFinal{0%{opacity:0}100%{opacity:.7}}
+@keyframes arIntactAway{from{opacity:1}to{opacity:0}}
+@keyframes arDollRelease{from{opacity:1}to{opacity:0}}
+.ar-press-copy{z-index:8;color:#f9f6f2;font-size:24px;line-height:29px;font-weight:900}
+.ar-pack-hit{position:absolute;left:48px;top:145px;width:334px;height:704px;z-index:10;border:0;background:transparent;cursor:pointer}
+.ar-falling-dolls{position:absolute;inset:0;z-index:2;pointer-events:none}
+.ar-falling-dolls.released{z-index:5}
+.ar-falling-doll{left:0!important;top:0!important;transform-origin:50% 72%;will-change:transform;opacity:0}
+.page-arOpen .ar-falling-doll{animation:arFallingAppear .16s .42s forwards}
+@keyframes arFallingAppear{to{opacity:1}}
+.ar-camera-retry{position:absolute;z-index:12;left:54px;bottom:38px;width:320px;min-height:48px;border:2px solid #fff;border-radius:24px;background:#d83a00;color:#fff;font:900 18px Doto,Arial,sans-serif;cursor:pointer}
+.ar-camera-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#d8e6f1}
+.ar-camera-wash{position:absolute;inset:0;background:rgba(216,230,241,.2);pointer-events:none}
+.ar-face-copy{z-index:4;color:#2e2924;font-size:22px;line-height:30px;font-weight:900}
+.ar-face-ring{z-index:4}
