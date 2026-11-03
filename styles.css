@@ -538,3 +538,18 @@ canvas.figure{object-fit:contain!important}
    deformation until the real tear is open, then move into the foreground. */
 .page-arOpen .ar-pack-doll{animation:none!important;opacity:1!important}
 .page-arOpen .ar-falling-doll{animation:none!important;opacity:1!important;z-index:5!important}
+
+
+/* AR only: stable sandwich ordering for two synchronized morph canvases.
+   Rear foil ALWAYS behind fixed dolls and front plastic. At release the SAME
+   dolls are reparented behind the foil without cloning or size changes. */
+.ar-pack-flip{z-index:3}
+.ar-pack-front{position:absolute;inset:0;width:428px;height:926px;overflow:visible}
+.ar-pack-front .ar-original-foil{z-index:0}
+.ar-pack-front .ar-foil-morph{position:absolute;inset:0;width:428px;height:926px;z-index:0;opacity:0;pointer-events:none}
+.ar-pack-front .ar-pack-doll{z-index:1;opacity:1!important;animation:none!important}
+.ar-pack-front .ar-original-clear{z-index:2;opacity:.7}
+.ar-pack-front .ar-front-morph{position:absolute;inset:0;width:428px;height:926px;z-index:2;opacity:0;pointer-events:none}
+.page-arOpen .ar-original-foil,.page-arOpen .ar-original-clear{animation:none!important}
+.page-arOpen .ar-pack-flip{animation:none!important}
+.page-arOpen > .ar-falling-doll{z-index:2!important;opacity:1!important;animation:none!important}
