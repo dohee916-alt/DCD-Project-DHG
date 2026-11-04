@@ -566,15 +566,13 @@ canvas.figure{object-fit:contain!important}
 .ar-pack-front .ar-front-static{z-index:2}
 
 
-/* All in-pack doll canvases share the exact Figma frame size. The intrinsic
-   346x873 canvas was previously letterboxed by object-fit:contain, making
-   dolls visibly smaller despite correctly positioned outer rectangles.
-   Apply to every pack phase, NEVER to the workbench's active doll. */
+/* Preserve each pack doll's intrinsic aspect ratio (346:873).
+   The previous object-fit:fill distorted all packed dolls. */
 .pack-assembly canvas.figure,
 .new-pack-assembly canvas.figure,
 .consent-pack-assembly canvas.figure,
 .ar-pack-front canvas.ar-pack-doll{
-  object-fit:fill!important;
+  object-fit:contain!important;
 }
 /* During the short depth retreat, show the very same doll canvases in front
    of the pack; after the retreat they move behind the foil to fall away. */
