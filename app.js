@@ -688,8 +688,12 @@ async function beginAr(){
     const el=stage.querySelector(selector);
     if(el)el.style.setProperty('animation','none','important');
   });
+  // Keep the portrait AR gradient invisible through blister flight and
+  // desktop screen rotation; reveal only when orientation has settled.
+  const incomingGradient=stage.querySelector('.ar-orange-background');
+  if(incomingGradient)incomingGradient.style.opacity='0';
   const target=stage.querySelector('.ar-intact-clear')?.getBoundingClientRect();
-  if(!target){stage.style.opacity='1';stage.style.transform=nativeTransform;wrapper.remove();arHandoffActive=false;return;}
+  if(!target){stage.style.opacity='1';stage.style.transform=nativeTransform;if(incomingGradient)incomingGradient.style.opacity='1';wrapper.remove();arHandoffActive=false;return;}
   const centerX=originalRect.left+originalRect.width/2,centerY=originalRect.top+originalRect.height/2;
   const baseX=originalRect.left+185.497/2,baseY=originalRect.top+391.108/2;
   const dstX=target.left+target.width/2,dstY=target.top+target.height/2;
@@ -706,15 +710,14 @@ async function beginAr(){
     {offset:.80,transform:k(dstX,dstY,finishAngle,finishScale*1.08),opacity:1},
     {offset:1,transform:k(dstX,dstY,finishAngle,finishScale),opacity:1}
   ],{duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'});
-  // Preserve the four existing blend-mode gradients while rotating their
-  // color field through 180°. No new color approximation or static replacement.
-  oldLayer.querySelectorAll('.new-orange-gradient').forEach((el,i)=>{
-    el.animate([{transform:'rotate(0deg) scale(1)'},{transform:'rotate(180deg) scale(1.7)'}],
-      {duration:1410,delay:i*32,easing:'ease-in-out',fill:'forwards'});
+  // Let the landscape gradient simply dissolve. No gradient rotation,
+  // transform or scaling; the blister alone continues its established flight.
+  oldLayer.querySelectorAll('.new-orange-gradient').forEach(el=>{
+    el.animate([{opacity:1},{opacity:0}],
+      {duration:700,easing:'ease-in-out',fill:'forwards'});
   });
-  const fadeWeb=oldLayer.animate([
-    {offset:0,opacity:1},{offset:.48,opacity:1},{offset:1,opacity:0}
-  ],{duration:1520,easing:'ease-in-out',fill:'forwards'});
+  oldLayer.animate([{opacity:1},{opacity:0}],
+    {duration:940,easing:'ease-in-out',fill:'forwards'});
   try{
     // The AR pack is already at its final native Figma coordinates behind the
     // flying object. Replace only at arrival, without a mid-flight asset snap.
@@ -730,8 +733,17 @@ async function beginAr(){
         {transform:nativeTransform}
       ],{duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'}).finished;
     }
+    // The AR portrait gradient appears only AFTER the full rotation has
+    // finished (or after the pack has settled on physical mobile).
+    stage.style.transform=nativeTransform;
+    if(incomingGradient){
+      await incomingGradient.animate([{opacity:0},{opacity:1}],
+        {duration:780,easing:'ease-in-out',fill:'forwards'}).finished;
+      incomingGradient.style.opacity='1';
+    }
   }catch(error){console.warn('[DCD] AR transition:',error);}
   finally{
+    if(incomingGradient)incomingGradient.style.opacity='1';
     stage.style.transform=nativeTransform;stage.style.opacity='1';
     stage.classList.remove('dcd-ar-handoff-stage');
     wrapper.remove();arHandoffActive=false;
