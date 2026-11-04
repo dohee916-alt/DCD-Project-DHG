@@ -7,8 +7,8 @@
 (function(){
   const samples=4;
   const blueprints={
-    come:{src:'assets/figma-current/hd/poster-cta.svg',base:'assets/figma-current/hd/poster-cta-base.svg',color:[255,255,255],fill:.22},
-    easiest:{src:'assets/figma-current/hd/poster-tagline.svg',base:'assets/figma-current/hd/poster-tagline-base.svg',color:[228,107,62],fill:.26}
+    come:{src:'assets/figma-current/hd/poster-cta.svg',base:'assets/figma-current/hd/poster-cta-base.svg',color:[255,255,255],fill:.28},
+    easiest:{src:'assets/figma-current/hd/poster-tagline.svg',base:'assets/figma-current/hd/poster-tagline-base.svg',color:[228,107,62],fill:.328}
   };
   const maskCache=new Map();
   function load(url){
