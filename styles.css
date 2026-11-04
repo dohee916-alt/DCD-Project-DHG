@@ -600,7 +600,7 @@ canvas.figure{object-fit:contain!important}
   pointer-events:none;
   opacity:0;
 }
-.poster-glass-text:has(.poster-glass-canvas.figma-glass-ready) .poster-glass-original{
+.poster-glass-text.figma-glass-ready .poster-glass-original{
   opacity:0;
 }
 .poster-glass-text .poster-glass-canvas.figma-glass-ready{
