@@ -218,7 +218,7 @@ function startNewTickers(){
   });
 }
 function newButton(label,action,x,y,disabled=false,size=null){
-  const source=label==='YES'?'yesButtonAlpha.png':label==='NO'?'noButtonAlpha.png':label==='TEST IT'?'testButtonAlpha.png':'nextButtonAlpha.png';
+  const source=label==='YES'?'yesButtonAlpha.png?v=rim-fff6f2-20261104':label==='NO'?'noButtonAlpha.png':label==='TEST IT'?'testButtonAlpha.png?v=rim-fff6f2-20261104':'nextButtonAlpha.png';
   const wide=size?.[0]??(label==='TEST IT'?140:label==='NEXT'?67:134);
   const high=size?.[1]??69;
   return '<button class="lay new-ui-button'+(disabled?' disabled':'')+'" '+box(x,y,wide,high)+' data-action="'+action+'" aria-label="'+label+'" '+(disabled?'disabled':'')+'><img src="assets/figma-current/hd/'+source+'" alt=""></button>';
