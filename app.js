@@ -493,67 +493,72 @@ async function askArCamera(){
 }
 function runArDollDrop(){
   if(s.page!=='arOpen')return;
-  // Use the EXACT existing pack canvases. Reparent them instead of fading them
-  // away and independently recreating smaller figures at arbitrary positions.
   const pack=stage.querySelector('.ar-pack-front');
   const nodes=[...(pack?.querySelectorAll('.ar-pack-doll')||[])];
-  const slotPositions=[[97.915,220.083],[240.590,220.083],[97.915,515.745],[240.094,515.745]];
+  const slots=[[97.915,220.083],[240.590,220.083],[97.915,515.745],[240.094,515.745]];
   if(nodes.length!==4){arDropFinished=true;finishArIfReady();return;}
+
+  // Create a different, compact overlapping heap on every play. Each figure
+  // takes a separate tumbling route into the pile rather than radiating out
+  // in the former fixed left/right fan pattern.
+  const random=(min,max)=>min+Math.random()*(max-min);
+  const pile=[
+    {x:91,y:619},{x:173,y:655},{x:129,y:565},{x:209,y:590}
+  ];
+  for(let i=pile.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [pile[i],pile[j]]=[pile[j],pile[i]];
+  }
   const bodies=nodes.map((node,i)=>{
-    const [x,y]=slotPositions[i];
+    const [x,y]=slots[i],target=pile[i];
     node.classList.remove('ar-pack-doll');
     node.classList.add('ar-falling-doll','ar-falling-'+i,'ar-depth-retreat');
     stage.appendChild(node);
     Object.assign(node.style,{
-      left:'0px',top:'0px',width:(FIGMA_PACK_DOLL.height*346/873)+'px',height:FIGMA_PACK_DOLL.height+'px',opacity:'1',
+      left:'0px',top:'0px',width:FIGMA_PACK_DOLL.width+'px',
+      height:FIGMA_PACK_DOLL.height+'px',opacity:'1',
       transformOrigin:'50% 72%',animation:'none',pointerEvents:'none',
       transform:'translate('+x+'px,'+y+'px) rotate(0deg) scale(1)'
     });
-    return {node,x,y,vx:[-1.0,1.1,-.7,.9][i],vy:[-1,-1.4,-.7,-1.2][i],
-      angle:0,spin:[-.55,.6,-.45,.5][i],r:39};
+    return {
+      node,x,y,
+      targetX:Math.max(48,Math.min(267,target.x+random(-22,22))),
+      targetY:Math.max(540,Math.min(692,target.y+random(-19,19))),
+      angle:random(-115,115),
+      stagger:random(0,85),
+      sway:random(-36,36),
+      released:false
+    };
   });
-  // The torn Figma overlay stays in place; only its original contents drop.
-  let previous=0,elapsed=0;
-  function step(now){
+
+  let start=null;
+  function frame(now){
     if(s.page!=='arOpen')return;
-    const dt=Math.min((now-previous||16.7)/16.7,2);
-    previous=now;elapsed+=dt*16.7;
-    // First retreat behind the foil with a continuous 1 -> .78 depth scale.
-    // Gravity starts only after the retreat so no doll pops into a new size.
-    const retreat=Math.min(elapsed/140,1);
-    // Visible while receding: only AFTER this interval does the same canvas
-    // move beneath the foil. No instant occlusion at the moment of release.
-    const depth=1-.18*(retreat*retreat*(3-2*retreat));
-    if(elapsed<=140){
+    if(start===null)start=now;
+    const elapsed=now-start,retreat=Math.min(elapsed/140,1);
+    if(elapsed<140){
+      const eased=retreat*retreat*(3-2*retreat);
       bodies.forEach(b=>{
-        b.node.style.transform='translate('+b.x+'px,'+(b.y-16*retreat)+'px) rotate(0deg) scale('+depth+')';
+        b.node.style.transform='translate('+b.x+'px,'+(b.y-16*eased)+'px) rotate(0deg) scale('+(1-.18*eased)+')';
       });
-      arDropFrame=requestAnimationFrame(step);
-      return;
+    }else{
+      for(const b of bodies){
+        if(!b.released){b.node.classList.remove('ar-depth-retreat');b.released=true;}
+        const progress=Math.max(0,Math.min(1,(elapsed-140-b.stagger)/(1050-140-b.stagger)));
+        // Fast gravity-like tumble with a tiny final settling bounce.
+        const fall=1-Math.pow(1-progress,2.65);
+        const tumble=1-Math.pow(1-progress,2);
+        const x=b.x+(b.targetX-b.x)*fall+Math.sin(Math.PI*progress)*b.sway;
+        const y=b.y-16+(b.targetY-(b.y-16))*fall-
+          Math.sin(Math.PI*Math.min(1,progress))*12*(1-progress);
+        const rotation=b.angle*tumble;
+        b.node.style.transform='translate('+x+'px,'+y+'px) rotate('+rotation+'deg) scale(.82)';
+      }
     }
-    bodies.forEach(b=>b.node.classList.remove('ar-depth-retreat'));
-    for(const b of bodies){
-      b.vy+=1.05*dt;
-      b.x+=b.vx*dt;b.y+=b.vy*dt;b.angle+=b.spin*dt;b.vx*=.997;
-      if(b.x<5){b.x=5;b.vx=Math.abs(b.vx)*.6;}
-      if(b.x>327){b.x=327;b.vx=-Math.abs(b.vx)*.6;}
-      if(b.y>685){b.y=685;b.vy=-Math.abs(b.vy)*.28;b.vx*=.86;b.spin*=.82;}
-    }
-    for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){
-      const a=bodies[i],b=bodies[j],dx=b.x-a.x,dy=b.y-a.y,
-        dist=Math.hypot(dx,dy)||1,min=a.r+b.r;
-      if(dist>=min)continue;
-      const nx=dx/dist,ny=dy/dist,overlap=(min-dist)/2;
-      a.x-=nx*overlap;b.x+=nx*overlap;a.y-=ny*overlap;b.y+=ny*overlap;
-      const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
-      if(rel<0){const impulse=-rel*.56;a.vx-=impulse*nx;b.vx+=impulse*nx;
-        a.vy-=impulse*ny;b.vy+=impulse*ny;}
-    }
-    bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+(b.y-16)+'px) rotate('+b.angle+'deg) scale(.82)';});
-    if(elapsed<1050)arDropFrame=requestAnimationFrame(step);
+    if(elapsed<1050)arDropFrame=requestAnimationFrame(frame);
     else{arDropFinished=true;finishArIfReady();}
   }
-  arDropFrame=requestAnimationFrame(step);
+  arDropFrame=requestAnimationFrame(frame);
 }
 function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[1]].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
 function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');morphArBlister();}
