@@ -367,7 +367,7 @@ async function morphArBlister(){
     // translated from shared origin (-2567,3285) to (47.5,145).
     const foilRects=[
       [50.5,150.363,328.482,693.166],
-      [54.5,167,327,660]
+      [47.5,165,327,660]
     ];
     const plasticRects=[
       [47.5,145,333.845,703.892],
@@ -385,12 +385,12 @@ async function morphArBlister(){
     });
     const domeMask=arCapsuleMask();
     function renderProgress(p){
-      // The foil keeps its separate synchronized morph behind the dolls.
-      // The front sheet is completely stationary outside the four exact
-      // Figma ellipse masks, so no full-sheet ghosting can obscure the dolls.
+      // Both foil and front plastic use the SAME Figma ellipse masks.
+      // The surrounding sheet and its frame stay pixel-identical to the
+      // untouched starting image for the entire morph.
       for(const layer of layers){
         arWarpedPair(layer.pair,p,layer.pixels.data,layer.opacity);
-        if(layer.kind==='plastic'){
+        {
           const out=layer.pixels.data,initial=layer.pair.source;
           for(let pixel=0;pixel<domeMask.length;pixel++){
             const weight=domeMask[pixel],idx=pixel*4;
