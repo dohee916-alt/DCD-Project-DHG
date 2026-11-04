@@ -333,9 +333,10 @@ function arWarpedPair(pair,amount,output,opacity){
 // Figma ellipse masks 786:227/228/229/230, translated from the
 // shared left-bottom stack origin (-2567,3285) to the AR artboard (47.5,145).
 // Keep the plastic sheet outside these four capsule domes pixel-identical.
+// Absolute ellipse x positions: -2541 and -2402; base x: -2573 => AR x: 79.5, 218.5.
 const arCapsuleOvals=[
-  [73.5,209,129,276],[212.5,209,129,276],
-  [73.5,506,129,276],[212.5,506,129,276]
+  [79.5,209,129,276],[218.5,209,129,276],
+  [79.5,506,129,276],[218.5,506,129,276]
 ];
 function arCapsuleMask(){
   const mask=new Uint8Array(428*926);
