@@ -656,3 +656,13 @@ canvas.figure{object-fit:contain!important}
 .pack-flight-rear{z-index:1;object-fit:contain!important;transform-origin:center center;will-change:transform,opacity;backface-visibility:hidden;}
 .pack-flight-front{position:absolute;inset:0;z-index:2;transform-origin:300.75px 216.55px;will-change:transform,opacity;backface-visibility:hidden;transform-style:preserve-3d;opacity:0;}
 .pack-flight-front .new-pack-assembly{pointer-events:none;}
+
+/* Isolated WEB15/16 → AR handoff. This does not affect earlier WEB states. */
+.dcd-ar-handoff{position:fixed;inset:0;z-index:2000;overflow:hidden;pointer-events:none;contain:layout paint}
+.dcd-ar-old-page{position:absolute;left:50%;top:50%;width:874px;height:428px;transform:translate(-50%,-50%) scale(var(--dcd-old-scale));transform-origin:center;overflow:hidden;background:#eeb49d}
+.dcd-ar-old-page .scene-content{position:absolute;left:-52px;top:0;width:926px;height:428px}
+.dcd-ar-old-page .new-orange-gradient{transform-origin:50% 50%;will-change:transform}
+.dcd-ar-flying-pack{position:fixed;width:185.497px!important;height:391.108px!important;z-index:2;transform-origin:50% 50%;will-change:transform;pointer-events:none}
+.dcd-ar-handoff-stage .ar-pack-flip,
+.dcd-ar-handoff-stage .ar-orange-background,
+.dcd-ar-handoff-stage .ar-headline{animation:none!important}

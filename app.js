@@ -621,8 +621,131 @@ function runArDollDrop(){
   }
   arDropFrame=requestAnimationFrame(frame);
 }
-function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[1]].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
-function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');morphArBlister();}
+let arHandoffActive=false;
+// Copy a rendered canvas into its matching clone. cloneNode() itself does
+// not preserve bitmap pixels, so figures would otherwise disappear mid-flight.
+function copyRenderedCanvases(source,copy){
+  const original=[...source.querySelectorAll('canvas')],replacement=[...copy.querySelectorAll('canvas')];
+  original.forEach((c,i)=>{
+    const dest=replacement[i];if(!dest)return;
+    dest.width=c.width;dest.height=c.height;
+    try{dest.getContext('2d')?.drawImage(c,0,0);}catch(error){console.warn('[DCD] AR handoff canvas:',error);}
+  });
+}
+function phoneDevice(){
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||
+    (navigator.maxTouchPoints>1&&/Macintosh/i.test(navigator.userAgent));
+}
+async function beginAr(){
+  if(arHandoffActive||!['15','16'].includes(s.page))return;
+  arHandoffActive=true;
+  arDropFinished=false;arCameraReady=false;arCameraError='';
+  [A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[1]]
+    .forEach(src=>loadArMorphAsset(src).catch(()=>{}));
+  const webPage=s.page;
+  const oldPack=stage.querySelector('.new-pack-assembly');
+  const oldScene=stage.querySelector('.scene-content');
+  if(!oldPack||!oldScene){setPage('ar');arHandoffActive=false;return;}
+  // A viewport-level overlay is independent of either scene's native 874×428
+  // or 428×926 coordinate system. No current animation or figures are modified.
+  const originalRect=oldPack.getBoundingClientRect();
+  const wrapper=document.createElement('div');
+  wrapper.className='dcd-ar-handoff';
+  wrapper.setAttribute('aria-hidden','true');
+  const oldLayer=document.createElement('div');
+  oldLayer.className='dcd-ar-old-page page-'+webPage;
+  oldLayer.style.setProperty('--dcd-old-scale',String(scale));
+  const sceneCopy=oldScene.cloneNode(true);
+  copyRenderedCanvases(oldScene,sceneCopy);
+  oldLayer.appendChild(sceneCopy);
+  sceneCopy.querySelector('.new-pack-assembly')?.remove();
+  wrapper.appendChild(oldLayer);
+  const flying=oldPack.cloneNode(true);
+  flying.className='dcd-ar-flying-pack';
+  copyRenderedCanvases(oldPack,flying);
+  flying.style.left=originalRect.left+'px';
+  flying.style.top=originalRect.top+'px';
+  wrapper.appendChild(flying);
+  document.body.appendChild(wrapper);
+  // The old landscape copy covers the newly mounted portrait AR stage.
+  // On desktop the AR stage begins rotated into that same landscape viewport.
+  setPage('ar');
+  const nativeTransform=stage.style.transform;
+  const mobile=phoneDevice();
+  const view=document.querySelector('#viewport');
+  const sw=Math.min(view.clientWidth/874,view.clientHeight/428);
+  if(!mobile){
+    stage.style.transform='translate(-50%,-50%) rotate(-90deg) scale('+sw+')';
+  }
+  stage.style.opacity='0';
+  stage.classList.add('dcd-ar-handoff-stage');
+  // Prevent the separate default AR-entry animation from replaying when
+  // the handoff class is removed; otherwise the blister snaps and flips again.
+  ['.ar-pack-flip','.ar-orange-background','.ar-headline'].forEach(selector=>{
+    const el=stage.querySelector(selector);
+    if(el)el.style.setProperty('animation','none','important');
+  });
+  const target=stage.querySelector('.ar-intact-clear')?.getBoundingClientRect();
+  if(!target){stage.style.opacity='1';stage.style.transform=nativeTransform;wrapper.remove();arHandoffActive=false;return;}
+  const centerX=originalRect.left+originalRect.width/2,centerY=originalRect.top+originalRect.height/2;
+  const baseX=originalRect.left+185.497/2,baseY=originalRect.top+391.108/2;
+  const dstX=target.left+target.width/2,dstY=target.top+target.height/2;
+  const startScale=originalRect.width/185.497;
+  // When the portrait target is sideways (desktop), its horizontal width is
+  // the long dimension of a vertically stored blister.
+  const finishScale=mobile?target.width/185.497:target.width/391.108;
+  const finishAngle=mobile?0:-90;
+  const k=(cx,cy,angle,size)=>'translate('+(cx-baseX)+'px,'+(cy-baseY)+'px) rotate('+angle+'deg) scale('+size+')';
+  const flight=flying.animate([
+    {offset:0,transform:k(centerX,centerY,0,startScale),opacity:1},
+    {offset:.22,transform:k(centerX+20*sw,centerY-12*sw,-11,startScale*1.18),opacity:1},
+    {offset:.51,transform:k((centerX+dstX)/2,(centerY+dstY)/2,-38,startScale*2.05),opacity:1},
+    {offset:.80,transform:k(dstX,dstY,finishAngle,finishScale*1.08),opacity:1},
+    {offset:1,transform:k(dstX,dstY,finishAngle,finishScale),opacity:1}
+  ],{duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'});
+  // Preserve the four existing blend-mode gradients while rotating their
+  // color field through 180°. No new color approximation or static replacement.
+  oldLayer.querySelectorAll('.new-orange-gradient').forEach((el,i)=>{
+    el.animate([{transform:'rotate(0deg) scale(1)'},{transform:'rotate(180deg) scale(1.7)'}],
+      {duration:1410,delay:i*32,easing:'ease-in-out',fill:'forwards'});
+  });
+  const fadeWeb=oldLayer.animate([
+    {offset:0,opacity:1},{offset:.48,opacity:1},{offset:1,opacity:0}
+  ],{duration:1520,easing:'ease-in-out',fill:'forwards'});
+  try{
+    // The AR pack is already at its final native Figma coordinates behind the
+    // flying object. Replace only at arrival, without a mid-flight asset snap.
+    await flight.finished;
+    stage.style.opacity='1';
+    const disappear=flying.animate([{opacity:1},{opacity:0}],{duration:220,easing:'ease-out',fill:'forwards'});
+    await disappear.finished;
+    if(!mobile){
+      // Only desktop presentations simulate the screen rotation. Real phones
+      // must be physically turned by their user, never locked in software.
+      await stage.animate([
+        {transform:'translate(-50%,-50%) rotate(-90deg) scale('+sw+')'},
+        {transform:nativeTransform}
+      ],{duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'}).finished;
+    }
+  }catch(error){console.warn('[DCD] AR transition:',error);}
+  finally{
+    stage.style.transform=nativeTransform;stage.style.opacity='1';
+    stage.classList.remove('dcd-ar-handoff-stage');
+    wrapper.remove();arHandoffActive=false;
+    if(mobile&&window.innerWidth>window.innerHeight){
+      // AR remains portrait. A physical orientation change naturally refits.
+      stage.classList.add('dcd-ar-await-portrait');
+    }
+  }
+}
+function openArPack(){
+  if(s.page!=='ar'||arHandoffActive)return;
+  // Must be called from the user click itself to satisfy browser camera
+  // activation policy. Never request permission merely on entering AR.
+  askArCamera();
+  setPage('arOpen','opening');
+  morphArBlister();
+}
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;if(['00','01','02'].includes(s.page)&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');
 if(packHand){
