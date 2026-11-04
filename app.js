@@ -13,7 +13,7 @@ const bottleLiquids={purple:{x:125,y:86,rx:39,ry:34},orange:{x:129,y:174,rx:39,r
 const key='DCD_IMPLEMENTATION_1';
 const signaturePath='M2.50021 39.3162C3.97397 25.5131 15.0272 6.78039 32.7124 3.08321C57.2822 -2.05324 36.3968 27.7477 15.0272 52.6265C3.31169 66.2659 29.4323 61.4999 52.6083 32.6614C71.0303 9.7382 81.3467 24.5272 52.6083 61.4999';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const fresh=()=>({page:'00',phase:'intro',initialPresetVersion:3,figures:Array.from({length:4},(_,i)=>({kind:i+1,value:[85,45,65,100][i],orange:0,purple:0,packed:false})),active:0,loaded:null,firstFill:false,firstInject:false,handGuideDismissed:false,packGuideDone:false,used:{orange:false,purple:false},expected:[],side:[],signed:false});
+const fresh=()=>({page:'00',phase:'intro',initialPresetVersion:3,figures:Array.from({length:4},(_,i)=>({kind:i+1,value:[85,45,65,100][i],orange:0,purple:0,packed:false})),active:0,loaded:null,firstFill:false,firstInject:false,handGuideDismissed:false,packGuideDone:false,packGuideHandFinished:false,used:{orange:false,purple:false},expected:[],side:[],signed:false});
 let s=fresh(),drag=null,gesture=new Map(),timers=[],scale=1,offset={x:0,y:0},videoEnded=false;
 let syringeInjectionAngle=45,rotateGuideFinished=false,signatureInk=null;
 let packingAssetsWarmed=false;
@@ -48,7 +48,7 @@ function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
 function handGuide(){return img(A.syringeGuideCore,163,240,164,185,'syringe-guide syringe-guide-core');}
 function injectionHandGuide(){return img(A.syringeGuideCore,163,238,164,185,'syringe-guide syringe-injection-guide');}
-function packHandGuide(){return img(A.syringeGuideCore,302,153,164,185,'pack-guide-hand')+text('DRAG HERE WHEN FINISHED',615,323,292,44,'doto guide-blink pack-guide-copy');}
+function packHandGuide(){return (s.packGuideHandFinished?'':img(A.syringeGuideCore,302,153,164,185,'pack-guide-hand'))+text('DRAG HERE WHEN FINISHED',615,323,292,44,'doto guide-blink pack-guide-copy');}
 function horizontalFigure(i,x,y,w,h,cls='',view='back'){
   // The WEB04 pack is the same foil rotated 90 degrees; derive the doll
   // long axis from the foil scale rather than separately sizing the doll.
@@ -612,7 +612,7 @@ function runArDollDrop(){
 function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[1]].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
 function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');morphArBlister();}
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
-stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;if((s.page==='00'||s.page==='01')&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
+stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;if((s.page==='00'||s.page==='01')&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');if(packHand)packHand.addEventListener('animationend',e=>{if(e.target!==packHand||e.animationName!=='dcdGuideToPack')return;s.packGuideHandFinished=true;save();packHand.remove();});if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
 function finishRupture(){if(s.page==='01'&&s.phase==='rupture'){videoEnded=true;setPage('02');}}
 function runIntro(p){setPage(p,'intro');later(()=>{if(s.page===p&&s.phase==='intro'){s.phase=p==='00'?'loop':'guide';render();}},M.introMs);}
 async function beginPacking(){

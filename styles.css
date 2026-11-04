@@ -454,10 +454,10 @@ canvas.figure{object-fit:contain!important}
 .syringe-guide,.pack-guide-hand{z-index:10;pointer-events:none;overflow:visible;object-fit:fill;mix-blend-mode:normal!important}
 .syringe-guide-core{animation:dcdGuideToBottle 1.5s ease-in-out infinite!important}
 .syringe-injection-guide{animation:dcdGuideToFigure 1.5s ease-in-out infinite!important}
-.pack-guide-hand{transform:none;animation:dcdGuideToPack 1.55s ease-in-out infinite!important}
+.pack-guide-hand{transform:none;animation:dcdGuideToPack 1.55s ease-in-out 3 forwards!important}
 @keyframes dcdGuideToBottle{0%{translate:0 0;opacity:1}99.9%{translate:-128px -111px;opacity:.43}100%{translate:0 0;opacity:1}}
 @keyframes dcdGuideToFigure{0%{translate:0 0;opacity:1}99.9%{translate:147px -87px;opacity:.43}100%{translate:0 0;opacity:1}}
-@keyframes dcdGuideToPack{0%{translate:0 0;opacity:1}99.9%{translate:297px -28px;opacity:.43}100%{translate:0 0;opacity:1}}
+@keyframes dcdGuideToPack{0%{translate:0 0;opacity:1}99.9%{translate:297px -28px;opacity:.43}100%{translate:297px -28px;opacity:0}}
 
 
 /* WEB 15/16 -> portrait AR: preserve the Figma art while making the handoff legible. */
