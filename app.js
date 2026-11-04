@@ -856,9 +856,14 @@ async function advanceNewPrescription(){
   s.phase='transition';stage.querySelector('.new-ui-button')?.setAttribute('disabled','');
   const content=stage.querySelector('.new-flow-content');
   const moves=[];
-  // 12→13 keeps the checklist in place. On 13→14, the entire side-effect
-  // section exits upward together with the dose rising from the bottom
-  // into its final top position. Render signature only AFTER both finish.
+  // Both expectation and side-effect sections leave upward on NEXT.
+  // Only the side-effect→signature transition also raises the dose.
+  if(from==='12'&&content){
+    moves.push(content.animate(
+      [{translate:'0 0'},{translate:'0 -310px'}],
+      {duration:950,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'}
+    ).finished);
+  }
   if(from==='13'){
     const dose=stage.querySelector('.new-dose-group');
     const timing={duration:950,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'};
