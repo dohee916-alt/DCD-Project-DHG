@@ -158,23 +158,19 @@ function consentMarkup(){
   return h;
 }
 function newPackMarkup(){
-  // Scale exactly the approved AR pack assembly: Figma foil, four doll centers
-  // and doll rectangles. The foil's 193px width is the only scale input.
-  const ratio=193/FIGMA_PACK_DOLL.packW;
-  const foil={x:-4,y:-19,w:193,h:429};
-  const referenceFoil={x:50.5,y:150.363,w:FIGMA_PACK_DOLL.packW,h:FIGMA_PACK_DOLL.packH};
-  const refSlots=[[97.915,220.083],[240.590,220.083],[97.915,515.745],[240.094,515.745]];
-  const order=[0,2,3,1];
-  const scaledHeight=referenceFoil.h*ratio;
-  const topInset=(foil.h-scaledHeight)/2;
-  const inside=img(A.arPackBack,foil.x,foil.y,foil.w,foil.h,'new-pack-layer new-pack-vertical new-pack-foil')
-    +refSlots.map(([x,y],i)=>canvasFigure(order[i],
-      foil.x+(x-referenceFoil.x)*ratio,
-      foil.y+topInset+(y-referenceFoil.y)*ratio,
-      FIGMA_PACK_DOLL.width*ratio,FIGMA_PACK_DOLL.height*ratio,
-      'new-pack-figure')).join('')
-    +img(A.arPackClear,-6,-20,196,431,'new-pack-layer new-pack-vertical new-pack-clear');
-  return group(208,21,185,391,'new-pack-assembly',inside);
+  // Figma 03_MOBILE_WEB / New12–New16 (615:538 etc).
+  // These are the actual Figma slots and material bounds, not sizes inferred
+  // from the different AR pack. Keep the group origin at the clear foil's origin.
+  const figureSlots=[
+    [28,41.719,49.913,140.054],
+    [107.276,41.719,49.913,140.054],
+    [28,206,49.913,140.054],
+    [107,206,49.913,140.054]
+  ],order=[0,2,3,1];
+  let inside=img(A.arPackBack,2.235,2.980,182.517,385.149,'new-pack-layer new-pack-vertical new-pack-foil');
+  inside+=figureSlots.map((q,i)=>canvasFigure(order[i],...q,'new-pack-figure')).join('');
+  inside+=img(A.arPackClear,0,0,185.497,391.108,'new-pack-layer new-pack-vertical new-pack-clear');
+  return group(208,21,185.497,391.108,'new-pack-assembly',inside);
 }
 function newTicker(x,reverse=false){
   const copy='>> THE BRAND NEW GLP-1    >> EASIEST CUT FOR YOUR DIET    ';
