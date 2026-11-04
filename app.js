@@ -220,8 +220,8 @@ function newPrescriptionMarkup(page=s.page){
       h+=img('assets/figma/3fe8e.svg',568,162,156,135,'new-signature-sample');
       h+='<svg class="lay new-signature-trace" '+box(568,162,156,135)+' viewBox="0 0 73 64" aria-hidden="true"><defs><linearGradient id="signature-trace-color"><stop stop-color="#D83A00"/><stop offset=".4" stop-color="#FF6A1C"/><stop offset="1" stop-color="#FFAE65"/></linearGradient></defs><path d="'+signaturePath+'" fill="none" stroke="url(#signature-trace-color)" stroke-width="5" stroke-linecap="round" stroke-dasharray="25 75" pathLength="100"/></svg>';
     }
-    if(signatureInk)h+='<img class="lay new-signature-ink" '+box(524,142,291,170)+' src="'+signatureInk+'" alt="">';
-    else h+='<canvas id="new-signature" class="lay new-signature-canvas" '+box(524,142,291,170)+' width="873" height="510" aria-label="Draw your signature"></canvas>';
+    if(signatureInk)h+='<img class="lay new-signature-ink" '+box(524,82,291,260)+' src="'+signatureInk+'" alt="">';
+    else h+='<canvas id="new-signature" class="lay new-signature-canvas" '+box(524,82,291,260)+' width="873" height="780" aria-label="Draw your signature"></canvas>';
     if(page==='14')h+=text('SIGN HERE TO CONFIRM.',500,396,291,25,'doto guide-blink new-signature-guide');
     h+=newButton('NEXT','next',827,347,page==='14');
   }else if(consent){
