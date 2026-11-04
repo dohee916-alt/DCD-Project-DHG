@@ -584,3 +584,39 @@ canvas.figure{object-fit:contain!important}
 /* Landed AR dolls overlap in an ordered heap, not a flat fan. */
 .page-arOpen > .ar-falling-doll:not(.ar-depth-retreat){z-index:var(--pile-layer,2)!important}
 
+
+
+/* 03_MOBILE_WEB / try-OOD: native Figma glass text composites.
+   The original two exported SVG layers retain the Figma solid-fill opacities
+   (EASIEST base .20 and glass fill .20 at layer .80; COME VISIT base .20
+   and glass fill .10). Add glass-like backdrop light ONLY through the glyph
+   alpha mask; do not apply the effect to the rectangular background.
+   Figma glass: refraction 0, depth 1, angle -45deg, intensity .8. */
+.page-00 .poster-tagline-glass,
+.page-01 .poster-tagline-glass,
+.page-00 .poster-cta-glass{
+  z-index:5;
+  pointer-events:none;
+  -webkit-mask-repeat:no-repeat;
+  mask-repeat:no-repeat;
+  -webkit-mask-position:center;
+  mask-position:center;
+  -webkit-mask-size:100% 100%;
+  mask-size:100% 100%;
+  -webkit-mask-mode:alpha;
+  mask-mode:alpha;
+  backdrop-filter:brightness(1.28) contrast(1.13) saturate(1.07);
+  -webkit-backdrop-filter:brightness(1.28) contrast(1.13) saturate(1.07);
+  background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,0) 54%,rgba(255,255,255,.05));
+}
+.page-00 .poster-tagline-glass,
+.page-01 .poster-tagline-glass{
+  -webkit-mask-image:url('assets/figma-current/hd/poster-tagline.svg');
+  mask-image:url('assets/figma-current/hd/poster-tagline.svg');
+  opacity:.8;
+}
+.page-00 .poster-cta-glass{
+  -webkit-mask-image:url('assets/figma-current/hd/poster-cta.svg');
+  mask-image:url('assets/figma-current/hd/poster-cta.svg');
+  opacity:1;
+}
