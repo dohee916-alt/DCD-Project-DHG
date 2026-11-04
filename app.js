@@ -82,9 +82,24 @@ function drawFigures(){
   });
 }
 function animateFigureValue(index,from,to,duration=530){return new Promise(resolve=>{let start=null,last=-1;function frame(t){if(start===null)start=t;let u=Math.min((t-start)/duration,1),e=u*u*(3-2*u),value=from+(to-from)*e;if(Math.abs(value-last)>.35||u===1){s.figures[index].value=value;const c=stage.querySelector('canvas.active-figure');if(c&&c.isConnected)window.DCDMorph.draw(c,s.figures[index].kind,value);last=value;}if(u<1)requestAnimationFrame(frame);else{s.figures[index].value=to;resolve();}}requestAnimationFrame(frame);});}
+// Figma's GLASS renderer is not exposed as browser CSS. Its exact source
+// shader is not public. These text nodes use refraction/dispersion/frost=0,
+// so the important live effect is directional specular light on glyph edges.
+// SVG alpha-lighting retains the exact existing font metrics and SVG paths.
+function openingGlassFilter(){
+  return '<svg class="poster-glass-filter-defs" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true">'
+    +'<defs><filter id="dcd-poster-glass-light" x="-12%" y="-60%" width="124%" height="220%" color-interpolation-filters="sRGB">'
+    +'<feGaussianBlur in="SourceAlpha" stdDeviation="0.7" result="dcd-surface"/>'
+    +'<feSpecularLighting in="dcd-surface" surfaceScale="2" specularConstant="0.8" specularExponent="16" lighting-color="white" result="dcd-specular">'
+    +'<feDistantLight azimuth="135" elevation="60"/></feSpecularLighting>'
+    +'<feComposite in="dcd-specular" in2="SourceAlpha" operator="in" result="dcd-clipped-light"/>'
+    +'<feComponentTransfer in="dcd-clipped-light" result="dcd-soft-light"><feFuncA type="linear" slope="0.45"/></feComponentTransfer>'
+    +'<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="dcd-soft-light"/></feMerge>'
+    +'</filter></defs></svg>';
+}
 function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['poster-brand.svg',109.344,422.73,212,67],['poster-new.svg',143.188,492.73,147,67],['poster-glp.svg',123.235,561.962,181,68]];return words.map(([file,x,y,w,h])=>img('assets/figma-current/hd/'+file,x,y,w,h,'poster-word')).join('');}
-function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+img('assets/figma-current/hd/poster-tagline-base.svg',64.5,858.5,299,17,'poster-tagline-svg')+img('assets/figma-current/hd/poster-tagline.svg',64.5,858.5,299,17,'poster-tagline-svg');if(p==='00'||s.phase==='intro')h+=posterWords();
-if(p==='00'){if(s.phase!=='intro')h+=img('assets/figma-current/hd/poster-cta-base.svg',98.76,815.92,230,17,'poster-cta-svg')+img('assets/figma-current/hd/poster-cta.svg',98.76,815.92,230,17,'poster-cta-svg');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
+function introMarkup(p){let h=openingGlassFilter()+img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+img('assets/figma-current/hd/poster-tagline-base.svg',64.5,858.5,299,17,'poster-tagline-svg')+img('assets/figma-current/hd/poster-tagline.svg',64.5,858.5,299,17,'poster-tagline-svg poster-glass-source');if(p==='00'||s.phase==='intro')h+=posterWords();
+if(p==='00'){if(s.phase!=='intro')h+=img('assets/figma-current/hd/poster-cta-base.svg',98.76,815.92,230,17,'poster-cta-svg')+img('assets/figma-current/hd/poster-cta.svg',98.76,815.92,230,17,'poster-cta-svg poster-glass-source');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
 else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');h+=img(A.gestureHand,-25,363,154,174,'gesture gesture-left');h+=img(A.gestureHand,288,605,154,174,'gesture gesture-right');h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
 else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
 return h;}
