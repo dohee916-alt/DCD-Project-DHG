@@ -396,7 +396,7 @@ canvas.figure{object-fit:contain!important}
 .ar-falling-dolls,.ar-falling-dolls.released{z-index:2}
 .ar-headline{left:45px!important;top:93px!important;width:362px!important;height:25px!important}
 .new-section-title{font:400 12px/15px Arial,sans-serif!important;color:#2b333d!important}
-.page-13.phase-typing .new-flow-content{animation:prescriptionContentRise 1.25s cubic-bezier(.2,.7,.2,1) both}
+.page-13.phase-typing .new-flow-content{animation:none!important;translate:0 0!important}
 @keyframes prescriptionContentRise{from{translate:0 310px}to{translate:0 0}}
 .phase-typing .new-options label{animation-duration:.55s;animation-delay:calc(1.3s + var(--line-index) * .27s)}
 .new-orange-gradient{z-index:1;pointer-events:none;opacity:1}

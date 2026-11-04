@@ -252,11 +252,37 @@ function newPrescriptionMarkup(page=s.page){
 }
 function bindNewSignature(){
   const c=stage.querySelector('#new-signature');if(!c)return;
-  const ctx=c.getContext('2d');ctx.strokeStyle='#171717';ctx.lineWidth=6;ctx.lineCap='round';ctx.lineJoin='round';let drawing=false,moved=false;
+  const ctx=c.getContext('2d');ctx.strokeStyle='#171717';ctx.lineWidth=6;ctx.lineCap='round';ctx.lineJoin='round';
+  let activePointer=null,strokeMoved=false,hasInk=!!s.signed;
   function point(e){const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}
-  c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};
-  c.onpointermove=e=>{if(!drawing)return;const p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved)stage.querySelectorAll('.new-signature-sample,.new-signature-trace,.new-signature-guide').forEach(n=>n.remove());moved=true;};
-  c.onpointerup=e=>{e.stopPropagation();drawing=false;if(!moved)return;signatureInk=c.toDataURL('image/png');s.signed=true;setPage('14done');};
+  c.onpointerdown=e=>{
+    e.stopPropagation();e.preventDefault();
+    if(activePointer!==null)return;
+    activePointer=e.pointerId;strokeMoved=false;c.setPointerCapture(e.pointerId);
+    const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);
+  };
+  c.onpointermove=e=>{
+    if(activePointer!==e.pointerId)return;
+    e.stopPropagation();e.preventDefault();
+    const p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();strokeMoved=true;
+    if(!hasInk){
+      hasInk=true;
+      stage.querySelectorAll('.new-signature-sample,.new-signature-trace,.new-signature-guide').forEach(n=>n.remove());
+      const next=stage.querySelector('.new-ui-button[data-action="next"]');
+      if(next){next.disabled=false;next.removeAttribute('disabled');next.classList.remove('disabled');}
+    }
+  };
+  const finish=e=>{
+    if(activePointer!==e.pointerId)return;
+    e.stopPropagation();e.preventDefault();
+    activePointer=null;
+    if(!strokeMoved)return;
+    signatureInk=c.toDataURL('image/png');s.signed=true;save();
+    // Keep the SAME canvas mounted so additional strokes remain possible.
+    // Page 15 starts only when the user explicitly taps NEXT.
+  };
+  c.onpointerup=finish;
+  c.onpointercancel=finish;
 }
 function arPackMarkup(){
   // Exact approved NewAR1 doll rectangles (636:367..370), frame local.
@@ -799,12 +825,13 @@ async function advanceNewPrescription(){
   if(s.phase==='transition')return;
   const from=s.page;
   if(from==='12'&&!s.expected.length||from==='13'&&!s.side.length||from==='14'&&!s.signed)return;
-  if(from==='14done'){setPage('15');return;}
+  if(from==='14'||from==='14done'){setPage('15');return;}
   if(from!=='12'&&from!=='13')return;
   s.phase='transition';stage.querySelector('.new-ui-button')?.setAttribute('disabled','');
   const content=stage.querySelector('.new-flow-content');
   const moves=[];
-  if(content)moves.push(content.animate([{translate:'0 0'},{translate:'0 -310px'}],{duration:950,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'}).finished);
+  // Keep prescription headings and checklist at their Figma coordinates across 12→13.
+  // Moving the whole content -310px made the page jump upward before the next screen.
   if(from==='13'){
     const dose=stage.querySelector('.new-dose-group');
     if(dose)moves.push(dose.animate([{translate:'0 0'},{translate:'0 -338px'}],{duration:950,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'}).finished);
