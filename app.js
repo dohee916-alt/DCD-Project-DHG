@@ -502,8 +502,14 @@ function runArDollDrop(){
   // takes a separate tumbling route into the pile rather than radiating out
   // in the former fixed left/right fan pattern.
   const random=(min,max)=>min+Math.random()*(max-min);
+  // Final top-left targets all share one visual center. A near-horizontal
+  // tumble (rather than four radially divergent poses) reads as a small pile.
+  // Offsets introduce visible layers without spreading dolls across the floor.
   const pile=[
-    {x:91,y:619},{x:173,y:655},{x:129,y:565},{x:209,y:590}
+    {x:157,y:575,angle:-88,layer:1},
+    {x:180,y:604,angle:96,layer:3},
+    {x:166,y:622,angle:-105,layer:4},
+    {x:189,y:587,angle:77,layer:2}
   ];
   for(let i=pile.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
@@ -522,15 +528,18 @@ function runArDollDrop(){
     });
     return {
       node,x,y,
-      targetX:Math.max(48,Math.min(267,target.x+random(-22,22))),
-      targetY:Math.max(540,Math.min(692,target.y+random(-19,19))),
-      angle:random(-115,115),
-      stagger:random(0,85),
-      sway:random(-36,36),
+      targetX:target.x+random(-7,7),
+      targetY:target.y+random(-7,7),
+      angle:target.angle+random(-9,9),
+      stagger:random(0,65),
+      sway:random(-15,15),
+      layer:target.layer,
       released:false
     };
   });
 
+  // Layer ordering follows the stack, not source slot order.
+  bodies.forEach(b=>{b.node.style.zIndex=String(5+b.layer);});
   let start=null;
   function frame(now){
     if(s.page!=='arOpen')return;
