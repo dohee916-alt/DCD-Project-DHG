@@ -424,7 +424,7 @@ async function morphArBlister(){
     function step(time){
       if(s.page!=='arOpen')return;
       if(begin===null)begin=time;
-      const t=Math.min((time-begin)/1650,1);
+      const t=Math.min((time-begin)/900,1);
       // ONE progression clock for both surfaces, from intact to final; no intermediate asset.
       const p=t*t*(3-2*t);
       renderProgress(p);
