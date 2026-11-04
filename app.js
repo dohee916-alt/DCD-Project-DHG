@@ -314,7 +314,7 @@ function arPackMarkup(){
   return h+'</div>';
 }
 function arMarkup(){
-  if(s.page==='arFace')return '<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
+  if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
   let h=img(A.arBackground,0,0,428,926,'ar-orange-background')+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
   h+=arPackMarkup();
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,29,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
@@ -530,9 +530,9 @@ async function morphArBlister(){
     // Do not animate a different set of images or silently skip to a fall.
   }
 }
-function stopArCamera(){if(arCameraStream){arCameraStream.getTracks().forEach(track=>track.stop());arCameraStream=null;}arCameraReady=false;}
+function stopArCamera(){window.DCD_AR_FLOW?.stop();if(arCameraStream){arCameraStream.getTracks().forEach(track=>track.stop());arCameraStream=null;}arCameraReady=false;}
 window.addEventListener('pagehide',stopArCamera);
-function attachArCamera(){const video=stage.querySelector('.ar-camera-video');if(video&&arCameraStream){video.srcObject=arCameraStream;video.play().catch(()=>{});}}
+function attachArCamera(){const video=stage.querySelector('.ar-camera-video');if(video&&arCameraStream){video.srcObject=arCameraStream;video.play().then(()=>{if(s.page==='arFace'){window.DCD_AR_FLOW?.mount(stage,video);window.DCD_AR_FLOW?.start(video);}}).catch(error=>console.warn('[DCD AR] Camera playback:',error));}}
 function finishArIfReady(){if(s.page==='arOpen'&&arDropFinished){setPage('arFace');attachArCamera();}}
 async function askArCamera(){
   arCameraError='';
