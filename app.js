@@ -662,7 +662,21 @@ async function beginAr(){
   copyRenderedCanvases(oldScene,sceneCopy);
   oldLayer.appendChild(sceneCopy);
   sceneCopy.querySelector('.new-pack-assembly')?.remove();
+  // PRESCRIBED is a stationary foreground label through the entire handoff.
+  // Keep it independent of the fading landscape scene and replace it ONLY
+  // after the portrait turn has completely finished.
+  const originalHeading=sceneCopy.querySelector('.new-prescription-title');
+  const heldHeading=document.createElement('div');
+  heldHeading.className='dcd-ar-old-page dcd-ar-heading-holder page-'+webPage;
+  heldHeading.style.setProperty('--dcd-old-scale',String(scale));
+  if(originalHeading){
+    const headingScene=document.createElement('div');
+    headingScene.className='scene-content';
+    headingScene.appendChild(originalHeading);
+    heldHeading.appendChild(headingScene);
+  }
   wrapper.appendChild(oldLayer);
+  if(originalHeading)wrapper.appendChild(heldHeading);
   const flying=oldPack.cloneNode(true);
   flying.className='dcd-ar-flying-pack';
   copyRenderedCanvases(oldPack,flying);
@@ -670,12 +684,15 @@ async function beginAr(){
   flying.style.top=originalRect.top+'px';
   wrapper.appendChild(flying);
   document.body.appendChild(wrapper);
+  // Do not expose the ordinary blue stage or viewport background while
+  // neither the old nor the new gradient is visible.
+  const view=document.querySelector('#viewport');
+  view.classList.add('dcd-ar-warm-bridge');
   // The old landscape copy covers the newly mounted portrait AR stage.
   // On desktop the AR stage begins rotated into that same landscape viewport.
   setPage('ar');
   const nativeTransform=stage.style.transform;
   const mobile=phoneDevice();
-  const view=document.querySelector('#viewport');
   const sw=Math.min(view.clientWidth/874,view.clientHeight/428);
   if(!mobile){
     stage.style.transform='translate(-50%,-50%) rotate(-90deg) scale('+sw+')';
@@ -688,12 +705,20 @@ async function beginAr(){
     const el=stage.querySelector(selector);
     if(el)el.style.setProperty('animation','none','important');
   });
+  const incomingHeading=stage.querySelector('.ar-headline');
+  if(incomingHeading)incomingHeading.style.opacity='0';
   // Keep the portrait AR gradient invisible through blister flight and
   // desktop screen rotation; reveal only when orientation has settled.
   const incomingGradient=stage.querySelector('.ar-orange-background');
   if(incomingGradient)incomingGradient.style.opacity='0';
   const target=stage.querySelector('.ar-intact-clear')?.getBoundingClientRect();
-  if(!target){stage.style.opacity='1';stage.style.transform=nativeTransform;if(incomingGradient)incomingGradient.style.opacity='1';wrapper.remove();arHandoffActive=false;return;}
+  if(!target){
+    stage.style.opacity='1';stage.style.transform=nativeTransform;
+    if(incomingGradient)incomingGradient.style.opacity='1';
+    if(incomingHeading)incomingHeading.style.opacity='1';
+    view.classList.remove('dcd-ar-warm-bridge');
+    wrapper.remove();arHandoffActive=false;return;
+  }
   const centerX=originalRect.left+originalRect.width/2,centerY=originalRect.top+originalRect.height/2;
   const baseX=originalRect.left+185.497/2,baseY=originalRect.top+391.108/2;
   const dstX=target.left+target.width/2,dstY=target.top+target.height/2;
@@ -733,20 +758,29 @@ async function beginAr(){
         {transform:nativeTransform}
       ],{duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'}).finished;
     }
-    // The AR portrait gradient appears only AFTER the full rotation has
-    // finished (or after the pack has settled on physical mobile).
+    // The heading stays fixed in the original landscape location until the
+    // AR screen has reached portrait. Now exchange it for the AR heading.
     stage.style.transform=nativeTransform;
-    if(incomingGradient){
-      await incomingGradient.animate([{opacity:0},{opacity:1}],
-        {duration:780,easing:'ease-in-out',fill:'forwards'}).finished;
-      incomingGradient.style.opacity='1';
-    }
+    const copyOut=heldHeading.animate([{opacity:1},{opacity:0}],
+      {duration:180,easing:'ease-in-out',fill:'forwards'}).finished;
+    const titleIn=incomingHeading?incomingHeading.animate(
+      [{opacity:0},{opacity:1}],{duration:180,easing:'ease-in-out',fill:'forwards'}
+    ).finished:Promise.resolve();
+    const gradientIn=incomingGradient?incomingGradient.animate(
+      [{opacity:0},{opacity:1}],{duration:780,easing:'ease-in-out',fill:'forwards'}
+    ).finished:Promise.resolve();
+    await Promise.allSettled([copyOut,titleIn,gradientIn]);
+    if(incomingHeading)incomingHeading.style.opacity='1';
+    if(incomingGradient)incomingGradient.style.opacity='1';
   }catch(error){console.warn('[DCD] AR transition:',error);}
   finally{
     if(incomingGradient)incomingGradient.style.opacity='1';
+    if(incomingHeading)incomingHeading.style.opacity='1';
     stage.style.transform=nativeTransform;stage.style.opacity='1';
     stage.classList.remove('dcd-ar-handoff-stage');
-    wrapper.remove();arHandoffActive=false;
+    wrapper.remove();
+    view.classList.remove('dcd-ar-warm-bridge');
+    arHandoffActive=false;
     if(mobile&&window.innerWidth>window.innerHeight){
       // AR remains portrait. A physical orientation change naturally refits.
       stage.classList.add('dcd-ar-await-portrait');

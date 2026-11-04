@@ -666,3 +666,10 @@ canvas.figure{object-fit:contain!important}
 .dcd-ar-handoff-stage .ar-pack-flip,
 .dcd-ar-handoff-stage .ar-orange-background,
 .dcd-ar-handoff-stage .ar-headline{animation:none!important}
+
+/* AR handoff bridge: avoid blue fallback between the two gradients.
+   Preserve WEB15/16 and finished AR colors outside the transition. */
+#viewport.dcd-ar-warm-bridge{background:#eeb49d!important}
+#stage.dcd-ar-handoff-stage{background:#eeb49d!important}
+.dcd-ar-heading-holder{z-index:3!important;background:transparent!important;pointer-events:none}
+.dcd-ar-heading-holder .new-prescription-title{opacity:1!important}
