@@ -27,6 +27,19 @@ window.DCDMorph = (() => {
     const t=clamp((y-ROWS[i])/(ROWS[i+1]-ROWS[i]),0,1);
     return mix(profile[i],profile[i+1],t);
   }
+  // Approximate Figma Temperature -0.20 for ALL four dolls, front and back.
+  // Process cached source imagery only once; keep alpha, morphology and geometry untouched.
+  function coolDollPixels(ctx){
+    const image=ctx.getImageData(0,0,W,H);
+    const d=image.data;
+    for(let i=0;i<d.length;i+=4){
+      if(!d[i+3])continue;
+      d[i]=Math.round(d[i]*0.96);
+      d[i+1]=Math.min(255,Math.round(d[i+1]*1.01));
+      d[i+2]=Math.min(255,Math.round(d[i+2]*1.043));
+    }
+    ctx.putImageData(image,0,0);
+  }
   function source(kind,state,view){
     const key=`${kind}-${state}-${view}`;
     if(cache.has(key))return cache.get(key);
@@ -38,6 +51,7 @@ window.DCDMorph = (() => {
         const scale=Math.min(W/image.width,H/image.height);
         const w=image.width*scale,h=image.height*scale;
         ctx.drawImage(image,(W-w)/2,(H-h)/2,w,h);
+        coolDollPixels(ctx);
         const packed=window.DCD_FIGURE_BOUNDS?.[key];
         if(!packed){console.warn('[DCD] Missing figure outline',key);resolve(null);return;}
         const bytes=atob(packed),edges=new Array(H);
