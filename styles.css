@@ -587,7 +587,7 @@ canvas.figure{object-fit:contain!important}
 
 /* Real-time glass lighting is rasterized along the glyph alpha / normals,
    independently of the background. Never blur the rectangular text bounds. */
-.page-00 .poster-glass-text,.page-01 .poster-glass-text{
+.page-00 .poster-glass-text,.page-01 .poster-glass-text,.page-02 .poster-glass-text{
   z-index:5;
   overflow:visible;
   pointer-events:none;
