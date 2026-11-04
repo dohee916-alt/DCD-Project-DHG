@@ -82,12 +82,39 @@ function drawFigures(){
   });
 }
 function animateFigureValue(index,from,to,duration=530){return new Promise(resolve=>{let start=null,last=-1;function frame(t){if(start===null)start=t;let u=Math.min((t-start)/duration,1),e=u*u*(3-2*u),value=from+(to-from)*e;if(Math.abs(value-last)>.35||u===1){s.figures[index].value=value;const c=stage.querySelector('canvas.active-figure');if(c&&c.isConnected)window.DCDMorph.draw(c,s.figures[index].kind,value);last=value;}if(u<1)requestAnimationFrame(frame);else{s.figures[index].value=to;resolve();}}requestAnimationFrame(frame);});}
-function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['poster-brand.svg',109.344,422.73,212,67],['poster-new.svg',143.188,492.73,147,67],['poster-glp.svg',123.235,561.962,181,68]];return words.map(([file,x,y,w,h])=>img('assets/figma-current/hd/'+file,x,y,w,h,'poster-word')).join('');}
-function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+img('assets/figma-current/hd/poster-tagline-base.svg',64.5,858.5,299,17,'poster-tagline-svg')+img('assets/figma-current/hd/poster-tagline.svg',64.5,858.5,299,17,'poster-tagline-svg')+'<div class="lay poster-tagline-glass" '+box(64.5,858.5,299,17)+' aria-hidden="true"></div>';if(p==='00'||s.phase==='intro')h+=posterWords();
-if(p==='00'){if(s.phase!=='intro')h+=img('assets/figma-current/hd/poster-cta-base.svg',98.76,815.92,230,17,'poster-cta-svg')+img('assets/figma-current/hd/poster-cta.svg',98.76,815.92,230,17,'poster-cta-svg')+'<div class="lay poster-cta-glass" '+box(98.76,815.92,230,17)+' aria-hidden="true"></div>';h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
-else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');h+=img(A.gestureHand,-25,363,154,174,'gesture gesture-left');h+=img(A.gestureHand,288,605,154,174,'gesture gesture-right');h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
-else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
-return h;}
+function posterWords(){
+  // The four images are direct rasterizations of Figma's native layered
+  // gradient / BACKGROUND_BLUR / shadow text nodes (605:314-317).
+  // Keep their complete Figma 292x74 rectangles; don't crop glyph shadows.
+  const source='assets/figma-current/text-native/';
+  const words=[['poster-glass-the.svg',68,346],
+    ['poster-glass-brand.svg',68,414],
+    ['poster-glass-new.svg',68,484],
+    ['poster-glass-glp.svg',68,554]];
+  return words.map(([file,x,y])=>img(source+file,x,y,292,74,'poster-word')).join('');
+}
+function introMarkup(p){
+  const source='assets/figma-current/text-native/';
+  let h=img(A.opening,0,0,428,926,'poster-art poster-primary')
+    +img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')
+    +'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'
+    +img(source+'poster-easiest-base.svg',47,856,334,22,'poster-tagline-svg')
+    +img(source+'poster-easiest-glass.svg',47,856,334,22,'poster-tagline-svg');
+  if(p==='00'||s.phase==='intro')h+=posterWords();
+  if(p==='00'){
+    if(s.phase!=='intro')h+=img(source+'poster-come-base.svg',68,813,292,22,'poster-cta-svg')
+      +img(source+'poster-come-glass.svg',68,813,292,22,'poster-cta-svg');
+    h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';
+  }else if(s.phase==='guide'){
+    h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
+    h+=img(A.gestureHand,-25,363,154,174,'gesture gesture-left')
+      +img(A.gestureHand,288,605,154,174,'gesture gesture-right');
+    h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';
+  }else if(s.phase==='rupture'&&A.openingBreakVideo){
+    h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';
+  }
+  return h;
+}
 function resultMarkup(){const root='assets/figma-current/hd/';return img(A.posterResult,0,0,428,926,'poster-art poster-result-art')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+img(root+'poster-tagline-base.svg',64.5,858.5,299,17,'poster-tagline-result-svg')+img(root+'poster-tagline.svg',64.5,858.5,299,17,'poster-tagline-result-svg')+text('CLICK THE PACK TO START',26,808,376,96,'doto guide-blink poster-click-guide')+'<button class="full-hit" data-action="start" aria-label="Start"></button>';}
 function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.packClearBack,0,0,packRect[2],packRect[3],'pack pack-image pack-clear-back');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack',packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,88,141,110,85,'bottle');if(!(s.used.orange&&s.used.purple))h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label')+text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label');
 if(!f.packed)h+=canvasFigure(s.active,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h,'active-figure');h+=syringeMarkup();
