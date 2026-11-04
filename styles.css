@@ -671,3 +671,17 @@ canvas.figure{object-fit:contain!important}
 #stage.dcd-ar-handoff-stage{background:#fff!important}
 .dcd-ar-heading-holder{z-index:3!important;background:transparent!important;pointer-events:none}
 .dcd-ar-heading-holder .new-prescription-title{opacity:1!important}
+
+/* AR dolls: physically isolated underneath the intact/torn foil stack.
+   Each body keeps its original drawing and falls entirely below the viewport. */
+#stage.page-arOpen .ar-doll-drop-behind{
+  position:absolute;inset:0;z-index:1!important;
+  isolation:isolate;pointer-events:none;overflow:visible;
+}
+#stage.page-arOpen .ar-doll-drop-behind > .ar-falling-doll{
+  z-index:auto!important;opacity:1!important;
+  animation:none!important;will-change:transform;
+}
+#stage.page-arOpen .ar-pack-flip{
+  z-index:3!important;transform-style:flat!important;
+}

@@ -550,24 +550,18 @@ function runArDollDrop(){
   const slots=[[97.915,220.083],[240.590,220.083],[97.915,515.745],[240.094,515.745]];
   if(nodes.length!==4){arDropFinished=true;finishArIfReady();return;}
 
-  // Drop all four original dolls behind the torn foil, all the way to the
-  // bottom edge of the 428×926 AR canvas. Keep the landing group compact.
+  // Use a dedicated isolated layer BEHIND the entire pack/foil composite.
+  // Reparent the same rendered canvases (no cloned dolls or new assets).
+  // The floor is y=926: targets beyond 1120 guarantee complete exit.
+  const dropLayer=document.createElement('div');
+  dropLayer.className='ar-doll-drop-behind';
+  stage.insertBefore(dropLayer,stage.querySelector('.ar-pack-flip'));
   const random=(min,max)=>min+Math.random()*(max-min);
-  const pile=[
-    {x:157,y:688,angle:-88,layer:1},
-    {x:180,y:704,angle:96,layer:3},
-    {x:166,y:711,angle:-105,layer:4},
-    {x:189,y:697,angle:77,layer:2}
-  ];
-  for(let i=pile.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [pile[i],pile[j]]=[pile[j],pile[i]];
-  }
   const bodies=nodes.map((node,i)=>{
-    const [x,y]=slots[i],target=pile[i];
+    const [x,y]=slots[i];
     node.classList.remove('ar-pack-doll');
     node.classList.add('ar-falling-doll','ar-falling-'+i);
-    stage.appendChild(node);
+    dropLayer.appendChild(node);
     Object.assign(node.style,{
       left:'0px',top:'0px',width:FIGMA_PACK_DOLL.width+'px',
       height:FIGMA_PACK_DOLL.height+'px',opacity:'1',
@@ -576,38 +570,36 @@ function runArDollDrop(){
     });
     return {
       node,x,y,
-      targetX:target.x+random(-7,7),
-      targetY:target.y+random(-7,7),
-      angle:target.angle+random(-9,9),
-      stagger:random(0,65),
-      sway:random(-15,15),
-      layer:target.layer,
-      released:false
+      targetX:x+random(-85,85),
+      targetY:1130+random(0,90),
+      angle:random(-190,190),
+      stagger:i*85+random(0,40),
+      sway:random(-27,27)
     };
   });
 
-  // All released doll canvases are below the entire blister/foil stack.
-  // Their DOM order still gives a natural overlap inside that back layer.
-  bodies.forEach(b=>{b.node.style.zIndex='2';});
+  // Children stay inside the same z-index:1 stacking context throughout the
+  // entire descent. The foil's z-index:3 cannot be undercut by child z-index.
+  bodies.forEach(b=>{b.node.style.zIndex='auto';});
   let start=null;
   function frame(now){
     if(s.page!=='arOpen')return;
     if(start===null)start=now;
     const elapsed=now-start;
-    const fallDuration=1580,settleDuration=280;
+    const fallDuration=1920;
     for(const b of bodies){
       const progress=Math.max(0,Math.min(1,(elapsed-b.stagger)/(fallDuration-b.stagger)));
-      // Start behind the foil at the actual blister slot. Accelerate downward
-      // to the floor, tumble while descending, then settle briefly at the edge.
-      const fall=progress*progress*(3-2*progress);
+      // The dolls accelerate continuously from their actual blister slots
+      // until their entire silhouettes have crossed below y=926.
+      const fall=progress*progress;
       const tumble=1-Math.pow(1-progress,2);
       const x=b.x+(b.targetX-b.x)*fall+Math.sin(Math.PI*progress)*b.sway;
       const y=b.y+(b.targetY-b.y)*fall-
         Math.sin(Math.PI*progress)*10*(1-progress);
       b.node.style.transform='translate('+x+'px,'+y+'px) rotate('+(b.angle*tumble)+'deg) scale('+(1-.18*progress)+')';
     }
-    if(elapsed<fallDuration+settleDuration)arDropFrame=requestAnimationFrame(frame);
-    else{arDropFinished=true;finishArIfReady();}
+    if(elapsed<fallDuration)arDropFrame=requestAnimationFrame(frame);
+    else{dropLayer.remove();arDropFinished=true;finishArIfReady();}
   }
   arDropFrame=requestAnimationFrame(frame);
 }
