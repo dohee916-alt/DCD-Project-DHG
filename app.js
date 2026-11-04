@@ -37,7 +37,13 @@ function glassButton(label,x,y,w,action,gray=false){
   return '<button class="lay consent-button figma-glass-button'+(gray?' gray':'')+'" '+box(x-shadow,y-top,w+shadow*2,gray?60:104)+' data-action="'+action+'" aria-label="'+label+'"><img src="assets/figma/'+asset+'" draggable="false" alt=""></button>';
 }
 function arrowButton(x,y,action,kind='12'){return '<button class="lay figma-arrow" '+box(x-22,y-11,94,94)+' data-action="'+action+'" aria-label="Next"><img src="assets/figma/'+(kind==='13'?'49c33':'634cb')+'.svg" alt=""></button>';}
-function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" data-view="'+view+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+' '+view+'"></canvas>';}
+function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){
+  const packed=/(?:^| )(?:packed-figure|front-figure|consent-figure|new-pack-figure|ar-pack-doll)(?: |$)/.test(cls);
+  // Figma doll height and slot centers are authoritative. Render at the real
+  // source 346:873 aspect ratio, NEVER stretch or letterbox a narrower box.
+  if(packed){const naturalWidth=h*346/873;x+=(w-naturalWidth)/2;w=naturalWidth;}
+  return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" data-view="'+view+'"'+(packed?' data-pack-fit="1"':'')+' '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+' '+view+'"></canvas>';
+}
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
 function handGuide(){return img(A.syringeGuideCore,163,240,164,185,'syringe-guide syringe-guide-core');}
 function injectionHandGuide(){return img(A.syringeGuideCore,163,238,164,185,'syringe-guide syringe-injection-guide');}
@@ -63,7 +69,37 @@ function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
 const ropes={upper:{line:[6,20,406,596],pull:[-69,-111]},lower:{line:[8,752,406,615],pull:[90,99]}};
 function ropeAt(p){let closest=null,distance=Infinity;for(const [name,{line}] of Object.entries(ropes)){let [x1,y1,x2,y2]=line,t=clamp(((p.x-x1)*(x2-x1)+(p.y-y1)*(y2-y1))/((x2-x1)**2+(y2-y1)**2),0,1),d=Math.hypot(p.x-(x1+t*(x2-x1)),p.y-(y1+t*(y2-y1)));if(d<distance){closest=name;distance=d;}}return distance<=55?closest:null;}
 function pullDistance(g,p){let [dx,dy]=ropes[g.rope].pull,len=Math.hypot(dx,dy);return ((p.x-g.start.x)*dx+(p.y-g.start.y)*dy)/len;}
-function drawFigures(){stage.querySelectorAll('canvas[data-figure]').forEach(c=>{let i=+c.dataset.figure;window.DCDMorph.draw(c,s.figures[i].kind,s.figures[i].value,c.dataset.view||'front');});}
+function fitPackedDollPixels(c){
+  if(!c?.isConnected||c.dataset.packFit!=='1')return;
+  const width=c.width,height=c.height,ctx=c.getContext('2d',{willReadFrequently:true});
+  const data=ctx.getImageData(0,0,width,height).data;
+  let left=width,top=height,right=-1,bottom=-1;
+  // The morph PNGs have transparent padding. Match the VISIBLE Figma doll
+  // silhouette to the Figma frame, retaining its native body proportions.
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    if(data[(y*width+x)*4+3]<24)continue;
+    if(x<left)left=x;if(x>right)right=x;
+    if(y<top)top=y;if(y>bottom)bottom=y;
+  }
+  if(right<left||bottom<top)return;
+  const source=document.createElement('canvas');
+  source.width=width;source.height=height;
+  source.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(data),width,height),0,0);
+  const sourceW=right-left+1,sourceH=bottom-top+1;
+  const scale=Math.min(width*.92/sourceW,height*.985/sourceH);
+  const targetW=sourceW*scale,targetH=sourceH*scale;
+  ctx.clearRect(0,0,width,height);
+  ctx.drawImage(source,left,top,sourceW,sourceH,
+    (width-targetW)/2,(height-targetH)/2,targetW,targetH);
+}
+function drawFigures(){
+  stage.querySelectorAll('canvas[data-figure]').forEach(c=>{
+    const i=+c.dataset.figure;
+    window.DCDMorph.draw(c,s.figures[i].kind,s.figures[i].value,c.dataset.view||'front')
+      .then(()=>fitPackedDollPixels(c))
+      .catch(error=>console.warn('[DCD] Doll drawing failed',error));
+  });
+}
 function animateFigureValue(index,from,to,duration=530){return new Promise(resolve=>{let start=null,last=-1;function frame(t){if(start===null)start=t;let u=Math.min((t-start)/duration,1),e=u*u*(3-2*u),value=from+(to-from)*e;if(Math.abs(value-last)>.35||u===1){s.figures[index].value=value;const c=stage.querySelector('canvas.active-figure');if(c&&c.isConnected)window.DCDMorph.draw(c,s.figures[index].kind,value);last=value;}if(u<1)requestAnimationFrame(frame);else{s.figures[index].value=to;resolve();}}requestAnimationFrame(frame);});}
 function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['poster-brand.svg',109.344,422.73,212,67],['poster-new.svg',143.188,492.73,147,67],['poster-glp.svg',123.235,561.962,181,68]];return words.map(([file,x,y,w,h])=>img('assets/figma-current/hd/'+file,x,y,w,h,'poster-word')).join('');}
 function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+img('assets/figma-current/hd/poster-tagline-base.svg',64.5,858.5,299,17,'poster-tagline-svg')+img('assets/figma-current/hd/poster-tagline.svg',64.5,858.5,299,17,'poster-tagline-svg');if(p==='00'||s.phase==='intro')h+=posterWords();
