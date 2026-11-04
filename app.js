@@ -855,11 +855,14 @@ async function advanceNewPrescription(){
   s.phase='transition';stage.querySelector('.new-ui-button')?.setAttribute('disabled','');
   const content=stage.querySelector('.new-flow-content');
   const moves=[];
-  // Keep prescription headings and checklist at their Figma coordinates across 12→13.
-  // Moving the whole content -310px made the page jump upward before the next screen.
+  // 12→13 keeps the checklist in place. On 13→14, the entire side-effect
+  // section exits upward together with the dose rising from the bottom
+  // into its final top position. Render signature only AFTER both finish.
   if(from==='13'){
     const dose=stage.querySelector('.new-dose-group');
-    if(dose)moves.push(dose.animate([{translate:'0 0'},{translate:'0 -338px'}],{duration:950,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'}).finished);
+    const timing={duration:950,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'};
+    if(content)moves.push(content.animate([{translate:'0 0'},{translate:'0 -310px'}],timing).finished);
+    if(dose)moves.push(dose.animate([{translate:'0 0'},{translate:'0 -338px'}],timing).finished);
   }
   await Promise.allSettled(moves);
   if(s.page!==from)return;

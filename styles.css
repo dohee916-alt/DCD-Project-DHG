@@ -620,3 +620,18 @@ canvas.figure{object-fit:contain!important}
 .page-03 .workbench-pack.with-pack-shadow .workbench-native-export{
   filter:drop-shadow(2px 2px 4px rgba(0,0,0,.25))!important;
 }
+
+/* WEB13 → WEB14: side-effect list and dose finish moving before
+   the signature is mounted. Reveal the signature only on the arrival screen. */
+@keyframes dcdSignatureArrival{from{opacity:0}to{opacity:1}}
+@keyframes dcdSignatureSampleArrival{from{opacity:0}to{opacity:.4}}
+.page-14 .new-signature-canvas,
+.page-14 .new-signature-ink,
+.page-14 .new-signature-trace,
+.page-14 .new-signature-guide,
+.page-14 .new-ui-button[data-action="next"]{
+  animation:dcdSignatureArrival .38s ease-out both;
+}
+.page-14 .new-signature-sample{
+  animation:dcdSignatureSampleArrival .38s ease-out both;
+}
