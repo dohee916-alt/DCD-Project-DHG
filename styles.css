@@ -593,3 +593,19 @@ canvas.figure{object-fit:contain!important}
 .page-01 .poster-glass-source{
   filter:url(#dcd-poster-glass-light);
 }
+
+/* Current try-OOD title Figma BACKGROUND_BLUR radius 9: mask backdrop
+   by the exact original text SVG alpha, leaving size and SVG fill intact. */
+.page-00 .poster-word-backdrop,
+.page-01 .poster-word-backdrop{
+  z-index:3;
+  pointer-events:none;
+  -webkit-backdrop-filter:blur(9px);
+  backdrop-filter:blur(9px);
+  -webkit-mask-image:var(--word-glass-mask);
+  mask-image:var(--word-glass-mask);
+  -webkit-mask-repeat:no-repeat;
+  mask-repeat:no-repeat;
+  -webkit-mask-size:100% 100%;
+  mask-size:100% 100%;
+}
