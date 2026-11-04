@@ -348,7 +348,7 @@
 .new-orange-tint::before{content:"";position:absolute;inset:0;background:#d83a00;mix-blend-mode:hard-light;pointer-events:none}
 .page-15 .new-orange-tint{animation:newTintIn 1s ease-out both}
 .page-16 .new-orange-tint{opacity:.85}
-.new-consent-copy{color:#000;font-size:26px;line-height:32px}
+.new-consent-copy{color:#000;font-family:'Source Sans 3',Arial,sans-serif;font-size:26px;font-weight:700;line-height:32px;letter-spacing:0;text-align:center}
 .new-signature-guide{font-size:10px!important;line-height:12px!important;font-weight:900!important}
 .new-signature-trace{z-index:6;pointer-events:none;opacity:.95}
 .new-signature-trace path{animation:signatureTraceTravel 1.6s linear infinite}
