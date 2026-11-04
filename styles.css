@@ -606,3 +606,13 @@ canvas.figure{object-fit:contain!important}
 .poster-glass-text .poster-glass-canvas.figma-glass-ready{
   opacity:1;
 }
+
+/* WEB04 actual visible pack (Figma image 85): Temperature -0.12.
+   Color-grade only original image pixels. This does not resample, translate,
+   rotate, resize, replace, or alter the transparency of the source PNG. */
+.page-workbench .workbench-pack .pack-clear-back{
+  filter:url(#dcd-web04-temp-minus012)!important;
+}
+.page-workbench .workbench-pack.with-pack-shadow .pack-clear-back{
+  filter:url(#dcd-web04-temp-minus012) drop-shadow(2px 2px 4px rgba(0,0,0,.25))!important;
+}
