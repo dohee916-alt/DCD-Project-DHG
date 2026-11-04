@@ -41,10 +41,8 @@ function arrowButton(x,y,action,kind='12'){return '<button class="lay figma-arro
 // 328.4825 x 693.1656 pack. Every other pack uses this same scale ratio.
 const FIGMA_PACK_DOLL={width:89.829887,height:252.060196,packW:328.48249,packH:693.165607};
 function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){
-  const packed=/(?:^| )(?:packed-figure|front-figure|consent-figure|new-pack-figure|ar-pack-doll)(?: |$)/.test(cls);
-  // Use only uniform scaling. The intrinsic image has 346:873 proportions.
-  // The slot gives the center, while its height determines body dimensions.
-  if(packed){const naturalWidth=h*346/873;x+=(w-naturalWidth)/2;w=naturalWidth;}
+  // Figma already fixes the visible doll rectangle. Do not recalculate its
+  // width from the 346x873 source canvas or alter its location.
   return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" data-view="'+view+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+' '+view+'"></canvas>';
 }
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
@@ -54,8 +52,9 @@ function packHandGuide(){return img(A.syringeGuideCore,302,153,164,185,'pack-gui
 function horizontalFigure(i,x,y,w,h,cls='',view='back'){
   // The WEB04 pack is the same foil rotated 90 degrees; derive the doll
   // long axis from the foil scale rather than separately sizing the doll.
-  const long=Math.min(w,FIGMA_PACK_DOLL.height*(packRect[2]/FIGMA_PACK_DOLL.packH));
-  const short=long*346/873;
+  const ratio=packRect[2]/FIGMA_PACK_DOLL.packH;
+  const long=FIGMA_PACK_DOLL.height*ratio;
+  const short=FIGMA_PACK_DOLL.width*ratio;
   return canvasFigure(i,x+w/2-short/2,y+h/2-long/2,short,long,cls,-90,view);
 }
 function syringeMarkup(cls=''){
@@ -159,15 +158,22 @@ function consentMarkup(){
   return h;
 }
 function newPackMarkup(){
-  // Scale the approved AR packed-doll proportions with this smaller pack:
-  // 193px foil width vs 328.48249px AR foil width. Keep slot centers fixed.
-  const scale=193/FIGMA_PACK_DOLL.packW;
-  const dollH=FIGMA_PACK_DOLL.height*scale,dollW=FIGMA_PACK_DOLL.width*scale;
-  const centers=[[53,112],[132,112],[53,276],[132,276]],order=[0,2,3,1];
-  const figureSlots=centers.map(([cx,cy])=>[cx-dollW/2,cy-dollH/2,dollW,dollH]);
-  let inside=img(A.arPackBack,-4,-19,193,429,'new-pack-layer new-pack-vertical new-pack-foil');
-  inside+=figureSlots.map((q,i)=>canvasFigure(order[i],...q,'new-pack-figure')).join('');
-  inside+=img(A.arPackClear,-6,-20,196,431,'new-pack-layer new-pack-vertical new-pack-clear');
+  // Scale exactly the approved AR pack assembly: Figma foil, four doll centers
+  // and doll rectangles. The foil's 193px width is the only scale input.
+  const ratio=193/FIGMA_PACK_DOLL.packW;
+  const foil={x:-4,y:-19,w:193,h:429};
+  const referenceFoil={x:50.5,y:150.363,w:FIGMA_PACK_DOLL.packW,h:FIGMA_PACK_DOLL.packH};
+  const refSlots=[[97.915,220.083],[240.590,220.083],[97.915,515.745],[240.094,515.745]];
+  const order=[0,2,3,1];
+  const scaledHeight=referenceFoil.h*ratio;
+  const topInset=(foil.h-scaledHeight)/2;
+  const inside=img(A.arPackBack,foil.x,foil.y,foil.w,foil.h,'new-pack-layer new-pack-vertical new-pack-foil')
+    +refSlots.map(([x,y],i)=>canvasFigure(order[i],
+      foil.x+(x-referenceFoil.x)*ratio,
+      foil.y+topInset+(y-referenceFoil.y)*ratio,
+      FIGMA_PACK_DOLL.width*ratio,FIGMA_PACK_DOLL.height*ratio,
+      'new-pack-figure')).join('')
+    +img(A.arPackClear,-6,-20,196,431,'new-pack-layer new-pack-vertical new-pack-clear');
   return group(208,21,185,391,'new-pack-assembly',inside);
 }
 function newTicker(x,reverse=false){
