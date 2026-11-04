@@ -635,3 +635,24 @@ canvas.figure{object-fit:contain!important}
 .page-14 .new-signature-sample{
   animation:dcdSignatureSampleArrival .38s ease-out both;
 }
+
+/* WEB09→WEB12 cinematic handoff. Leave the original foil, dolls, and
+   prescription layouts untouched; only increase the final ejection acceleration. */
+@keyframes packExtrudeFigma{
+  0%{translate:0 0}
+  40%{translate:40px 0}
+  66%{translate:78px 0}
+  80%{translate:114px 0}
+  91%{translate:168px 0}
+  100%{translate:270px 0}
+}
+.pack-flight-next,
+.pack-flight-overlay{
+  position:absolute;left:0;top:0;width:926px;height:428px;
+  pointer-events:none;
+}
+.pack-flight-next{z-index:18;opacity:0;}
+.pack-flight-overlay{z-index:25;perspective:1100px;transform-style:preserve-3d;}
+.pack-flight-rear{z-index:1;object-fit:contain!important;transform-origin:center center;will-change:transform,opacity;backface-visibility:hidden;}
+.pack-flight-front{position:absolute;inset:0;z-index:2;transform-origin:300.75px 216.55px;will-change:transform,opacity;backface-visibility:hidden;transform-style:preserve-3d;opacity:0;}
+.pack-flight-front .new-pack-assembly{pointer-events:none;}

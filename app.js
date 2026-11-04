@@ -641,28 +641,105 @@ if(packHand){
 }if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
 function finishRupture(){if(s.page==='01'&&s.phase==='rupture'){videoEnded=true;setPage('02');}}
 function runIntro(p){setPage(p,'intro');later(()=>{if(s.page===p&&s.phase==='intro'){s.phase=p==='00'?'loop':'guide';render();}},M.introMs);}
+async function animatePackIntoPrescription(){
+  // The same WEB09 foil remains on screen at the ejection endpoint (277,121).
+  // Only the transitional overlay is new. All original art and WEB12 geometry
+  // stay unchanged; the pack contents remain the four saved figure canvases.
+  if(s.page!=='11')return;
+  const root=stage.querySelector('.scene-content'),rear=root?.querySelector('.ejecting-pack');
+  if(!root||!rear){if(s.page==='11')setPage('12');return;}
+  const next=document.createElement('div');
+  next.className='pack-flight-next';
+  next.innerHTML=newPrescriptionMarkup('12');
+  // The front face is animated separately so it does not appear twice.
+  const duplicatePack=next.querySelector('.new-pack-assembly');
+  if(duplicatePack)duplicatePack.style.visibility='hidden';
+
+  const flight=document.createElement('div');
+  flight.className='pack-flight-overlay';
+  const front=document.createElement('div');
+  front.className='pack-flight-front';
+  front.innerHTML=newPackMarkup();
+  flight.appendChild(front);
+  root.appendChild(next);
+  root.appendChild(flight);
+  // Stop the finished CSS ejection without rebuilding the existing foil image.
+  rear.classList.remove('ejecting-pack');
+  rear.classList.add('pack-flight-rear');
+  rear.style.left='277px';
+  rear.style.top='121px';
+  rear.style.translate='none';
+  rear.style.transform='none';
+  rear.style.animation='none';
+  flight.appendChild(rear);
+  // Render the SAME saved doll states on the new front face before it flips in.
+  const figures=[...front.querySelectorAll('canvas[data-figure]')];
+  await Promise.all(figures.map(c=>{
+    const item=s.figures[+c.dataset.figure];
+    return window.DCDMorph.draw(c,item.kind,item.value,c.dataset.view||'front');
+  }));
+  if(s.page!=='11')return;
+
+  const D=1580;
+  const timing={duration:D,easing:'linear',fill:'forwards'};
+  const rearMotion=rear.animate([
+    {offset:0,transform:'perspective(1100px) translate3d(0,0,0) rotateZ(0deg) rotateY(0deg) scale(1)',opacity:1},
+    {offset:.18,transform:'perspective(1100px) translate3d(12px,-3px,0) rotateZ(-5deg) rotateY(3deg) scale(1.25)',opacity:1},
+    {offset:.39,transform:'perspective(1100px) translate3d(30px,-6px,0) rotateZ(-13deg) rotateY(15deg) scale(1.95)',opacity:1},
+    {offset:.56,transform:'perspective(1100px) translate3d(10px,0,0) rotateZ(-31deg) rotateY(88deg) scale(2.75)',opacity:0},
+    {offset:1,transform:'perspective(1100px) translate3d(10px,0,0) rotateZ(-31deg) rotateY(88deg) scale(2.75)',opacity:0}
+  ],timing);
+  const frontMotion=front.animate([
+    {offset:0,transform:'perspective(1100px) translate(177px,0) rotateZ(-90deg) rotateY(-87deg) scale(2.65)',opacity:0},
+    {offset:.47,transform:'perspective(1100px) translate(177px,0) rotateZ(-90deg) rotateY(-87deg) scale(2.65)',opacity:0},
+    {offset:.58,transform:'perspective(1100px) translate(177px,0) rotateZ(-82deg) rotateY(-10deg) scale(2.72)',opacity:1},
+    {offset:.70,transform:'perspective(1100px) translate(126px,-6px) rotateZ(-44deg) rotateY(0deg) scale(2.1)',opacity:1},
+    {offset:.87,transform:'perspective(1100px) translate(-4px,9px) rotateZ(3deg) rotateY(0deg) scale(.94)',opacity:1},
+    {offset:.94,transform:'perspective(1100px) translate(0,-3px) rotateZ(-1deg) rotateY(0deg) scale(1.025)',opacity:1},
+    {offset:1,transform:'perspective(1100px) translate(0,0) rotateZ(0deg) rotateY(0deg) scale(1)',opacity:1}
+  ],timing);
+  const nextMotion=next.animate([
+    {offset:0,opacity:0},
+    {offset:.30,opacity:0},
+    {offset:.69,opacity:1},
+    {offset:1,opacity:1}
+  ],timing);
+  await Promise.allSettled([rearMotion.finished,frontMotion.finished,nextMotion.finished]);
+  if(s.page==='11')setPage('12');
+}
 async function beginPacking(){
-  // Keep the WEB04 pack and its four dolls in the same DOM group until it exits.
+  // Keep WEB04 contents alive until they slide into the packaging machine.
   render();s.page='08a';s.phase='sliding';save();stage.className='stage page-08a phase-sliding';
   const pack=stage.querySelector('.workbench-pack');
-  if(pack){await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  if(pack){
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const slide=pack.animate([{translate:'0px 0px'},{translate:'380px 0px'}],{duration:1080,easing:'linear',fill:'forwards'});
     await slide.finished.catch(()=>{});
   }
   if(s.page!=='08a')return;
-      setPage('09');later(()=>{if(s.page==='09'){
-        // Do not rebuild the foil pack: keep the 2.32s ejection animation continuous.
-        s.page='10';save();stage.className='stage page-10 phase-ready';
-      }
-        later(()=>{if(s.page==='10'){
-          s.page='11';save();stage.className='stage page-11 phase-ready';
-          const label=stage.querySelector('.wave');if(label){label.innerHTML=waveText('!!');label.style.left='530px';label.style.top='206px';label.style.width='292px';}
-        }
-          later(()=>{if(s.page==='11'){
-            later(()=>{if(s.page==='11')setPage('12');},620);
-          }},380);
-        },850);
-      },1130);
+  setPage('09');
+  // Wait for the foil's actual final ejection frame; do not pause on WEB11.
+  const foil=stage.querySelector('.ejecting-pack');
+  const ejected=new Promise(resolve=>{
+    if(!foil){resolve();return;}
+    let done=false;
+    const finish=()=>{if(done)return;done=true;resolve();};
+    foil.addEventListener('animationend',e=>{
+      if(e.target===foil&&e.animationName==='packExtrudeFigma')finish();
+    });
+    // Browser animationend may be suppressed by background-tab throttling.
+    setTimeout(finish,2370);
+  });
+  await new Promise(resolve=>later(resolve,1130));
+  if(s.page!=='09')return;
+  s.page='10';save();stage.className='stage page-10 phase-ready';
+  await new Promise(resolve=>later(resolve,850));
+  if(s.page!=='10')return;
+  s.page='11';save();stage.className='stage page-11 phase-ready';
+  const label=stage.querySelector('.wave');
+  if(label){label.innerHTML=waveText('!!');label.style.left='530px';label.style.top='206px';label.style.width='292px';}
+  await ejected;
+  if(s.page==='11')await animatePackIntoPrescription();
 }
 
 const bottleCore={purple:{x:125,y:86},orange:{x:124,y:187}};
