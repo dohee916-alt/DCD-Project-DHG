@@ -87,14 +87,32 @@ function animateFigureValue(index,from,to,duration=530){return new Promise(resol
 // so the important live effect is directional specular light on glyph edges.
 // SVG alpha-lighting retains the exact existing font metrics and SVG paths.
 function openingGlassFilter(){
-  return '<svg class="poster-glass-filter-defs" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true">'
-    +'<defs><filter id="dcd-poster-glass-light" x="-12%" y="-60%" width="124%" height="220%" color-interpolation-filters="sRGB">'
-    +'<feGaussianBlur in="SourceAlpha" stdDeviation="0.7" result="dcd-surface"/>'
-    +'<feSpecularLighting in="dcd-surface" surfaceScale="2" specularConstant="0.8" specularExponent="16" lighting-color="white" result="dcd-specular">'
-    +'<feDistantLight azimuth="135" elevation="60"/></feSpecularLighting>'
-    +'<feComposite in="dcd-specular" in2="SourceAlpha" operator="in" result="dcd-clipped-light"/>'
-    +'<feComponentTransfer in="dcd-clipped-light" result="dcd-soft-light"><feFuncA type="linear" slope="0.45"/></feComponentTransfer>'
-    +'<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="dcd-soft-light"/></feMerge>'
+  // Figma GLASS on the two footer text layers: refraction=0, depth=1,
+  // dispersion=0, frost=0, splay=0, angle=-45deg, light intensity=.8.
+  // There is no refraction map when refraction=0. Calculate normals from
+  // actual glyph alpha and shade the *inside* of the characters.
+  return '<svg class="poster-glass-filter-defs" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true"><defs>'
+    +'<filter id="dcd-poster-glass-light" x="-8%" y="-55%" width="116%" height="210%" color-interpolation-filters="sRGB">'
+    // Inner edge surface with a 1-pixel feather. This is the shape's normal
+    // field; unlike a drop shadow, it changes with every glyph contour.
+    +'<feGaussianBlur in="SourceAlpha" stdDeviation="0.65" result="glass-height"/>'
+    +'<feSpecularLighting in="glass-height" surfaceScale="2.2" specularConstant=".8" specularExponent="18" lighting-color="#ffffff" result="glass-specular">'
+    +'<feDistantLight azimuth="135" elevation="55"/></feSpecularLighting>'
+    +'<feComposite in="glass-specular" in2="SourceAlpha" operator="in" result="glass-glint"/>'
+    +'<feComponentTransfer in="glass-glint" result="glass-glint-strength"><feFuncA type="linear" slope=".64"/></feComponentTransfer>'
+    // Directional glass inner shadow: shifted SourceAlpha removed from the
+    // original silhouette. It always remains inside the actual glyph.
+    +'<feOffset in="SourceAlpha" dx="0.85" dy="0.85" result="glass-offset"/>'
+    +'<feComposite in="SourceAlpha" in2="glass-offset" operator="out" result="glass-inner-edge"/>'
+    +'<feGaussianBlur in="glass-inner-edge" stdDeviation=".55" result="glass-edge-soft"/>'
+    +'<feFlood flood-color="#783421" flood-opacity=".23" result="glass-edge-tone"/>'
+    +'<feComposite in="glass-edge-tone" in2="glass-edge-soft" operator="in" result="glass-inner-shadow"/>'
+    // Opposite edge catches a fine highlight at Figma -45deg.
+    +'<feOffset in="SourceAlpha" dx="-0.8" dy="-0.8" result="glass-opposite-offset"/>'
+    +'<feComposite in="SourceAlpha" in2="glass-opposite-offset" operator="out" result="glass-highlight-edge"/>'
+    +'<feFlood flood-color="#fff7ed" flood-opacity=".28" result="glass-highlight-color"/>'
+    +'<feComposite in="glass-highlight-color" in2="glass-highlight-edge" operator="in" result="glass-inner-highlight"/>'
+    +'<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="glass-inner-shadow"/><feMergeNode in="glass-glint-strength"/><feMergeNode in="glass-inner-highlight"/></feMerge>'
     +'</filter></defs></svg>';
 }
 function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['poster-brand.svg',109.344,422.73,212,67],['poster-new.svg',143.188,492.73,147,67],['poster-glp.svg',123.235,561.962,181,68]];return words.map(([file,x,y,w,h])=>img('assets/figma-current/hd/'+file,x,y,w,h,'poster-word')).join('');}
