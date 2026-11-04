@@ -230,7 +230,7 @@ function newPrescriptionMarkup(page=s.page){
   h+=newPackMarkup();
   h+=text(page==='15'||page==='16'?'>> PRESCRIBED':'>> PRESCRIPTION',93,21,25,291,'new-prescription-title');
   h+=text('DCD<br>LAB',99,374,79,25,'new-brand-name');
-  h+=newTicker(475)+newTicker(791,true);
+  if(!consent)h+=newTicker(475)+newTicker(791,true);
   const doseY=page==='16'?41:page==='15'?44:sign?43:381;
   const doseClass='new-dose-group'+(page==='13'?' side-dose':'');
   h+=group(539,doseY,213,18,doseClass,text('SUM OF APPLIED GLP-1 : '+dose,0,0,213,18,'new-prescription-dose'));
