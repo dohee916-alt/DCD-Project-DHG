@@ -2,6 +2,9 @@
    Transform complete image rows around a fixed center, without slicing limbs. */
 window.DCDMorph = (() => {
   const W=346,H=873,CX=W/2,cache=new Map(),pending=new WeakMap();
+  // Blend facial pixels continuously between the two adjacent body references.
+  // Keep the face intact to the jaw, then feather into the existing body morph.
+  const FACE_SOLID_END=174,FACE_BLEND_END=264;
   const ROWS=[0,58,109,148,173,202,237,269,307,344,380,417,460,504,557,622,690,755,820,872];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const mix=(a,b,t)=>a+(b-a)*t;
@@ -60,13 +63,44 @@ window.DCDMorph = (() => {
           edges[y]=[bytes.charCodeAt(i)|(bytes.charCodeAt(i+1)<<8),
             bytes.charCodeAt(i+2)|(bytes.charCodeAt(i+3)<<8)];
         }
-        resolve({canvas:c,profile:widthProfile(edges)});
+        resolve({
+          canvas:c,
+          profile:widthProfile(edges),
+          facePixels:ctx.getImageData(0,0,W,FACE_BLEND_END).data
+        });
       };
       image.onerror=()=>{console.warn('[DCD] Figure image missing',key);resolve(null);};
       image.src=window.DCD_ASSETS.figure(kind,state,view);
     });
     cache.set(key,promise);
     return promise;
+  }
+  function blendFace(ctx,a,b,t){
+    // At a reference frame the existing full-size source should remain exact.
+    if(t<=0||t>=1)return;
+    const out=ctx.getImageData(0,0,W,FACE_BLEND_END);
+    const dst=out.data,low=a.facePixels,high=b.facePixels;
+    for(let y=0;y<FACE_BLEND_END;y++){
+      const fade=clamp((FACE_BLEND_END-y)/(FACE_BLEND_END-FACE_SOLID_END),0,1);
+      const mask=fade*fade*(3-2*fade);
+      if(mask<=0)continue;
+      const begin=y*W*4,end=begin+W*4;
+      for(let i=begin;i<end;i+=4){
+        const a0=low[i+3]/255,a1=high[i+3]/255,body=dst[i+3]/255;
+        const faceAlpha=mix(a0,a1,t),newAlpha=mix(body,faceAlpha,mask);
+        if(newAlpha<1/255){
+          dst[i]=dst[i+1]=dst[i+2]=dst[i+3]=0;
+          continue;
+        }
+        for(let c=0;c<3;c++){
+          const facePremul=mix(low[i+c]*a0,high[i+c]*a1,t);
+          const bodyPremul=dst[i+c]*body;
+          dst[i+c]=Math.round(mix(bodyPremul,facePremul,mask)/newAlpha);
+        }
+        dst[i+3]=Math.round(newAlpha*255);
+      }
+    }
+    ctx.putImageData(out,0,0);
   }
   async function draw(canvas,kind,value,view='front'){
     if(!canvas)return;
@@ -79,7 +113,7 @@ window.DCDMorph = (() => {
     ]);
     if(!a||!b||!from||!canvas.isConnected||pending.get(canvas)!==request)return;
     if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
-    const ctx=canvas.getContext('2d');
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
     ctx.clearRect(0,0,W,H);
     ctx.globalAlpha=1;
     ctx.globalCompositeOperation='source-over';
@@ -103,6 +137,10 @@ window.DCDMorph = (() => {
       // silhouette segment. The center stays fixed, so edges cannot tear.
       ctx.drawImage(from.canvas,0,y,W,1,CX*(1-stretch),y,W*stretch,1);
     }
+    // The body still uses the approved row-width morph. Unlike the previous
+    // nearest-reference snap, facial pixels blend smoothly over each interval,
+    // including the 16.7/50/83.3 changeover points.
+    blendFace(ctx,a,b,t);
   }
   function drawVisible(root=document){
     root.querySelectorAll('canvas[data-figure]').forEach(c=>
