@@ -2,9 +2,10 @@
    Transform complete image rows around a fixed center, without slicing limbs. */
 window.DCDMorph = (() => {
   const W=346,H=873,CX=W/2,cache=new Map(),pending=new WeakMap();
-  // Blend facial pixels continuously between the two adjacent body references.
-  // Keep the face intact to the jaw, then feather into the existing body morph.
-  const FACE_SOLID_END=174,FACE_BLEND_END=264;
+  // A single stable facial texture per doll prevents doubled eyes, ears and hair.
+  // Head width follows the continuous body-state silhouette, with a soft neck seam.
+  const FACE_SOLID_END=175,FACE_BLEND_END=247;
+  const FACE_REFERENCE=[3,1,2,3];
   const ROWS=[0,58,109,148,173,202,237,269,307,344,380,417,460,504,557,622,690,755,820,872];
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const mix=(a,b,t)=>a+(b-a)*t;
@@ -75,32 +76,41 @@ window.DCDMorph = (() => {
     cache.set(key,promise);
     return promise;
   }
-  function blendFace(ctx,a,b,t){
-    // At a reference frame the existing full-size source should remain exact.
-    if(t<=0||t>=1)return;
-    const out=ctx.getImageData(0,0,W,FACE_BLEND_END);
-    const dst=out.data,low=a.facePixels,high=b.facePixels;
+  function morphStableFace(ctx,reference,low,high,t){
+    // Warp one sharp facial source toward the continuously interpolated
+    // silhouette width. Do NOT crossfade separate facial photographs:
+    // their displaced facial landmarks create the reported double-image ghost.
+    const face=document.createElement('canvas');
+    face.width=W;face.height=FACE_BLEND_END;
+    const fctx=face.getContext('2d',{willReadFrequently:true});
+    fctx.imageSmoothingEnabled=true;
+    fctx.imageSmoothingQuality='high';
     for(let y=0;y<FACE_BLEND_END;y++){
-      const fade=clamp((FACE_BLEND_END-y)/(FACE_BLEND_END-FACE_SOLID_END),0,1);
-      const mask=fade*fade*(3-2*fade);
-      if(mask<=0)continue;
+      const target=mix(widthAt(low.profile,y),widthAt(high.profile,y),t);
+      const base=widthAt(reference.profile,y);
+      const stretch=clamp(target/Math.max(1,base),.75,1.30);
+      fctx.drawImage(reference.canvas,0,y,W,1,CX*(1-stretch),y,W*stretch,1);
+    }
+    const body=ctx.getImageData(0,0,W,FACE_BLEND_END);
+    const facePixels=fctx.getImageData(0,0,W,FACE_BLEND_END).data;
+    const dst=body.data;
+    for(let y=0;y<FACE_BLEND_END;y++){
+      const u=clamp((FACE_BLEND_END-y)/(FACE_BLEND_END-FACE_SOLID_END),0,1);
+      const mask=u*u*(3-2*u);
       const begin=y*W*4,end=begin+W*4;
       for(let i=begin;i<end;i+=4){
-        const a0=low[i+3]/255,a1=high[i+3]/255,body=dst[i+3]/255;
-        const faceAlpha=mix(a0,a1,t),newAlpha=mix(body,faceAlpha,mask);
-        if(newAlpha<1/255){
-          dst[i]=dst[i+1]=dst[i+2]=dst[i+3]=0;
-          continue;
+        const fa=facePixels[i+3]/255,ba=dst[i+3]/255;
+        const alpha=mix(ba,fa,mask);
+        if(alpha<1/255){dst[i]=dst[i+1]=dst[i+2]=dst[i+3]=0;continue;}
+        for(let ch=0;ch<3;ch++){
+          const b=dst[i+ch]*ba;
+          const f=facePixels[i+ch]*fa;
+          dst[i+ch]=Math.round(mix(b,f,mask)/alpha);
         }
-        for(let c=0;c<3;c++){
-          const facePremul=mix(low[i+c]*a0,high[i+c]*a1,t);
-          const bodyPremul=dst[i+c]*body;
-          dst[i+c]=Math.round(mix(bodyPremul,facePremul,mask)/newAlpha);
-        }
-        dst[i+3]=Math.round(newAlpha*255);
+        dst[i+3]=Math.round(alpha*255);
       }
     }
-    ctx.putImageData(out,0,0);
+    ctx.putImageData(body,0,0);
   }
   async function draw(canvas,kind,value,view='front'){
     if(!canvas)return;
@@ -108,10 +118,12 @@ window.DCDMorph = (() => {
     pending.set(canvas,request);
     const p=clamp(value,0,100)*3/100,lo=Math.floor(p),
       hi=Math.min(3,Math.ceil(p)),t=p-lo,nearest=Math.round(p);
-    const [a,b,from]=await Promise.all([
-      source(kind,lo,view),source(kind,hi,view),source(kind,nearest,view)
+    const [a,b,from,stableFace]=await Promise.all([
+      source(kind,lo,view),source(kind,hi,view),
+      source(kind,nearest,view),
+      source(kind,FACE_REFERENCE[kind-1]??1,view)
     ]);
-    if(!a||!b||!from||!canvas.isConnected||pending.get(canvas)!==request)return;
+    if(!a||!b||!from||!stableFace||!canvas.isConnected||pending.get(canvas)!==request)return;
     if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
     ctx.clearRect(0,0,W,H);
@@ -120,9 +132,11 @@ window.DCDMorph = (() => {
     ctx.imageSmoothingEnabled=true;
     ctx.imageSmoothingQuality='high';
 
-    // At reference states show the reference image pixel-for-pixel.
+    // Reference body frames stay exact; only the face uses the fixed
+    // sharp donor to avoid popping when the nearest image changes.
     if(Math.abs(p-nearest)<.00001){
       ctx.drawImage(from.canvas,0,0);
+      morphStableFace(ctx,stableFace,a,b,t);
       return;
     }
     for(let y=0;y<H;y++){
@@ -137,10 +151,9 @@ window.DCDMorph = (() => {
       // silhouette segment. The center stays fixed, so edges cannot tear.
       ctx.drawImage(from.canvas,0,y,W,1,CX*(1-stretch),y,W*stretch,1);
     }
-    // The body still uses the approved row-width morph. Unlike the previous
-    // nearest-reference snap, facial pixels blend smoothly over each interval,
-    // including the 16.7/50/83.3 changeover points.
-    blendFace(ctx,a,b,t);
+    // Keep the body row morph, but render a SINGLE geometrically warped face.
+    // No transparency crossfade between displaced facial features.
+    morphStableFace(ctx,stableFace,a,b,t);
   }
   function drawVisible(root=document){
     root.querySelectorAll('canvas[data-figure]').forEach(c=>
