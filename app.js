@@ -203,7 +203,7 @@ function startNewTickers(){
   stage.querySelectorAll('.new-ticker-track').forEach(track=>{
     if(track.dataset.running==='1')return;
     const first=track.firstElementChild;
-    const distance=first?.getBoundingClientRect().height||0;
+    const distance=first?.offsetHeight||0; // Unscaled layout px: getBoundingClientRect was scaled by #stage and left empty gaps.
     if(!distance)return;
     // The second copy immediately follows the first. Moving exactly one
     // copy height makes the wrap seamless, with no blank jump or reset.
