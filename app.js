@@ -303,8 +303,21 @@ function arWarpedPair(pair,amount,output,opacity){
     const gridX=Math.min(flow.cols-2,x/flow.cell),gridY=Math.min(flow.rows-2,y/flow.cell);
     const ix=Math.floor(gridX),iy=Math.floor(gridY),u=gridX-ix,v=gridY-iy;
     const j=(iy*flow.cols+ix)*2,jR=j+2,jB=j+flow.cols*2,jBR=jB+2;
-    const vx=(field[j]*(1-u)+field[jR]*u)*(1-v)+(field[jB]*(1-u)+field[jBR]*u)*v;
-    const vy=(field[j+1]*(1-u)+field[jR+1]*u)*(1-v)+(field[jB+1]*(1-u)+field[jBR+1]*u)*v;
+    // The six Figma stages already share their external sheet registration.
+    // Feature matching is unreliable on the reflective foil, so only the
+    // interiors of the four cavities may move. The outer frame stays pinned.
+    const cavities=[[144,330],[285,330],[144,623],[285,623]];
+    let region=0;
+    for(const [cx,cy] of cavities){
+      const rx=(x-cx)/57,ry=(y-cy)/132,radial=rx*rx+ry*ry;
+      if(radial>=1)continue;
+      const falloff=(1-radial)*(1-radial);
+      if(falloff>region)region=falloff;
+    }
+    const rawX=(field[j]*(1-u)+field[jR]*u)*(1-v)+(field[jB]*(1-u)+field[jBR]*u)*v;
+    const rawY=(field[j+1]*(1-u)+field[jR+1]*u)*(1-v)+(field[jB+1]*(1-u)+field[jBR+1]*u)*v;
+    const vx=Math.max(-7,Math.min(7,rawX))*region;
+    const vy=Math.max(-7,Math.min(7,rawY))*region;
     const srcX=x-vx*amount,srcY=y-vy*amount;
     const dstX=x+vx*(1-amount),dstY=y+vy*(1-amount);
     const sa=read(source,srcX,srcY,3)*(1-amount);
