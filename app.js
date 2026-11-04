@@ -461,7 +461,7 @@ function runArDollDrop(){
   const bodies=nodes.map((node,i)=>{
     const [x,y]=slotPositions[i];
     node.classList.remove('ar-pack-doll');
-    node.classList.add('ar-falling-doll','ar-falling-'+i);
+    node.classList.add('ar-falling-doll','ar-falling-'+i,'ar-depth-retreat');
     stage.appendChild(node);
     Object.assign(node.style,{
       left:'0px',top:'0px',width:'90px',height:'252px',opacity:'1',
@@ -479,13 +479,18 @@ function runArDollDrop(){
     previous=now;elapsed+=dt*16.7;
     // First retreat behind the foil with a continuous 1 -> .78 depth scale.
     // Gravity starts only after the retreat so no doll pops into a new size.
-    const retreat=Math.min(elapsed/230,1);
-    const depth=1-.22*(retreat*retreat*(3-2*retreat));
-    if(elapsed<=230){
-      bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+(b.y-14*retreat)+'px) rotate(0deg) scale('+depth+')';});
+    const retreat=Math.min(elapsed/260,1);
+    // Visible while receding: only AFTER this interval does the same canvas
+    // move beneath the foil. No instant occlusion at the moment of release.
+    const depth=1-.18*(retreat*retreat*(3-2*retreat));
+    if(elapsed<=260){
+      bodies.forEach(b=>{
+        b.node.style.transform='translate('+b.x+'px,'+(b.y-16*retreat)+'px) rotate(0deg) scale('+depth+')';
+      });
       arDropFrame=requestAnimationFrame(step);
       return;
     }
+    bodies.forEach(b=>b.node.classList.remove('ar-depth-retreat'));
     for(const b of bodies){
       b.vy+=.43*dt;
       b.x+=b.vx*dt;b.y+=b.vy*dt;b.angle+=b.spin*dt;b.vx*=.997;
@@ -503,7 +508,7 @@ function runArDollDrop(){
       if(rel<0){const impulse=-rel*.56;a.vx-=impulse*nx;b.vx+=impulse*nx;
         a.vy-=impulse*ny;b.vy+=impulse*ny;}
     }
-    bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+(b.y-14)+'px) rotate('+b.angle+'deg) scale(.78)';});
+    bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+(b.y-16)+'px) rotate('+b.angle+'deg) scale(.82)';});
     if(elapsed<3300)arDropFrame=requestAnimationFrame(step);
     else{arDropFinished=true;finishArIfReady();}
   }
