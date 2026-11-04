@@ -465,12 +465,12 @@ async function morphArBlister(){
     function step(time){
       if(s.page!=='arOpen')return;
       if(begin===null)begin=time;
-      const t=Math.min((time-begin)/420,1);
+      const t=Math.min((time-begin)/240,1);
       // ONE progression clock for both surfaces, from intact to final; no intermediate asset.
-      const p=t*t*(3-2*t);
+      const p=1-Math.pow(1-t,3);
       renderProgress(p);
       if(t<1)arMorphFrame=requestAnimationFrame(step);
-      else later(()=>{if(s.page==='arOpen')runArDollDrop();},40);
+      else if(s.page==='arOpen')runArDollDrop();
     }
     arMorphFrame=requestAnimationFrame(step);
   }catch(error){
@@ -520,11 +520,11 @@ function runArDollDrop(){
     previous=now;elapsed+=dt*16.7;
     // First retreat behind the foil with a continuous 1 -> .78 depth scale.
     // Gravity starts only after the retreat so no doll pops into a new size.
-    const retreat=Math.min(elapsed/260,1);
+    const retreat=Math.min(elapsed/140,1);
     // Visible while receding: only AFTER this interval does the same canvas
     // move beneath the foil. No instant occlusion at the moment of release.
     const depth=1-.18*(retreat*retreat*(3-2*retreat));
-    if(elapsed<=260){
+    if(elapsed<=140){
       bodies.forEach(b=>{
         b.node.style.transform='translate('+b.x+'px,'+(b.y-16*retreat)+'px) rotate(0deg) scale('+depth+')';
       });
@@ -533,7 +533,7 @@ function runArDollDrop(){
     }
     bodies.forEach(b=>b.node.classList.remove('ar-depth-retreat'));
     for(const b of bodies){
-      b.vy+=.43*dt;
+      b.vy+=1.05*dt;
       b.x+=b.vx*dt;b.y+=b.vy*dt;b.angle+=b.spin*dt;b.vx*=.997;
       if(b.x<5){b.x=5;b.vx=Math.abs(b.vx)*.6;}
       if(b.x>327){b.x=327;b.vx=-Math.abs(b.vx)*.6;}
@@ -550,7 +550,7 @@ function runArDollDrop(){
         a.vy-=impulse*ny;b.vy+=impulse*ny;}
     }
     bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+(b.y-16)+'px) rotate('+b.angle+'deg) scale(.82)';});
-    if(elapsed<3300)arDropFrame=requestAnimationFrame(step);
+    if(elapsed<1050)arDropFrame=requestAnimationFrame(step);
     else{arDropFinished=true;finishArIfReady();}
   }
   arDropFrame=requestAnimationFrame(step);
