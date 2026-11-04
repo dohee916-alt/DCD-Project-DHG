@@ -480,7 +480,7 @@ function runArDollDrop(){
   // away and independently recreating smaller figures at arbitrary positions.
   const pack=stage.querySelector('.ar-pack-front');
   const nodes=[...(pack?.querySelectorAll('.ar-pack-doll')||[])];
-  const slotPositions=[[98,220],[241,220],[98,516],[240,516]];
+  const slotPositions=[[97.915,220.083],[240.590,220.083],[97.915,515.745],[240.094,515.745]];
   if(nodes.length!==4){arDropFinished=true;finishArIfReady();return;}
   const bodies=nodes.map((node,i)=>{
     const [x,y]=slotPositions[i];
@@ -488,7 +488,7 @@ function runArDollDrop(){
     node.classList.add('ar-falling-doll','ar-falling-'+i,'ar-depth-retreat');
     stage.appendChild(node);
     Object.assign(node.style,{
-      left:'0px',top:'0px',width:'90px',height:'252px',opacity:'1',
+      left:'0px',top:'0px',width:(FIGMA_PACK_DOLL.height*346/873)+'px',height:FIGMA_PACK_DOLL.height+'px',opacity:'1',
       transformOrigin:'50% 72%',animation:'none',pointerEvents:'none',
       transform:'translate('+x+'px,'+y+'px) rotate(0deg) scale(1)'
     });
