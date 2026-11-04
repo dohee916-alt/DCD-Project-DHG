@@ -522,7 +522,7 @@ canvas.figure{object-fit:contain!important}
 @keyframes dcdArTornState{0%,55%{opacity:0}95%,100%{opacity:1}}
 @keyframes dcdArDollsBehindBlister{0%,75%{opacity:1}100%{opacity:0}}
 /* The dolls begin falling only once the two Figma tear layers are fully visible. */
-.page-arOpen .ar-falling-dolls{z-index:5!important}
+.page-arOpen .ar-falling-dolls{z-index:2!important}
 .page-arOpen .ar-falling-doll{animation:dcdArDollAppear .1s 1.75s forwards!important}
 @keyframes dcdArDollAppear{from{opacity:0}to{opacity:1}}
 /* Undo erroneous auxiliary camera status controls from the prior implementation. */
@@ -538,7 +538,7 @@ canvas.figure{object-fit:contain!important}
 /* AR doll continuity: the same four canvases remain visible behind the
    deformation until the real tear is open, then move into the foreground. */
 .page-arOpen .ar-pack-doll{animation:none!important;opacity:1!important}
-.page-arOpen .ar-falling-doll{animation:none!important;opacity:1!important;z-index:5!important}
+.page-arOpen .ar-falling-doll{animation:none!important;opacity:1!important;z-index:2!important}
 
 
 /* AR only: stable sandwich ordering for two synchronized morph canvases.
@@ -576,14 +576,12 @@ canvas.figure{object-fit:contain!important}
 .ar-pack-front canvas.ar-pack-doll{
   object-fit:cover!important;
 }
-/* During the short depth retreat, show the very same doll canvases in front
-   of the pack; after the retreat they move behind the foil to fall away. */
+/* Keep every falling doll BEHIND the complete foil/plastic sandwich from
+   release through landing. The pack remains at z-index:3; dolls at z-index:2. */
+.page-arOpen > .ar-falling-doll,
 .page-arOpen > .ar-falling-doll.ar-depth-retreat{
-  z-index:4!important;
+  z-index:2!important;
 }
-
-/* Landed AR dolls overlap in an ordered heap, not a flat fan. */
-.page-arOpen > .ar-falling-doll:not(.ar-depth-retreat){z-index:var(--pile-layer,2)!important}
 
 /* Real-time glass lighting is rasterized along the glyph alpha / normals,
    independently of the background. Never blur the rectangular text bounds. */

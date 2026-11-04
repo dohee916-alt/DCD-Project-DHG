@@ -550,18 +550,14 @@ function runArDollDrop(){
   const slots=[[97.915,220.083],[240.590,220.083],[97.915,515.745],[240.094,515.745]];
   if(nodes.length!==4){arDropFinished=true;finishArIfReady();return;}
 
-  // Create a different, compact overlapping heap on every play. Each figure
-  // takes a separate tumbling route into the pile rather than radiating out
-  // in the former fixed left/right fan pattern.
+  // Drop all four original dolls behind the torn foil, all the way to the
+  // bottom edge of the 428×926 AR canvas. Keep the landing group compact.
   const random=(min,max)=>min+Math.random()*(max-min);
-  // Final top-left targets all share one visual center. A near-horizontal
-  // tumble (rather than four radially divergent poses) reads as a small pile.
-  // Offsets introduce visible layers without spreading dolls across the floor.
   const pile=[
-    {x:157,y:575,angle:-88,layer:1},
-    {x:180,y:604,angle:96,layer:3},
-    {x:166,y:622,angle:-105,layer:4},
-    {x:189,y:587,angle:77,layer:2}
+    {x:157,y:688,angle:-88,layer:1},
+    {x:180,y:704,angle:96,layer:3},
+    {x:166,y:711,angle:-105,layer:4},
+    {x:189,y:697,angle:77,layer:2}
   ];
   for(let i=pile.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
@@ -570,7 +566,7 @@ function runArDollDrop(){
   const bodies=nodes.map((node,i)=>{
     const [x,y]=slots[i],target=pile[i];
     node.classList.remove('ar-pack-doll');
-    node.classList.add('ar-falling-doll','ar-falling-'+i,'ar-depth-retreat');
+    node.classList.add('ar-falling-doll','ar-falling-'+i);
     stage.appendChild(node);
     Object.assign(node.style,{
       left:'0px',top:'0px',width:FIGMA_PACK_DOLL.width+'px',
@@ -590,33 +586,27 @@ function runArDollDrop(){
     };
   });
 
-  // Layer ordering follows the stack, not source slot order.
-  bodies.forEach(b=>{b.node.style.setProperty('--pile-layer',String(5+b.layer));});
+  // All released doll canvases are below the entire blister/foil stack.
+  // Their DOM order still gives a natural overlap inside that back layer.
+  bodies.forEach(b=>{b.node.style.zIndex='2';});
   let start=null;
   function frame(now){
     if(s.page!=='arOpen')return;
     if(start===null)start=now;
-    const elapsed=now-start,retreat=Math.min(elapsed/140,1);
-    if(elapsed<140){
-      const eased=retreat*retreat*(3-2*retreat);
-      bodies.forEach(b=>{
-        b.node.style.transform='translate('+b.x+'px,'+(b.y-16*eased)+'px) rotate(0deg) scale('+(1-.18*eased)+')';
-      });
-    }else{
-      for(const b of bodies){
-        if(!b.released){b.node.classList.remove('ar-depth-retreat');b.released=true;}
-        const progress=Math.max(0,Math.min(1,(elapsed-140-b.stagger)/(1050-140-b.stagger)));
-        // Fast gravity-like tumble with a tiny final settling bounce.
-        const fall=1-Math.pow(1-progress,2.65);
-        const tumble=1-Math.pow(1-progress,2);
-        const x=b.x+(b.targetX-b.x)*fall+Math.sin(Math.PI*progress)*b.sway;
-        const y=b.y-16+(b.targetY-(b.y-16))*fall-
-          Math.sin(Math.PI*Math.min(1,progress))*12*(1-progress);
-        const rotation=b.angle*tumble;
-        b.node.style.transform='translate('+x+'px,'+y+'px) rotate('+rotation+'deg) scale(.82)';
-      }
+    const elapsed=now-start;
+    const fallDuration=1580,settleDuration=280;
+    for(const b of bodies){
+      const progress=Math.max(0,Math.min(1,(elapsed-b.stagger)/(fallDuration-b.stagger)));
+      // Start behind the foil at the actual blister slot. Accelerate downward
+      // to the floor, tumble while descending, then settle briefly at the edge.
+      const fall=progress*progress*(3-2*progress);
+      const tumble=1-Math.pow(1-progress,2);
+      const x=b.x+(b.targetX-b.x)*fall+Math.sin(Math.PI*progress)*b.sway;
+      const y=b.y+(b.targetY-b.y)*fall-
+        Math.sin(Math.PI*progress)*10*(1-progress);
+      b.node.style.transform='translate('+x+'px,'+y+'px) rotate('+(b.angle*tumble)+'deg) scale('+(1-.18*progress)+')';
     }
-    if(elapsed<1050)arDropFrame=requestAnimationFrame(frame);
+    if(elapsed<fallDuration+settleDuration)arDropFrame=requestAnimationFrame(frame);
     else{arDropFinished=true;finishArIfReady();}
   }
   arDropFrame=requestAnimationFrame(frame);
