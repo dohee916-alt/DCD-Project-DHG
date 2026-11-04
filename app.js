@@ -710,13 +710,23 @@ async function beginAr(){
   const finishScale=mobile?target.width/185.497:target.width/391.108;
   const finishAngle=mobile?0:-90;
   const k=(cx,cy,angle,size)=>'translate('+(cx-baseX)+'px,'+(cy-baseY)+'px) rotate('+angle+'deg) scale('+size+')';
-  const flight=flying.animate([
-    {offset:0,transform:k(centerX,centerY,0,startScale),opacity:1},
-    {offset:.22,transform:k(centerX+20*sw,centerY-12*sw,-11,startScale*1.18),opacity:1},
-    {offset:.51,transform:k((centerX+dstX)/2,(centerY+dstY)/2,-38,startScale*2.05),opacity:1},
-    {offset:.80,transform:k(dstX,dstY,finishAngle,finishScale*1.08),opacity:1},
-    {offset:1,transform:k(dstX,dstY,finishAngle,finishScale),opacity:1}
-  ],{duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'});
+  // Use a single continuous pack scale interpolation, shared by every
+  // nested doll canvas. Never magnify the pack independently at mid-flight:
+  // the old 1.18× / 2.05× / 1.08× values caused the visible size jump.
+  const mix=(a,b,t)=>a+(b-a)*t;
+  const flightFrames=[0,.22,.51,.80,1].map(t=>({
+    offset:t,
+    transform:k(
+      mix(centerX,dstX,t),
+      mix(centerY,dstY,t),
+      mix(0,finishAngle,t),
+      mix(startScale,finishScale,t)
+    ),
+    opacity:1
+  }));
+  const flight=flying.animate(flightFrames,{
+    duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'
+  });
   // Let the landscape gradient simply dissolve. No gradient rotation,
   // transform or scaling; the blister alone continues its established flight.
   oldLayer.querySelectorAll('.new-orange-gradient').forEach(el=>{
