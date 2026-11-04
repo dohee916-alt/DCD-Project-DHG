@@ -553,3 +553,14 @@ canvas.figure{object-fit:contain!important}
 .page-arOpen .ar-original-foil,.page-arOpen .ar-original-clear{animation:none!important}
 .page-arOpen .ar-pack-flip{animation:none!important}
 .page-arOpen > .ar-falling-doll{z-index:2!important;opacity:1!important;animation:none!important}
+
+
+/* Fixed Figma sheet and four-oval-only AR animation. Each outside-sheet
+   canvas remains pixel-identical to its initial frame for the entire motion. */
+.ar-pack-front .ar-foil-static,
+.ar-pack-front .ar-front-static{
+  position:absolute;inset:0;width:428px;height:926px;
+  opacity:0;pointer-events:none;
+}
+.ar-pack-front .ar-foil-static{z-index:0}
+.ar-pack-front .ar-front-static{z-index:2}
