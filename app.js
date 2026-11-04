@@ -424,12 +424,12 @@ async function morphArBlister(){
     function step(time){
       if(s.page!=='arOpen')return;
       if(begin===null)begin=time;
-      const t=Math.min((time-begin)/900,1);
+      const t=Math.min((time-begin)/420,1);
       // ONE progression clock for both surfaces, from intact to final; no intermediate asset.
       const p=t*t*(3-2*t);
       renderProgress(p);
       if(t<1)arMorphFrame=requestAnimationFrame(step);
-      else later(()=>{if(s.page==='arOpen')runArDollDrop();},190);
+      else later(()=>{if(s.page==='arOpen')runArDollDrop();},40);
     }
     arMorphFrame=requestAnimationFrame(step);
   }catch(error){
@@ -466,7 +466,7 @@ function runArDollDrop(){
     Object.assign(node.style,{
       left:'0px',top:'0px',width:'90px',height:'252px',opacity:'1',
       transformOrigin:'50% 72%',animation:'none',pointerEvents:'none',
-      transform:'translate('+x+'px,'+y+'px) rotate(0deg)'
+      transform:'translate('+x+'px,'+y+'px) rotate(0deg) scale(1)'
     });
     return {node,x,y,vx:[-1.0,1.1,-.7,.9][i],vy:[-1,-1.4,-.7,-1.2][i],
       angle:0,spin:[-.55,.6,-.45,.5][i],r:39};
@@ -477,6 +477,15 @@ function runArDollDrop(){
     if(s.page!=='arOpen')return;
     const dt=Math.min((now-previous||16.7)/16.7,2);
     previous=now;elapsed+=dt*16.7;
+    // First retreat behind the foil with a continuous 1 -> .78 depth scale.
+    // Gravity starts only after the retreat so no doll pops into a new size.
+    const retreat=Math.min(elapsed/230,1);
+    const depth=1-.22*(retreat*retreat*(3-2*retreat));
+    if(elapsed<=230){
+      bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+(b.y-14*retreat)+'px) rotate(0deg) scale('+depth+')';});
+      arDropFrame=requestAnimationFrame(step);
+      return;
+    }
     for(const b of bodies){
       b.vy+=.43*dt;
       b.x+=b.vx*dt;b.y+=b.vy*dt;b.angle+=b.spin*dt;b.vx*=.997;
@@ -494,7 +503,7 @@ function runArDollDrop(){
       if(rel<0){const impulse=-rel*.56;a.vx-=impulse*nx;b.vx+=impulse*nx;
         a.vy-=impulse*ny;b.vy+=impulse*ny;}
     }
-    bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+b.y+'px) rotate('+b.angle+'deg)';});
+    bodies.forEach(b=>{b.node.style.transform='translate('+b.x+'px,'+(b.y-14)+'px) rotate('+b.angle+'deg) scale(.78)';});
     if(elapsed<3300)arDropFrame=requestAnimationFrame(step);
     else{arDropFinished=true;finishArIfReady();}
   }
