@@ -659,7 +659,7 @@ canvas.figure{object-fit:contain!important}
 
 /* Isolated WEB15/16 → AR handoff. This does not affect earlier WEB states. */
 .dcd-ar-handoff{position:fixed;inset:0;z-index:2000;overflow:hidden;pointer-events:none;contain:layout paint}
-.dcd-ar-old-page{position:absolute;left:50%;top:50%;width:874px;height:428px;transform:translate(-50%,-50%) scale(var(--dcd-old-scale));transform-origin:center;overflow:hidden;background:#eeb49d}
+.dcd-ar-old-page{position:absolute;left:50%;top:50%;width:874px;height:428px;transform:translate(-50%,-50%) scale(var(--dcd-old-scale));transform-origin:center;overflow:hidden;background:#fff}
 .dcd-ar-old-page .scene-content{position:absolute;left:-52px;top:0;width:926px;height:428px}
 .dcd-ar-old-page .new-orange-gradient{transform-origin:50% 50%;will-change:transform}
 .dcd-ar-flying-pack{position:fixed;width:185.497px!important;height:391.108px!important;z-index:2;transform-origin:50% 50%;will-change:transform;pointer-events:none}
@@ -667,9 +667,9 @@ canvas.figure{object-fit:contain!important}
 .dcd-ar-handoff-stage .ar-orange-background,
 .dcd-ar-handoff-stage .ar-headline{animation:none!important}
 
-/* AR handoff bridge: avoid blue fallback between the two gradients.
-   Preserve WEB15/16 and finished AR colors outside the transition. */
-#viewport.dcd-ar-warm-bridge{background:#eeb49d!important}
-#stage.dcd-ar-handoff-stage{background:#eeb49d!important}
+/* Clean white intermediate canvas between fading landscape and portrait gradients.
+   Does not affect WEB15/16 or the completed AR background. */
+#viewport.dcd-ar-warm-bridge{background:#fff!important}
+#stage.dcd-ar-handoff-stage{background:#fff!important}
 .dcd-ar-heading-holder{z-index:3!important;background:transparent!important;pointer-events:none}
 .dcd-ar-heading-holder .new-prescription-title{opacity:1!important}

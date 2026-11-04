@@ -753,10 +753,18 @@ async function beginAr(){
     if(!mobile){
       // Only desktop presentations simulate the screen rotation. Real phones
       // must be physically turned by their user, never locked in software.
-      await stage.animate([
+      // Rotate the complete visible composition together: AR screen and the
+      // retained PRESCRIBED heading share the exact same 800ms clock.
+      const rotationTiming={duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'};
+      const screenTurn=stage.animate([
         {transform:'translate(-50%,-50%) rotate(-90deg) scale('+sw+')'},
         {transform:nativeTransform}
-      ],{duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'}).finished;
+      ],rotationTiming);
+      const headingTurn=heldHeading.animate([
+        {transform:'translate(-50%,-50%) rotate(0deg) scale('+sw+')'},
+        {transform:'translate(-50%,-50%) rotate(90deg) scale('+sw+')'}
+      ],rotationTiming);
+      await Promise.all([screenTurn.finished,headingTurn.finished]);
     }
     // The heading stays fixed in the original landscape location until the
     // AR screen has reached portrait. Now exchange it for the AR heading.
