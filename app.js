@@ -211,9 +211,11 @@ function arPackMarkup(){
   // Figma left-bottom overlapped stack (origin -2567,3285); coordinates here
   // are the same layers translated into the 428x926 AR frame. Never crop.
   let front=img(A.arOverlayFoilStates[0],50.5,150.363,328.482,693.166,'ar-intact-foil ar-original-foil');
+  front+='<canvas class="ar-foil-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-foil-morph" width="428" height="926" aria-hidden="true"></canvas>';
   front+=order.map((index,i)=>{const q=slots[i];return canvasFigure(index,q[0],q[1],q[2],q[3],'ar-pack-doll');}).join('');
   front+=img(A.arOverlayFrontStates[0],47.5,145,333.845,703.892,'ar-intact-clear ar-original-clear');
+  front+='<canvas class="ar-front-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-front-morph" width="428" height="926" aria-hidden="true"></canvas>';
   h+='<div class="ar-pack-face ar-pack-front">'+front+'</div>';
   return h+'</div>';
@@ -374,50 +376,49 @@ async function morphArBlister(){
       [47.5,145,333.845,703.892],
       [52.5,-70,329,1133]
     ];
+    const domeMask=arCapsuleMask();
     const layers=[
-      {canvas:foil,images:imgs.slice(0,2),rects:foilRects,opacity:1,kind:'foil'},
-      {canvas:plastic,images:imgs.slice(2,4),rects:plasticRects,opacity:.7,kind:'plastic'}
+      {canvas:foil,staticCanvas:stage.querySelector('.ar-foil-static'),
+        images:imgs.slice(0,2),rects:foilRects,opacity:1},
+      {canvas:plastic,staticCanvas:stage.querySelector('.ar-front-static'),
+        images:imgs.slice(2,4),rects:plasticRects,opacity:.7}
     ].map(layer=>{
+      if(!layer.staticCanvas)throw new Error('Missing fixed AR sheet canvas');
       const ctx=layer.canvas.getContext('2d');
       const samples=layer.images.map((im,i)=>
         arPlacedFrame(im,layer.rects[i]).getContext('2d').getImageData(0,0,428,926).data);
+      // Paint the original sheet exactly once OUTSIDE the four Figma ovals.
+      // Its alpha is zero INSIDE so that a torn oval can become a real hole.
+      const staticCtx=layer.staticCanvas.getContext('2d');
+      const staticPixels=staticCtx.createImageData(428,926);
+      for(let pixel=0;pixel<domeMask.length;pixel++){
+        const k=pixel*4,initial=samples[0],retain=1-domeMask[pixel]/255;
+        staticPixels.data[k]=initial[k];
+        staticPixels.data[k+1]=initial[k+1];
+        staticPixels.data[k+2]=initial[k+2];
+        staticPixels.data[k+3]=Math.round(initial[k+3]*retain*layer.opacity);
+      }
+      staticCtx.putImageData(staticPixels,0,0);
       return {...layer,ctx,samples,pixels:ctx.createImageData(428,926),
         pair:{source:samples[0],target:samples[1],flow:arCreaseFlow(samples[0],samples[1])}};
     });
-    const domeMask=arCapsuleMask();
     function renderProgress(p){
-      // Both foil and front plastic use the SAME Figma ellipse masks.
-      // The surrounding sheet and its frame stay pixel-identical to the
-      // untouched starting image for the entire morph.
       for(const layer of layers){
         arWarpedPair(layer.pair,p,layer.pixels.data,layer.opacity);
-        {
-          const out=layer.pixels.data,initial=layer.pair.source;
-          for(let pixel=0;pixel<domeMask.length;pixel++){
-            const weight=domeMask[pixel],idx=pixel*4;
-            if(weight===255)continue;
-            if(weight===0){
-              out[idx]=initial[idx];out[idx+1]=initial[idx+1];
-              out[idx+2]=initial[idx+2];out[idx+3]=Math.round(initial[idx+3]*layer.opacity);
-            }else{
-              const u=weight/255,v=1-u;
-              // Mix premultiplied alpha at the oval edges only.
-              const origA=initial[idx+3]*v,changedA=out[idx+3]/layer.opacity*u;
-              const total=origA+changedA;
-              if(total>0){
-                out[idx]=(initial[idx]*origA+out[idx]*changedA)/total;
-                out[idx+1]=(initial[idx+1]*origA+out[idx+1]*changedA)/total;
-                out[idx+2]=(initial[idx+2]*origA+out[idx+2]*changedA)/total;
-              }
-              out[idx+3]=Math.round(total*layer.opacity);
-            }
-          }
+        // No pixel outside the original four Figma ovals is ever animated.
+        // Avoid a second semi-transparent sheet covering the fixed background.
+        const out=layer.pixels.data;
+        for(let pixel=0;pixel<domeMask.length;pixel++){
+          out[pixel*4+3]=Math.round(out[pixel*4+3]*domeMask[pixel]/255);
         }
         layer.ctx.putImageData(layer.pixels,0,0);
       }
     }
     renderProgress(0);
-    foil.style.opacity='1';plastic.style.opacity='1';
+    for(const layer of layers){
+      layer.staticCanvas.style.opacity='1';
+      layer.canvas.style.opacity='1';
+    }
     stage.querySelectorAll('.ar-original-foil,.ar-original-clear').forEach(n=>n.style.opacity='0');
     let begin=null;
     function step(time){
