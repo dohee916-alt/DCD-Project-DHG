@@ -210,7 +210,7 @@ function arPackMarkup(){
   h+=group(48,145,334,704,'ar-pack-face ar-pack-back',img(A.arPackBack,3.5,5.4,328.5,693.2,'ar-pack-image'));
   // Figma left-bottom overlapped stack (origin -2567,3285); coordinates here
   // are the same layers translated into the 428x926 AR frame. Never crop.
-  let front=img(A.arOverlayFoilStates[0],49.522,150.363,328.482,693.166,'ar-intact-foil ar-original-foil');
+  let front=img(A.arOverlayFoilStates[0],50.5,150.363,328.482,693.166,'ar-intact-foil ar-original-foil');
   front+='<canvas class="ar-foil-morph" width="428" height="926" aria-hidden="true"></canvas>';
   front+=order.map((index,i)=>{const q=slots[i];return canvasFigure(index,q[0],q[1],q[2],q[3],'ar-pack-doll');}).join('');
   front+=img(A.arOverlayFrontStates[0],47.5,145,333.845,703.892,'ar-intact-clear ar-original-clear');
@@ -357,7 +357,7 @@ function arCapsuleMask(){
 async function morphArBlister(){
   try{
     const imgs=await Promise.all([
-      A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[2]
+      A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[1]
     ].map(loadArMorphAsset));
     if(s.page!=='arOpen')return;
     const foil=stage.querySelector('.ar-foil-morph');
@@ -366,12 +366,12 @@ async function morphArBlister(){
     // Exact Figma absolute positions of 784:217/216/215, 784:218/219/220
     // translated from shared origin (-2567,3285) to (47.5,145).
     const foilRects=[
-      [49.522,150.363,328.482,693.166],
-      [48.5,167,327,660]
+      [50.5,150.363,328.482,693.166],
+      [54.5,167,327,660]
     ];
     const plasticRects=[
       [47.5,145,333.845,703.892],
-      [50.5,-71,327,1133]
+      [52.5,-70,329,1133]
     ];
     const layers=[
       {canvas:foil,images:imgs.slice(0,2),rects:foilRects,opacity:1,kind:'foil'},
@@ -498,7 +498,7 @@ function runArDollDrop(){
   }
   arDropFrame=requestAnimationFrame(step);
 }
-function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[2]].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
+function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[1]].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
 function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');morphArBlister();}
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;drawFigures();startNewTickers();if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
