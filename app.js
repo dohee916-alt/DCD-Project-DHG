@@ -539,7 +539,7 @@ function runArDollDrop(){
   });
 
   // Layer ordering follows the stack, not source slot order.
-  bodies.forEach(b=>{b.node.style.zIndex=String(5+b.layer);});
+  bodies.forEach(b=>{b.node.style.setProperty('--pile-layer',String(5+b.layer));});
   let start=null;
   function frame(now){
     if(s.page!=='arOpen')return;
