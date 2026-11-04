@@ -79,6 +79,7 @@
       el.width=w;el.height=h;
       lightMap(el,alpha,null,w,h,blueprint.color,blueprint.fill);
       el.classList.add('figma-glass-ready');
+      el.parentElement?.classList.add('figma-glass-ready');
     }).catch(error=>console.warn('[DCD] Figma glass:',error));
   }
   window.DCDFigmaGlass={render(root){
