@@ -330,6 +330,30 @@ function arWarpedPair(pair,amount,output,opacity){
     output[k+3]=total*opacity;
   }
 }
+// Figma ellipse masks 786:227/228/229/230, translated from the
+// shared left-bottom stack origin (-2567,3285) to the AR artboard (47.5,145).
+// Keep the plastic sheet outside these four capsule domes pixel-identical.
+const arCapsuleOvals=[
+  [73.5,209,129,276],[212.5,209,129,276],
+  [73.5,506,129,276],[212.5,506,129,276]
+];
+function arCapsuleMask(){
+  const mask=new Uint8Array(428*926);
+  for(const [left,top,w,h] of arCapsuleOvals){
+    const cx=left+w/2,cy=top+h/2,rx=w/2,ry=h/2;
+    for(let y=Math.max(0,Math.floor(top));y<Math.min(926,Math.ceil(top+h));y++){
+      for(let x=Math.max(0,Math.floor(left));x<Math.min(428,Math.ceil(left+w));x++){
+        const nx=(x+.5-cx)/rx,ny=(y+.5-cy)/ry;
+        const dist=Math.sqrt(nx*nx+ny*ny);
+        // A two-pixel feather prevents a visible sharp seam at the dome rim.
+        const feather=Math.max(0,Math.min(1,(1-dist)*Math.min(rx,ry)/2));
+        const i=y*428+x;
+        mask[i]=Math.max(mask[i],Math.round(feather*255));
+      }
+    }
+  }
+  return mask;
+}
 async function morphArBlister(){
   try{
     const imgs=await Promise.all([
@@ -350,8 +374,8 @@ async function morphArBlister(){
       [50.5,-71,327,1133]
     ];
     const layers=[
-      {canvas:foil,images:imgs.slice(0,2),rects:foilRects,opacity:1},
-      {canvas:plastic,images:imgs.slice(2,4),rects:plasticRects,opacity:.7}
+      {canvas:foil,images:imgs.slice(0,2),rects:foilRects,opacity:1,kind:'foil'},
+      {canvas:plastic,images:imgs.slice(2,4),rects:plasticRects,opacity:.7,kind:'plastic'}
     ].map(layer=>{
       const ctx=layer.canvas.getContext('2d');
       const samples=layer.images.map((im,i)=>
@@ -359,11 +383,35 @@ async function morphArBlister(){
       return {...layer,ctx,samples,pixels:ctx.createImageData(428,926),
         pair:{source:samples[0],target:samples[1],flow:arCreaseFlow(samples[0],samples[1])}};
     });
+    const domeMask=arCapsuleMask();
     function renderProgress(p){
-      // Same clock and unchanged Figma coordinates for the foil and plastic.
-      // Each material surface is displaced toward its next crease geometry.
+      // The foil keeps its separate synchronized morph behind the dolls.
+      // The front sheet is completely stationary outside the four exact
+      // Figma ellipse masks, so no full-sheet ghosting can obscure the dolls.
       for(const layer of layers){
         arWarpedPair(layer.pair,p,layer.pixels.data,layer.opacity);
+        if(layer.kind==='plastic'){
+          const out=layer.pixels.data,initial=layer.pair.source;
+          for(let pixel=0;pixel<domeMask.length;pixel++){
+            const weight=domeMask[pixel],idx=pixel*4;
+            if(weight===255)continue;
+            if(weight===0){
+              out[idx]=initial[idx];out[idx+1]=initial[idx+1];
+              out[idx+2]=initial[idx+2];out[idx+3]=Math.round(initial[idx+3]*layer.opacity);
+            }else{
+              const u=weight/255,v=1-u;
+              // Mix premultiplied alpha at the oval edges only.
+              const origA=initial[idx+3]*v,changedA=out[idx+3]/layer.opacity*u;
+              const total=origA+changedA;
+              if(total>0){
+                out[idx]=(initial[idx]*origA+out[idx]*changedA)/total;
+                out[idx+1]=(initial[idx+1]*origA+out[idx+1]*changedA)/total;
+                out[idx+2]=(initial[idx+2]*origA+out[idx+2]*changedA)/total;
+              }
+              out[idx+3]=Math.round(total*layer.opacity);
+            }
+          }
+        }
         layer.ctx.putImageData(layer.pixels,0,0);
       }
     }
