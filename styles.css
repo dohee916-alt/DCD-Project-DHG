@@ -583,13 +583,3 @@ canvas.figure{object-fit:contain!important}
 
 /* Landed AR dolls overlap in an ordered heap, not a flat fan. */
 .page-arOpen > .ar-falling-doll:not(.ar-depth-retreat){z-index:var(--pile-layer,2)!important}
-
-/* Live Figma Glass parameter mapping for the existing footer SVG glyphs.
-   Figma: refraction=0, dispersion=0, frost=0, depth=1, lightAngle=-45,
-   lightIntensity=.8. Specular is a directional SourceAlpha SVG shader,
-   not a scaled PNG and not a rectangular backdrop-filter effect. */
-.poster-glass-filter-defs{position:absolute;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none}
-.page-00 .poster-glass-source,
-.page-01 .poster-glass-source{
-  filter:url(#dcd-poster-glass-light);
-}
