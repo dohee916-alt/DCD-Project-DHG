@@ -176,7 +176,22 @@ function newTicker(x,reverse=false){
   const copy='>> THE BRAND NEW GLP-1    >> EASIEST CUT FOR YOUR DIET    ';
   return '<div class="lay new-ticker'+(reverse?' reverse':'')+'" '+box(x,0,25,428)+' aria-hidden="true"><div class="new-ticker-track"><span>'+copy+'</span><span>'+copy+'</span></div></div>';
 }
-function startNewTickers(){stage.querySelectorAll('.new-ticker-track').forEach(track=>{const first=track.firstElementChild,distance=first?.offsetHeight||0;if(!distance)return;track.style.top=(track.parentElement.classList.contains('reverse')?-426:-425)+'px';track.animate([{translate:'0 0'},{translate:'0 -'+distance+'px'}],{duration:distance*26,easing:'linear',iterations:Infinity});});}
+function startNewTickers(){
+  stage.querySelectorAll('.new-ticker-track').forEach(track=>{
+    if(track.dataset.running==='1')return;
+    const first=track.firstElementChild;
+    const distance=first?.getBoundingClientRect().height||0;
+    if(!distance)return;
+    // The second copy immediately follows the first. Moving exactly one
+    // copy height makes the wrap seamless, with no blank jump or reset.
+    track.style.top='0px';
+    track.dataset.running='1';
+    track.animate(
+      [{transform:'translateY(0)'},{transform:'translateY(-'+distance+'px)'}],
+      {duration:distance*26,easing:'linear',iterations:Infinity}
+    );
+  });
+}
 function newButton(label,action,x,y,disabled=false){
   const source=label==='YES'?'yesButtonAlpha.png':label==='NO'?'noButtonAlpha.png':label==='TEST IT'?'testButtonAlpha.png':'nextButtonAlpha.png';
   const wide=label==='TEST IT'?140:label==='NEXT'?67:134;
@@ -770,7 +785,27 @@ async function advanceNewPrescription(){
 }
 function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
 stage.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
-stage.addEventListener('change',e=>{let t=e.target;if(!t.matches('input[data-kind]'))return;let kind=t.dataset.kind,n=+t.dataset.index;let set=new Set(s[kind]);t.checked?set.add(n):set.delete(n);s[kind]=[...set];save();render();});
+stage.addEventListener('change',e=>{
+  const t=e.target;
+  if(!t.matches('input[data-kind]'))return;
+  const kind=t.dataset.kind,index=Number(t.dataset.index);
+  const chosen=new Set(s[kind]);
+  if(t.checked)chosen.add(index);else chosen.delete(index);
+  s[kind]=[...chosen];
+  save();
+  // DO NOT render the whole prescription screen for a checkbox. Retain the
+  // existing animated text and both independently scrolling ticker nodes.
+  if((s.page==='12'&&kind==='expected')||(s.page==='13'&&kind==='side')){
+    const next=stage.querySelector('.new-ui-button');
+    if(next){
+      const disabled=chosen.size===0;
+      next.disabled=disabled;
+      next.classList.toggle('disabled',disabled);
+    }
+    return;
+  }
+  // Legacy checklist (only when explicitly mounted) also needs no rebuild.
+});
 stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s.phase==='guide'){let rope=ropeAt(p);if(!rope)return;e.preventDefault();gesture.set(e.pointerId,{rope,start:p,type:e.pointerType||'mouse',pulled:false});stage.setPointerCapture(e.pointerId);return;}
 if(s.page!=='workbench'||s.phase!=='ready')return;let kind=null,index=-1;if(hit(p,261,125,40,297))kind='syringe';else if(hit(p,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h))kind='doll';else{index=packSlots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();const el=kind==='syringe'?stage.querySelector('.syringe'):kind==='doll'?stage.querySelector('.active-figure'):stage.querySelector('canvas.packed-figure[data-figure="'+index+'"]');drag={kind,index,pointerId:e.pointerId,start:p,last:p,moved:false,angle:kind==='syringe'?(s.loaded?45:-45):0,el};if(el)el.classList.add('dragging');if(kind==='syringe'){s.handGuideDismissed=true;save();stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());if(el){el.style.transition='none';el.style.transform='rotate('+drag.angle+'deg)';}}stage.setPointerCapture(e.pointerId);}});
 stage.addEventListener('pointermove',e=>{
