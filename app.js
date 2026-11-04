@@ -86,9 +86,17 @@ function animateFigureValue(index,from,to,duration=530){return new Promise(resol
 // shader is not public. These text nodes use refraction/dispersion/frost=0,
 // so the important live effect is directional specular light on glyph edges.
 // SVG alpha-lighting retains the exact existing font metrics and SVG paths.
+function figmaGlassText(kind,x,y,w,h,base,glass){
+  // Retain exactly the approved Figma box, and the original SVG as a safe
+  // fallback until the glyph-SDF canvas has finished drawing.
+  return '<div class="lay poster-glass-text" '+box(x,y,w,h)+'>'
+    +img(base,0,0,w,h,'poster-glass-original')
+    +img(glass,0,0,w,h,'poster-glass-original')
+    +'<canvas class="lay poster-glass-canvas" data-figma-glass="'+kind+'" data-w="'+w+'" data-h="'+h+'" '+box(0,0,w,h)+' aria-hidden="true"></canvas></div>';
+}
 function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['poster-brand.svg',109.344,422.73,212,67],['poster-new.svg',143.188,492.73,147,67],['poster-glp.svg',123.235,561.962,181,68]];return words.map(([file,x,y,w,h])=>img('assets/figma-current/hd/'+file,x,y,w,h,'poster-word')).join('');}
-function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+img('assets/figma-current/hires/poster-easiest-base.svg',64.5,858.5,299,17,'poster-tagline-svg')+img('assets/figma-current/hires/poster-easiest-glass.svg',64.5,858.5,299,17,'poster-tagline-svg');if(p==='00'||s.phase==='intro')h+=posterWords();
-if(p==='00'){if(s.phase!=='intro')h+=img('assets/figma-current/hires/poster-come-base.svg',98.76,815.92,230,17,'poster-cta-svg')+img('assets/figma-current/hires/poster-come-glass.svg',98.76,815.92,230,17,'poster-cta-svg');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
+function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+figmaGlassText('easiest',64.5,858.5,299,17,'assets/figma-current/hd/poster-tagline-base.svg','assets/figma-current/hd/poster-tagline.svg');if(p==='00'||s.phase==='intro')h+=posterWords();
+if(p==='00'){if(s.phase!=='intro')h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
 else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');h+=img(A.gestureHand,-25,363,154,174,'gesture gesture-left');h+=img(A.gestureHand,288,605,154,174,'gesture gesture-right');h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
 else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
 return h;}
@@ -578,7 +586,7 @@ function runArDollDrop(){
 function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[1]].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
 function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');morphArBlister();}
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
-stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;drawFigures();startNewTickers();if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
+stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;if((s.page==='00'||s.page==='01')&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
 function finishRupture(){if(s.page==='01'&&s.phase==='rupture'){videoEnded=true;setPage('02');}}
 function runIntro(p){setPage(p,'intro');later(()=>{if(s.page===p&&s.phase==='intro'){s.phase=p==='00'?'loop':'guide';render();}},M.introMs);}
 async function beginPacking(){
