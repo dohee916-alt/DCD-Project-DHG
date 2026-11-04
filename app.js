@@ -333,7 +333,7 @@ function arWarpedPair(pair,amount,output,opacity){
 async function morphArBlister(){
   try{
     const imgs=await Promise.all([
-      ...A.arOverlayFoilStates,...A.arOverlayFrontStates
+      A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[2]
     ].map(loadArMorphAsset));
     if(s.page!=='arOpen')return;
     const foil=stage.querySelector('.ar-foil-morph');
@@ -343,34 +343,27 @@ async function morphArBlister(){
     // translated from shared origin (-2567,3285) to (47.5,145).
     const foilRects=[
       [49.522,150.363,328.482,693.166],
-      [49.5,166,329,660],
       [48.5,167,327,660]
     ];
     const plasticRects=[
       [47.5,145,333.845,703.892],
-      [48.5,-70,329,1133],
       [50.5,-71,327,1133]
     ];
     const layers=[
-      {canvas:foil,images:imgs.slice(0,3),rects:foilRects,opacity:1},
-      {canvas:plastic,images:imgs.slice(3,6),rects:plasticRects,opacity:.7}
+      {canvas:foil,images:imgs.slice(0,2),rects:foilRects,opacity:1},
+      {canvas:plastic,images:imgs.slice(2,4),rects:plasticRects,opacity:.7}
     ].map(layer=>{
       const ctx=layer.canvas.getContext('2d');
       const samples=layer.images.map((im,i)=>
         arPlacedFrame(im,layer.rects[i]).getContext('2d').getImageData(0,0,428,926).data);
       return {...layer,ctx,samples,pixels:ctx.createImageData(428,926),
-        pairs:[
-          {source:samples[0],target:samples[1],flow:arCreaseFlow(samples[0],samples[1])},
-          {source:samples[1],target:samples[2],flow:arCreaseFlow(samples[1],samples[2])}
-        ]};
+        pair:{source:samples[0],target:samples[1],flow:arCreaseFlow(samples[0],samples[1])}};
     });
     function renderProgress(p){
       // Same clock and unchanged Figma coordinates for the foil and plastic.
       // Each material surface is displaced toward its next crease geometry.
-      const section=Math.min(1,Math.floor(p*2));
-      const local=p>=1?1:p*2-section;
       for(const layer of layers){
-        arWarpedPair(layer.pairs[section],local,layer.pixels.data,layer.opacity);
+        arWarpedPair(layer.pair,p,layer.pixels.data,layer.opacity);
         layer.ctx.putImageData(layer.pixels,0,0);
       }
     }
@@ -382,7 +375,7 @@ async function morphArBlister(){
       if(s.page!=='arOpen')return;
       if(begin===null)begin=time;
       const t=Math.min((time-begin)/1650,1);
-      // ONE progression clock for both sides, all three Figma states.
+      // ONE progression clock for both surfaces, from intact to final; no intermediate asset.
       const p=t*t*(3-2*t);
       renderProgress(p);
       if(t<1)arMorphFrame=requestAnimationFrame(step);
@@ -390,7 +383,7 @@ async function morphArBlister(){
     }
     arMorphFrame=requestAnimationFrame(step);
   }catch(error){
-    console.error('[DCD] AR three-state images unavailable:',error);
+    console.error('[DCD] AR start/end images unavailable:',error);
     // Do not animate a different set of images or silently skip to a fall.
   }
 }
@@ -457,7 +450,7 @@ function runArDollDrop(){
   }
   arDropFrame=requestAnimationFrame(step);
 }
-function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[...A.arOverlayFoilStates,...A.arOverlayFrontStates].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
+function beginAr(){arDropFinished=false;arCameraReady=false;arCameraError='';[A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[2]].forEach(src=>loadArMorphAsset(src).catch(()=>{}));setPage('ar');askArCamera();}
 function openArPack(){if(s.page!=='ar')return;setPage('arOpen','opening');morphArBlister();}
 function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;drawFigures();startNewTickers();if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){let v=stage.querySelector('video');if(v){v.onended=finishRupture;v.onerror=finishRupture;}else queueMicrotask(finishRupture);}}
