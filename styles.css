@@ -580,3 +580,6 @@ canvas.figure{object-fit:contain!important}
 .page-arOpen > .ar-falling-doll.ar-depth-retreat{
   z-index:4!important;
 }
+
+/* Landed AR dolls overlap in an ordered heap, not a flat fan. */
+.page-arOpen > .ar-falling-doll:not(.ar-depth-retreat){z-index:var(--pile-layer,2)!important}
