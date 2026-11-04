@@ -284,7 +284,7 @@
 /* WEB04 and WEB07 values from their current Figma layers. */
 .workbench-count{color:#2e2924!important;font-family:Arial,Helvetica,sans-serif!important;font-size:10px!important;line-height:14px!important;font-weight:400!important;text-align:center!important}
 .bottle-label{color:#000!important;font-family:Doto,Arial,sans-serif!important;font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:left!important}
-.syringe-2d .syringe-barrel{opacity:.8;filter:saturate(.48)}
+.syringe-2d .syringe-barrel{opacity:.8;filter:grayscale(1)!important}
 .workbench-pack{z-index:2;overflow:visible}
 .pack-guide-copy{z-index:11!important;color:#d83a00!important;font-family:Doto,Arial,sans-serif!important;font-size:10px!important;line-height:12px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:right!important}
 #viewport.workbench-viewport{background:#d8e6f1 url('assets/figma-render/workbench-bg@2x.png') center/cover no-repeat}
