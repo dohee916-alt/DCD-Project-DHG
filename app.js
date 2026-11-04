@@ -86,37 +86,9 @@ function animateFigureValue(index,from,to,duration=530){return new Promise(resol
 // shader is not public. These text nodes use refraction/dispersion/frost=0,
 // so the important live effect is directional specular light on glyph edges.
 // SVG alpha-lighting retains the exact existing font metrics and SVG paths.
-function openingGlassFilter(){
-  // Figma's footer GLASS: two distinct solid-opacity layers with directional
-  // specular and inset edge lighting. The SVG filter outputs ONLY illuminated
-  // glyph edges, never a rectangular backdrop panel. The existing two native
-  // Figma SVG fills remain untouched beneath it.
-  return '<svg class="poster-glass-filter-defs" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true"><defs>'
-    +'<filter id="dcd-glass-glyph-rim" x="-8%" y="-50%" width="116%" height="200%" color-interpolation-filters="sRGB">'
-    // The source is deliberately low-alpha (Figma 0.2*0.8). Raise only the
-    // contour alpha before deriving bevel normals, not its original text fill.
-    +'<feComponentTransfer in="SourceAlpha" result="solid-glyph"><feFuncA type="linear" slope="10"/></feComponentTransfer>'
-    +'<feGaussianBlur in="solid-glyph" stdDeviation=".55" result="glass-normals"/>'
-    // Figma lightAngle -45deg; white specular follows glyph outline.
-    +'<feSpecularLighting in="glass-normals" surfaceScale="3.6" specularConstant=".8" specularExponent="12" lighting-color="#fff7ed" result="glass-lit">'
-    +'<feDistantLight azimuth="135" elevation="55"/></feSpecularLighting>'
-    +'<feComposite in="glass-lit" in2="solid-glyph" operator="in" result="glass-specular-inside"/>'
-    +'<feComponentTransfer in="glass-specular-inside" result="glass-specular-bright"><feFuncA type="linear" slope=".70"/></feComponentTransfer>'
-    // Strong bevel rim: difference between original and shifted glyph.
-    +'<feOffset in="solid-glyph" dx="-.85" dy="-.85" result="glass-shift-light"/>'
-    +'<feComposite in="solid-glyph" in2="glass-shift-light" operator="out" result="glass-bright-rim"/>'
-    +'<feFlood flood-color="#fff1e6" flood-opacity=".76" result="glass-white"/>'
-    +'<feComposite in="glass-white" in2="glass-bright-rim" operator="in" result="glass-lit-rim"/>'
-    +'<feOffset in="solid-glyph" dx=".8" dy=".8" result="glass-shift-dark"/>'
-    +'<feComposite in="solid-glyph" in2="glass-shift-dark" operator="out" result="glass-dark-rim"/>'
-    +'<feFlood flood-color="#6d2e20" flood-opacity=".4" result="glass-shadow-tone"/>'
-    +'<feComposite in="glass-shadow-tone" in2="glass-dark-rim" operator="in" result="glass-shadow-rim"/>'
-    +'<feMerge><feMergeNode in="glass-shadow-rim"/><feMergeNode in="glass-specular-bright"/><feMergeNode in="glass-lit-rim"/></feMerge>'
-    +'</filter></defs></svg>';
-}
 function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['poster-brand.svg',109.344,422.73,212,67],['poster-new.svg',143.188,492.73,147,67],['poster-glp.svg',123.235,561.962,181,68]];return words.map(([file,x,y,w,h])=>img('assets/figma-current/hd/'+file,x,y,w,h,'poster-word')).join('');}
-function introMarkup(p){let h=openingGlassFilter()+img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+img('assets/figma-current/hd/poster-tagline-base.svg',64.5,858.5,299,17,'poster-tagline-svg')+img('assets/figma-current/hd/poster-tagline.svg',64.5,858.5,299,17,'poster-tagline-svg')+img('assets/figma-current/hd/poster-tagline.svg',64.5,858.5,299,17,'poster-tagline-svg poster-glass-rim');if(p==='00'||s.phase==='intro')h+=posterWords();
-if(p==='00'){if(s.phase!=='intro')h+=img('assets/figma-current/hd/poster-cta-base.svg',98.76,815.92,230,17,'poster-cta-svg')+img('assets/figma-current/hd/poster-cta.svg',98.76,815.92,230,17,'poster-cta-svg')+img('assets/figma-current/hd/poster-cta.svg',98.76,815.92,230,17,'poster-cta-svg poster-glass-rim');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
+function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+img('assets/figma-current/hires/poster-easiest-base.svg',64.5,858.5,299,17,'poster-tagline-svg')+img('assets/figma-current/hires/poster-easiest-glass.svg',64.5,858.5,299,17,'poster-tagline-svg');if(p==='00'||s.phase==='intro')h+=posterWords();
+if(p==='00'){if(s.phase!=='intro')h+=img('assets/figma-current/hires/poster-come-base.svg',98.76,815.92,230,17,'poster-cta-svg')+img('assets/figma-current/hires/poster-come-glass.svg',98.76,815.92,230,17,'poster-cta-svg');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
 else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');h+=img(A.gestureHand,-25,363,154,174,'gesture gesture-left');h+=img(A.gestureHand,288,605,154,174,'gesture gesture-right');h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
 else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
 return h;}
