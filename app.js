@@ -218,7 +218,7 @@ function startNewTickers(){
   });
 }
 function newButton(label,action,x,y,disabled=false,size=null){
-  const source=label==='YES'?'yesButtonAlpha.png?v=rim-fff6f2-20261104':label==='NO'?'noButtonAlpha.png':label==='TEST IT'?'testButtonAlpha.png?v=rim-fff6f2-20261104':'nextButtonAlpha.png';
+  const source=label==='YES'?'yesButtonAlpha.png?v=original-new15-20261104':label==='NO'?'noButtonAlpha.png?v=original-new15-20261104':label==='TEST IT'?'testButtonAlpha.png?v=original-new16-20261104':'nextButtonAlpha.png';
   const wide=size?.[0]??(label==='TEST IT'?140:label==='NEXT'?67:134);
   const high=size?.[1]??69;
   return '<button class="lay new-ui-button'+(disabled?' disabled':'')+'" '+box(x,y,wide,high)+' data-action="'+action+'" aria-label="'+label+'" '+(disabled?'disabled':'')+'><img src="assets/figma-current/hd/'+source+'" alt=""></button>';
@@ -256,9 +256,9 @@ function newPrescriptionMarkup(page=s.page){
     h+='<div class="lay new-orange-gradient grad-two" '+box(-6,-38,942,510)+' aria-hidden="true"><div></div></div>';
     h+='<div class="lay new-orange-gradient grad-three" '+box(-12,-45,942,510)+' aria-hidden="true"><div></div></div>';
     h+='<div class="lay new-orange-gradient grad-four" '+box(-4,-31,942,510)+' aria-hidden="true"><div></div></div>';
-    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing!',page==='15'?513:514,151,264,64,'new-consent-copy');
-    if(page==='15')h+=newButton('YES','ar',522,241,false,[112,60])+newButton('NO','decline',633,241,false,[112,60]);
-    else h+=newButton('TEST IT','ar',579,241,false,[134,60]);
+    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?513:514,262,264,64,'new-consent-copy');
+    if(page==='15')h+=newButton('YES','ar',522,343,false,[134,69])+newButton('NO','decline',633,343,false,[134,69]);
+    else h+=newButton('TEST IT','ar',579,343,false,[140,69]);
   }
   return h;
 }
