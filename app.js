@@ -230,7 +230,7 @@ function newPrescriptionMarkup(page=s.page){
   h+=newPackMarkup();
   h+=text(page==='15'||page==='16'?'>> PRESCRIBED':'>> PRESCRIPTION',93,21,25,291,'new-prescription-title');
   h+=text('DCD<br>LAB',99,374,79,25,'new-brand-name');
-  if(!consent)h+=newTicker(475)+newTicker(791,true);
+  h+=newTicker(475)+newTicker(791,true);
   const doseY=page==='16'?41:page==='15'?44:sign?43:381;
   const doseClass='new-dose-group'+(page==='13'?' side-dose':'');
   h+=group(539,doseY,213,18,doseClass,text('SUM OF APPLIED GLP-1 : '+dose,0,0,213,18,'new-prescription-dose'));
@@ -256,9 +256,9 @@ function newPrescriptionMarkup(page=s.page){
     h+='<div class="lay new-orange-gradient grad-two" '+box(-6,-38,942,510)+' aria-hidden="true"><div></div></div>';
     h+='<div class="lay new-orange-gradient grad-three" '+box(-12,-45,942,510)+' aria-hidden="true"><div></div></div>';
     h+='<div class="lay new-orange-gradient grad-four" '+box(-4,-31,942,510)+' aria-hidden="true"><div></div></div>';
-    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?513:514,262,264,64,'new-consent-copy');
-    if(page==='15')h+=newButton('YES','ar',522,333)+newButton('NO','decline',633,333);
-    else h+=newButton('TEST IT','ar',579,333);
+    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?463:464,262,264,64,'new-consent-copy');
+    if(page==='15')h+=newButton('YES','ar',472,333)+newButton('NO','decline',583,333);
+    else h+=newButton('TEST IT','ar',529,333);
   }
   return h;
 }
