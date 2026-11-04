@@ -608,7 +608,7 @@ canvas.figure{object-fit:contain!important}
 }
 
 /* WEB04: native Figma-rendered, temperature -0.12 baked into RGBA pixels.
-   Exactly 337×224 visible portion (2x source). No approximating color matrix,
+   Exactly 471×224 full pack, rendered directly by Figma. No approximating color matrix,
    no extra regrading; other scenes retain their original pack asset. */
 .page-workbench .workbench-pack .workbench-native-export,
 .page-03 .workbench-pack .workbench-native-export{
