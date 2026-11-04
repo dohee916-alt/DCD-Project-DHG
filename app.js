@@ -217,10 +217,11 @@ function startNewTickers(){
     );
   });
 }
-function newButton(label,action,x,y,disabled=false){
+function newButton(label,action,x,y,disabled=false,size=null){
   const source=label==='YES'?'yesButtonAlpha.png':label==='NO'?'noButtonAlpha.png':label==='TEST IT'?'testButtonAlpha.png':'nextButtonAlpha.png';
-  const wide=label==='TEST IT'?140:label==='NEXT'?67:134;
-  return '<button class="lay new-ui-button'+(disabled?' disabled':'')+'" '+box(x,y,wide,69)+' data-action="'+action+'" aria-label="'+label+'" '+(disabled?'disabled':'')+'><img src="assets/figma-current/hd/'+source+'" alt=""></button>';
+  const wide=size?.[0]??(label==='TEST IT'?140:label==='NEXT'?67:134);
+  const high=size?.[1]??69;
+  return '<button class="lay new-ui-button'+(disabled?' disabled':'')+'" '+box(x,y,wide,high)+' data-action="'+action+'" aria-label="'+label+'" '+(disabled?'disabled':'')+'><img src="assets/figma-current/hd/'+source+'" alt=""></button>';
 }
 function newPrescriptionMarkup(page=s.page){
   const side=page==='13',sign=page==='14'||page==='14done',consent=page==='15'||page==='16';
@@ -255,9 +256,9 @@ function newPrescriptionMarkup(page=s.page){
     h+='<div class="lay new-orange-gradient grad-two" '+box(-6,-38,942,510)+' aria-hidden="true"><div></div></div>';
     h+='<div class="lay new-orange-gradient grad-three" '+box(-12,-45,942,510)+' aria-hidden="true"><div></div></div>';
     h+='<div class="lay new-orange-gradient grad-four" '+box(-4,-31,942,510)+' aria-hidden="true"><div></div></div>';
-    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?513:514,262,264,64,'new-consent-copy');
-    if(page==='15')h+=newButton('YES','ar',522,333)+newButton('NO','decline',633,333);
-    else h+=newButton('TEST IT','ar',579,333);
+    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?593:604,151,264,64,'new-consent-copy');
+    if(page==='15')h+=newButton('YES','ar',608,241,false,[112,60])+newButton('NO','decline',730,241,false,[112,60]);
+    else h+=newButton('TEST IT','ar',669,241,false,[134,60]);
   }
   return h;
 }
