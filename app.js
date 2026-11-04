@@ -248,6 +248,75 @@ function arPlacedFrame(im,rect){
   canvas.getContext('2d').drawImage(im,rect[0],rect[1],rect[2],rect[3]);
   return canvas;
 }
+// Estimate a small, smooth displacement field for each pair of already
+// registered Figma images. This moves matching creases instead of dissolving
+// every highlight and edge into two overlapping ghost images.
+function arCreaseFlow(a,b){
+  const width=428,height=926,cell=24,cols=Math.ceil(width/cell)+1,rows=Math.ceil(height/cell)+1;
+  const vectors=new Float32Array(cols*rows*2);
+  const intensity=(data,x,y)=>{
+    const k=(y*width+x)*4,alpha=data[k+3]/255;
+    return (data[k]*.299+data[k+1]*.587+data[k+2]*.114)*alpha;
+  };
+  for(let gy=0;gy<rows;gy++)for(let gx=0;gx<cols;gx++){
+    const x=Math.min(width-14,Math.max(14,gx*cell));
+    const y=Math.min(height-14,Math.max(14,gy*cell));
+    let best=Infinity,bx=0,by=0;
+    for(let dy=-12;dy<=12;dy+=3)for(let dx=-12;dx<=12;dx+=3){
+      if(x+dx<12||x+dx>=width-12||y+dy<12||y+dy>=height-12)continue;
+      let error=(dx*dx+dy*dy)*1.4;
+      for(let sy=-9;sy<=9;sy+=6)for(let sx=-9;sx<=9;sx+=6){
+        const ax=x+sx,ay=y+sy,bx2=ax+dx,by2=ay+dy;
+        const ai=(ay*width+ax)*4,bi=(by2*width+bx2)*4;
+        const alphaGap=a[ai+3]-b[bi+3];
+        const lumGap=intensity(a,ax,ay)-intensity(b,bx2,by2);
+        error+=lumGap*lumGap*.015+alphaGap*alphaGap*.016;
+      }
+      if(error<best){best=error;bx=dx;by=dy;}
+    }
+    const index=(gy*cols+gx)*2;
+    vectors[index]=bx;vectors[index+1]=by;
+  }
+  // Neighbourhood regularization removes block-to-block jumps.
+  const smooth=new Float32Array(vectors.length);
+  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+    let sumX=0,sumY=0,weight=0;
+    for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){
+      const nx=Math.max(0,Math.min(cols-1,x+ox)),ny=Math.max(0,Math.min(rows-1,y+oy));
+      const w=(ox===0&&oy===0)?3:1,index=(ny*cols+nx)*2;
+      sumX+=vectors[index]*w;sumY+=vectors[index+1]*w;weight+=w;
+    }
+    const index=(y*cols+x)*2;
+    smooth[index]=sumX/weight;smooth[index+1]=sumY/weight;
+  }
+  return {vectors:smooth,cols,rows,cell};
+}
+function arWarpedPair(pair,amount,output,opacity){
+  const width=428,height=926,flow=pair.flow,field=flow.vectors;
+  const source=pair.source,target=pair.target;
+  const read=(pixels,x,y,k)=>{
+    const xx=Math.max(0,Math.min(width-1,Math.round(x)));
+    const yy=Math.max(0,Math.min(height-1,Math.round(y)));
+    return pixels[(yy*width+xx)*4+k];
+  };
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const gridX=Math.min(flow.cols-2,x/flow.cell),gridY=Math.min(flow.rows-2,y/flow.cell);
+    const ix=Math.floor(gridX),iy=Math.floor(gridY),u=gridX-ix,v=gridY-iy;
+    const j=(iy*flow.cols+ix)*2,jR=j+2,jB=j+flow.cols*2,jBR=jB+2;
+    const vx=(field[j]*(1-u)+field[jR]*u)*(1-v)+(field[jB]*(1-u)+field[jBR]*u)*v;
+    const vy=(field[j+1]*(1-u)+field[jR+1]*u)*(1-v)+(field[jB+1]*(1-u)+field[jBR+1]*u)*v;
+    const srcX=x-vx*amount,srcY=y-vy*amount;
+    const dstX=x+vx*(1-amount),dstY=y+vy*(1-amount);
+    const sa=read(source,srcX,srcY,3)*(1-amount);
+    const da=read(target,dstX,dstY,3)*amount,total=sa+da;
+    const k=(y*width+x)*4;
+    if(total<.5){output[k]=0;output[k+1]=0;output[k+2]=0;output[k+3]=0;continue;}
+    for(let channel=0;channel<3;channel++){
+      output[k+channel]=(read(source,srcX,srcY,channel)*sa+read(target,dstX,dstY,channel)*da)/total;
+    }
+    output[k+3]=total*opacity;
+  }
+}
 async function morphArBlister(){
   try{
     const imgs=await Promise.all([
@@ -276,22 +345,19 @@ async function morphArBlister(){
       const ctx=layer.canvas.getContext('2d');
       const samples=layer.images.map((im,i)=>
         arPlacedFrame(im,layer.rects[i]).getContext('2d').getImageData(0,0,428,926).data);
-      return {...layer,ctx,samples,pixels:ctx.createImageData(428,926)};
+      return {...layer,ctx,samples,pixels:ctx.createImageData(428,926),
+        pairs:[
+          {source:samples[0],target:samples[1],flow:arCreaseFlow(samples[0],samples[1])},
+          {source:samples[1],target:samples[2],flow:arCreaseFlow(samples[1],samples[2])}
+        ]};
     });
     function renderProgress(p){
+      // Same clock and unchanged Figma coordinates for the foil and plastic.
+      // Each material surface is displaced toward its next crease geometry.
       const section=Math.min(1,Math.floor(p*2));
       const local=p>=1?1:p*2-section;
-      const oneMinus=1-local;
       for(const layer of layers){
-        const src=layer.samples[section],dest=layer.samples[section+1],out=layer.pixels.data;
-        for(let i=0;i<out.length;i+=4){
-          const a=src[i+3]*oneMinus,b=dest[i+3]*local,sum=a+b;
-          if(sum<.0001){out[i]=0;out[i+1]=0;out[i+2]=0;out[i+3]=0;continue;}
-          out[i]=(src[i]*a+dest[i]*b)/sum;
-          out[i+1]=(src[i+1]*a+dest[i+1]*b)/sum;
-          out[i+2]=(src[i+2]*a+dest[i+2]*b)/sum;
-          out[i+3]=sum*layer.opacity;
-        }
+        arWarpedPair(layer.pairs[section],local,layer.pixels.data,layer.opacity);
         layer.ctx.putImageData(layer.pixels,0,0);
       }
     }
