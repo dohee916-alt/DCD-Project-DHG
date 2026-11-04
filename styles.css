@@ -583,3 +583,26 @@ canvas.figure{object-fit:contain!important}
 
 /* Landed AR dolls overlap in an ordered heap, not a flat fan. */
 .page-arOpen > .ar-falling-doll:not(.ar-depth-retreat){z-index:var(--pile-layer,2)!important}
+
+/* Real-time glass lighting is rasterized along the glyph alpha / normals,
+   independently of the background. Never blur the rectangular text bounds. */
+.page-00 .poster-glass-text,.page-01 .poster-glass-text{
+  z-index:5;
+  overflow:visible;
+  pointer-events:none;
+}
+.poster-glass-text .poster-glass-original{
+  z-index:0;
+  object-fit:fill;
+}
+.poster-glass-text .poster-glass-canvas{
+  z-index:1;
+  pointer-events:none;
+  opacity:0;
+}
+.poster-glass-text:has(.poster-glass-canvas.figma-glass-ready) .poster-glass-original{
+  opacity:0;
+}
+.poster-glass-text .poster-glass-canvas.figma-glass-ready{
+  opacity:1;
+}
