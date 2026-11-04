@@ -566,13 +566,14 @@ canvas.figure{object-fit:contain!important}
 .ar-pack-front .ar-front-static{z-index:2}
 
 
-/* Preserve each pack doll's intrinsic aspect ratio (346:873).
-   The previous object-fit:fill distorted all packed dolls. */
+/* Figma packed-doll image fills use FILL: preserve the source aspect
+   and crop any canvas-edge overflow into the EXACT Figma doll rectangle.
+   Never stretch the body or use an oversized intrinsic-width rectangle. */
 .pack-assembly canvas.figure,
 .new-pack-assembly canvas.figure,
 .consent-pack-assembly canvas.figure,
 .ar-pack-front canvas.ar-pack-doll{
-  object-fit:contain!important;
+  object-fit:cover!important;
 }
 /* During the short depth retreat, show the very same doll canvases in front
    of the pack; after the retreat they move behind the foil to fall away. */
