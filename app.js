@@ -708,6 +708,9 @@ async function animatePackIntoPrescription(){
   if(s.page==='11')setPage('12');
 }
 async function beginPacking(){
+  // Warm the exact four front-body references while the machine is running,
+  // so the WEB12 front face does not stall at the moment of the fast release.
+  s.figures.forEach(f=>window.DCDMorph.preload(f.kind,f.value,'front').catch(()=>{}));
   // Keep WEB04 contents alive until they slide into the packaging machine.
   render();s.page='08a';s.phase='sliding';save();stage.className='stage page-08a phase-sliding';
   const pack=stage.querySelector('.workbench-pack');
