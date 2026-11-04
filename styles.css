@@ -607,14 +607,15 @@ canvas.figure{object-fit:contain!important}
   opacity:1;
 }
 
-/* WEB04 actual visible pack (Figma image 85): Temperature -0.12.
-   Color-grade only original image pixels. This does not resample, translate,
-   rotate, resize, replace, or alter the transparency of the source PNG. */
-.page-workbench .workbench-pack .pack-clear-back,
-.page-03 .workbench-pack .pack-clear-back{
-  filter:url(#dcd-web04-temp-minus012)!important;
+/* WEB04: native Figma-rendered, temperature -0.12 baked into RGBA pixels.
+   Exactly 337×224 visible portion (2x source). No approximating color matrix,
+   no extra regrading; other scenes retain their original pack asset. */
+.page-workbench .workbench-pack .workbench-native-export,
+.page-03 .workbench-pack .workbench-native-export{
+  filter:none!important;
+  object-fit:fill!important;
 }
-.page-workbench .workbench-pack.with-pack-shadow .pack-clear-back,
-.page-03 .workbench-pack.with-pack-shadow .pack-clear-back{
-  filter:url(#dcd-web04-temp-minus012) drop-shadow(2px 2px 4px rgba(0,0,0,.25))!important;
+.page-workbench .workbench-pack.with-pack-shadow .workbench-native-export,
+.page-03 .workbench-pack.with-pack-shadow .workbench-native-export{
+  filter:drop-shadow(2px 2px 4px rgba(0,0,0,.25))!important;
 }
