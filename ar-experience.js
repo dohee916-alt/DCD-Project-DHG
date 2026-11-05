@@ -212,13 +212,11 @@ async function initModels(){
    try{state.hand=await load(m.HandLandmarker,'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',{numHands:2});}
    catch(error){console.warn('[DCD AR] Hand tracker:',error);}
    if(!state.root)return;
-   // 512×512 hair refinement, independent of the 256×256 person model.
-   // CPU delegate to avoid competing GPU contexts with face/hand trackers.
-   try{state.hair=await m.ImageSegmenter.createFromOptions(vision,{
-     baseOptions:{modelAssetPath:MODEL_ROOT+'image_segmenter/hair_segmenter/float32/1/hair_segmenter.tflite',delegate:'CPU'},
-     runningMode:'VIDEO',outputConfidenceMasks:true,outputCategoryMask:false
-   });}
-   catch(error){console.warn('[DCD AR] Optional hair refinement:',error);}
+   // Do NOT run a fourth inference model while Longpipe is attempting
+   // portrait matting. CPU hair refinement competed with WebGL cloth,
+   // FaceLandmarker, HandLandmarker and the 256px portrait fallback.
+   // If Longpipe cannot run, keep SelfieSegmenter as the safe fallback.
+   state.hair=null;state.hairData=null;
  }catch(error){console.warn('[DCD AR] Vision model unavailable; raw camera remains:',error);}
  finally{state.pending=false;}
 }
@@ -234,9 +232,11 @@ function paintPerson(segment){
  if(!w||!h||!values?.length)return;
  if(!state.maskCanvas||state.maskCanvas.width!==w||state.maskCanvas.height!==h){
    state.maskCanvas=document.createElement('canvas');state.maskCanvas.width=w;state.maskCanvas.height=h;
+   state.maskContext=state.maskCanvas.getContext('2d',{willReadFrequently:true});
+   state.maskPixels=state.maskContext.createImageData(w,h);
  }
- const maskContext=state.maskCanvas.getContext('2d',{willReadFrequently:true});
- const pixels=maskContext.createImageData(w,h);
+ const maskContext=state.maskContext;
+ const pixels=state.maskPixels;
  for(let i=0;i<w*h;i++){
    pixels.data[i*4]=255;pixels.data[i*4+1]=255;pixels.data[i*4+2]=255;
    // Feather the low-resolution segmentation boundary before compositing.
@@ -263,7 +263,7 @@ function paintPerson(segment){
  // then composite it over the pale-blue background. Do not paint the
  // unmasked camera into this canvas first (it would leak the real room).
 
- if(!state.subjectCanvas){state.subjectCanvas=document.createElement('canvas');state.subjectCanvas.width=W;state.subjectCanvas.height=H;}
+ if(!state.subjectCanvas||state.subjectCanvas.width!==W||state.subjectCanvas.height!==H){state.subjectCanvas=document.createElement('canvas');state.subjectCanvas.width=W;state.subjectCanvas.height=H;}
  const sc=state.subjectCanvas.getContext('2d');
  sc.clearRect(0,0,W,H);sc.save();sc.translate(W,0);sc.scale(-1,1);
  sc.drawImage(video,(W-drawW)/2,(H-drawH)/2,drawW,drawH);
@@ -279,7 +279,7 @@ function paintPerson(segment){
 function tick(now){
  if(!state.playing||!state.root)return;
  state.requestId=requestAnimationFrame(tick);
- const video=state.video;if(!video||video.readyState<2||now-state.lastAnalyzed<95)return;
+ const video=state.video;if(!video||video.readyState<2||now-state.lastAnalyzed<140)return;
  state.lastAnalyzed=now;
  try{
    if(!state.matting?.ready&&state.hair&&now-state.lastHairFrame>=490){

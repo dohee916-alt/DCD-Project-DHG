@@ -154,7 +154,7 @@ function create(root){
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
   let geo=null,vertices=null,indices=null,uvs=null,base=null,shades=null,initialUV=null,faceCenter=null;
-  let live=true,frameId=0;
+  let live=true,frameId=0,lastRendered=0;
   const textures={},layers=[],trace=[];
   function setConnections(tri,oval){
     const next=topology(tri,oval);
@@ -187,8 +187,18 @@ function create(root){
         return rim.flatMap((v,k)=>[center,v,rim[(k+1)%rim.length]]);
       })
     ]);
+    // Upload the two triangle ranges ONCE. The index buffer is static:
+    // per-frame bufferData reallocations previously happened for every
+    // sheet, twice, even though the topology never changes.
+    geo.underlayIndexCount=geo.underlayIndices.length;
+    geo.surfaceIndexCount=indices.length;
+    const combined=new Uint16Array(geo.underlayIndexCount+geo.surfaceIndexCount);
+    combined.set(geo.underlayIndices,0);
+    combined.set(indices,geo.underlayIndexCount);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,indices,gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,combined,gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER,vb);
+    gl.bufferData(gl.ARRAY_BUFFER,vertices.byteLength,gl.DYNAMIC_DRAW);
     return true;
   }
   function makeTexture(source){
@@ -370,7 +380,10 @@ function create(root){
       const size=1+.19*fly,center=faceCenter||{x:W/2,y:H/2};
       for(let i=0;i<base.length/3;i++){
         const k=i*3,v=i*stride,px=base[k],py=base[k+1];
-        const fringe=i>=COUNT,edge=fringe?1:0;
+        // Only the *outer* loose drape is faded. The 3 eye/mouth hole
+        // caps and face-wide backing are internal fabric: alpha MUST stay.
+        const fringe=i>=COUNT&&i<geo.capStart;
+        const edge=fringe?1:0;
         const inertia=fringe?
           Math.sin(now*.0024+i*1.77+layer.index*.8)*1.8:0;
         const releaseX=layer.removing?(i%3===0?1:-1)*45*ease(leave):0;
@@ -383,23 +396,27 @@ function create(root){
         vertices[v+3]=uvs[i*2];vertices[v+4]=1-uvs[i*2+1];
         vertices[v+5]=shades[i];vertices[v+6]=edge;
       }
-      gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.DYNAMIC_DRAW);
+      gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
       gl.bindTexture(gl.TEXTURE_2D,tex);
-      // Ensure eyes and lips are NEVER open holes: draw the underlying,
-      // facially tracked cloth first, then the detailed nose/cheek mesh.
+      // Continuous cloth behind eyes/lips, followed by the real
+      // nose/cheek face triangles. Both index ranges share ONE buffer.
       gl.uniform1f(opacityUniform,opacity*.93);
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,geo.underlayIndices,gl.DYNAMIC_DRAW);
-      gl.drawElements(gl.TRIANGLES,geo.underlayIndices.length,gl.UNSIGNED_SHORT,0);
+      gl.drawElements(gl.TRIANGLES,geo.underlayIndexCount,gl.UNSIGNED_SHORT,0);
       gl.uniform1f(opacityUniform,opacity);
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,indices,gl.DYNAMIC_DRAW);
-      gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
+      gl.drawElements(gl.TRIANGLES,geo.surfaceIndexCount,gl.UNSIGNED_SHORT,
+        geo.underlayIndexCount*Uint16Array.BYTES_PER_ELEMENT);
     }
     for(let i=layers.length-1;i>=0;i--){
       if(layers[i].removing&&now-layers[i].exit>1200)layers.splice(i,1);
     }
   }
-  function loop(now){if(!live)return;render(now);frameId=requestAnimationFrame(loop);}
+  function loop(now){
+    if(!live)return;
+    // Thirty FPS is sufficient for a translucent face cloth and prevents
+    // a second 60 FPS WebGL loop from competing with camera inference.
+    if(now-lastRendered>=33){lastRendered=now;render(now);}
+    frameId=requestAnimationFrame(loop);
+  }
   frameId=requestAnimationFrame(loop);
   function add(variant,index){
     const layer={variant,index,start:performance.now(),removing:false,exit:0};
