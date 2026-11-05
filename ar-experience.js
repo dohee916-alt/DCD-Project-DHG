@@ -8,7 +8,7 @@ const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'];
 const state={root:null,video:null,canvas:null,ctx:null,stage:null,frame:'AR3',
   maskCount:0,variant:'first',model:null,face:null,hand:null,hair:null,hairData:null,lastHairFrame:0,
-  pending:false,playing:false,requestId:0,lastAnalyzed:0,guideSince:0,
+  topology:null,pending:false,playing:false,requestId:0,lastAnalyzed:0,guideSince:0,
   pinchStart:null,pinchReady:true,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
@@ -97,8 +97,11 @@ function enter(frame){
    caption('YOU AGREED TO THESE');
    state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());
    state.sheets=[];state.tulle?.clear();
-   for(let i=1;i<=5;i++)delay(addFabric,i*1050);
-   delay(()=>enter('AR5'),5*1050+950);break;
+   // Each sheet takes 3s to travel: slow drifting approach, then sharp
+   // near-face acceleration. Hold 1.6s to read the previous printed phrase.
+   const firstAt=650,between=4600;
+   for(let i=0;i<5;i++)delay(addFabric,firstAt+i*between);
+   delay(()=>enter('AR5'),firstAt+4*between+3000+2000);break;
  case 'AR5':
    caption('DO YOU WANT TO\nCHANGE YOUR CHOICE?');
    buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
@@ -114,11 +117,13 @@ function enter(frame){
    buttons(()=>enter('AR6'),()=>enter('AR5-2'));break;
  case 'AR5-2':
    caption('YOU AGREED TO THESE');
-   for(let i=0;i<5;i++)delay(removeFabric,430+i*650);
+   // Remove the original five fabrics with time to see them separate.
+   for(let i=0;i<5;i++)delay(removeFabric,400+i*1450);
    delay(()=>{
-     state.variant='replacement';for(let i=1;i<=5;i++)delay(addFabric,i*1050);
-     delay(()=>enter('AR6'),5*1050+950);
-   },5*650+700);break;
+     state.variant='replacement';
+     for(let i=0;i<5;i++)delay(addFabric,650+i*4600);
+     delay(()=>enter('AR6'),650+4*4600+3000+2000);
+   },400+4*1450+1300);break;
  case 'AR6':caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
  case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
  case 'AR8':
@@ -182,6 +187,13 @@ async function initModels(){
  state.pending=true;
  try{
    const m=await import(SDK);
+   // The 3D veil uses the actual 468-point MediaPipe triangle mesh
+   // and the official ordered face-oval contour, not a procedural ellipse.
+   state.topology={
+     triangles:m.FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+     outline:m.FaceLandmarker.FACE_LANDMARKS_FACE_OVAL
+   };
+   state.tulle?.setConnections(state.topology.triangles,state.topology.outline);
    const vision=await m.FilesetResolver.forVisionTasks(WASM);
    if(!state.root)return;
    const load=async(Ctor,path,extra={})=>{
@@ -306,6 +318,7 @@ function mount(stage,video){
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
  state.canvas=root.querySelector('.ar-person-segment');state.ctx=state.canvas.getContext('2d');
  state.tulle=window.DCD_TULLE?.create(root.querySelector('.ar-organza-stack'))||null;
+ if(state.topology)state.tulle?.setConnections(state.topology.triangles,state.topology.outline);
  state.sheets=[];state.variant='first';state.maskCount=0;state.segmented=false;state.analysisError=false;
  state.faceBox=null;state.alphaHistory=null;state.hairData=null;state.lastHairFrame=0;
  enter('AR3');

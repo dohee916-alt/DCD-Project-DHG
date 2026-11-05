@@ -918,3 +918,19 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive[data-ar-frame="AR5"] .ar-choice.no::before{
   background:linear-gradient(150deg,#c9c2be,#98949b);
 }
+
+/* Genuine landmark-driven organza. Never fall back to the old orange
+   ellipse once WebGL has initialized. The real mesh casts a soft optical
+   veil without a drawn geometric disc over the face. */
+.ar-organza-stack.ar-tulle-gpu .ar-organza-sheet,
+.ar-organza-stack.ar-tulle-ready .ar-organza-sheet {
+  display:none!important;
+  visibility:hidden!important;
+}
+.ar-immersive[data-ar-frame="AR4"] .ar-person-segment,
+.ar-immersive[data-ar-frame="AR5"] .ar-person-segment,
+.ar-immersive[data-ar-frame="AR5-2"] .ar-person-segment,
+.ar-immersive[data-ar-frame="AR6"] .ar-person-segment,
+.ar-immersive[data-ar-frame="AR7"] .ar-person-segment{
+  filter:blur(1.25px)!important;
+}
