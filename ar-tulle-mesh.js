@@ -107,6 +107,7 @@ function make(root){
  function update(raw,video){
    const p=getPoints(raw,video);
    if(!p)return;
+   root.classList.add('ar-tulle-ready');
    const xs=p.map(q=>q.x),ys=p.map(q=>q.y);
    const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
    const w=maxX-minX,h=maxY-minY;

@@ -753,4 +753,4 @@ canvas.figure{object-fit:contain!important}
   color:rgba(42,37,42,.91);text-wrap:balance;
   text-shadow:0 1px 1px rgba(255,255,255,.27);
 }
-.ar-organza-stack:has(.ar-tulle-webgl) .ar-organza-sheet{opacity:0!important;pointer-events:none}
+.ar-organza-stack.ar-tulle-ready .ar-organza-sheet{opacity:0!important;pointer-events:none}
