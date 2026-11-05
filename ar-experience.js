@@ -18,6 +18,7 @@ function markup(){
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
  '<canvas class="ar-person-segment" width="320" height="692" aria-hidden="true"></canvas>'+
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
+ '<div class="ar-choice-gradient" aria-hidden="true"></div>'+
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
  '<div class="ar-copy" aria-live="polite"></div>'+
@@ -34,6 +35,7 @@ function clearScene(){
  state.root.classList.toggle('ar-first-gesture',state.frame==='AR6');
  state.root.classList.toggle('ar-peel-gesture',state.frame==='AR7');
  state.root.classList.toggle('ar-align-gesture',state.frame==='AR3');
+ state.root.classList.toggle('ar-choice-phase',['AR5','AR5-1'].includes(state.frame));
 }
 function caption(value){const e=state.root?.querySelector('.ar-copy');if(e)e.textContent=value;}
 function typeCaption(value,duration=1200){
@@ -59,7 +61,7 @@ function fabric(){
    layer.appendChild(copy);root.appendChild(layer);
    const surface=state.tulle?.add(state.variant,i)||null;
    state.sheets.push({layer,surface});
-   requestAnimationFrame(()=>layer.classList.add('shown'));
+   requestAnimationFrame(()=>requestAnimationFrame(()=>layer.classList.add('shown')));
  }
 }
 function addFabric(){
@@ -90,9 +92,10 @@ function enter(frame){
  case 'AR3':caption('POSITION YOUR FACE HERE');break;
  case 'AR4':
    caption('YOU AGREED TO THESE');
-   state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());state.sheets=[];
-   for(let i=1;i<=5;i++)delay(addFabric,i*680);
-   delay(()=>enter('AR5'),5*680+1000);break;
+   state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());
+   state.sheets=[];state.tulle?.clear();
+   for(let i=1;i<=5;i++)delay(addFabric,i*1050);
+   delay(()=>enter('AR5'),5*1050+950);break;
  case 'AR5':
    caption('DO YOU WANT TO\nCHANGE YOUR CHOICE?');
    buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
@@ -101,11 +104,11 @@ function enter(frame){
    buttons(()=>enter('AR6'),()=>enter('AR5-2'));break;
  case 'AR5-2':
    caption('YOU AGREED TO THESE');
-   for(let i=0;i<5;i++)delay(removeFabric,500+i*490);
+   for(let i=0;i<5;i++)delay(removeFabric,430+i*650);
    delay(()=>{
-     state.variant='replacement';for(let i=1;i<=5;i++)delay(addFabric,i*680);
-     delay(()=>enter('AR6'),5*680+950);
-   },5*490+520);break;
+     state.variant='replacement';for(let i=1;i<=5;i++)delay(addFabric,i*1050);
+     delay(()=>enter('AR6'),5*1050+950);
+   },5*650+700);break;
  case 'AR6':caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
  case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
  case 'AR8':
@@ -176,7 +179,7 @@ async function initModels(){
 function paintPerson(segment){
  const canvas=state.canvas,video=state.video;
  if(!canvas||!video||!segment?.confidenceMasks?.length)return;
- const mask=segment.confidenceMasks[segment.confidenceMasks.length-1];
+ const mask=segment.confidenceMasks[0];
  const values=mask.getAsFloat32Array();
  const w=mask.width,h=mask.height;
  if(!w||!h||!values?.length)return;
@@ -187,7 +190,10 @@ function paintPerson(segment){
  const pixels=maskContext.createImageData(w,h);
  for(let i=0;i<w*h;i++){
    pixels.data[i*4]=255;pixels.data[i*4+1]=255;pixels.data[i*4+2]=255;
-   pixels.data[i*4+3]=Math.round(Math.max(0,Math.min(1,values[i]))*255);
+   // Feather the low-resolution segmentation boundary before compositing.
+   const confidence=Math.max(0,Math.min(1,values[i]));
+   const feather=Math.max(0,Math.min(1,(confidence-.16)/.67));
+   pixels.data[i*4+3]=Math.round((feather*feather*(3-2*feather))*255);
  }
  maskContext.putImageData(pixels,0,0);
  const ctx=state.ctx,W=canvas.width,H=canvas.height;
@@ -203,7 +209,9 @@ function paintPerson(segment){
  sc.clearRect(0,0,W,H);sc.save();sc.translate(W,0);sc.scale(-1,1);
  sc.drawImage(video,(W-drawW)/2,(H-drawH)/2,drawW,drawH);
  sc.globalCompositeOperation='destination-in';
+ sc.save();sc.filter='blur(1.35px)';
  sc.drawImage(state.maskCanvas,(W-drawW)/2,(H-drawH)/2,drawW,drawH);
+ sc.restore();
  sc.restore();sc.globalCompositeOperation='source-over';
  ctx.globalCompositeOperation='source-over';
  ctx.drawImage(state.subjectCanvas,0,0);

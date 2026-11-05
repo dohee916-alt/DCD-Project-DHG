@@ -754,3 +754,39 @@ canvas.figure{object-fit:contain!important}
   text-shadow:0 1px 1px rgba(255,255,255,.27);
 }
 .ar-organza-stack.ar-tulle-ready .ar-organza-sheet{opacity:0!important;pointer-events:none}
+
+/* AR organza revision: fitted soft-edged drape rather than rectangular overlay. */
+.ar-organza-stack{overflow:visible}
+.ar-organza-sheet{
+  left:9%!important;top:19%!important;width:82%!important;height:65%!important;
+  border:0!important;
+  border-radius:46% 46% 28% 28% / 22% 22% 14% 14%!important;
+  -webkit-mask-image:radial-gradient(ellipse 70% 68% at 50% 49%,#000 60%,rgba(0,0,0,.94) 76%,transparent 100%);
+  mask-image:radial-gradient(ellipse 70% 68% at 50% 49%,#000 60%,rgba(0,0,0,.94) 76%,transparent 100%);
+  background-size:28px 28px,100% 100%!important;
+  opacity:0;transform:translateY(-125px) translateX(calc((var(--sheet) - 2)*15px)) rotate(-7deg) scale(1.16);
+  transition:opacity .85s ease,transform .94s cubic-bezier(.15,.8,.19,1),filter .7s ease!important;
+  box-shadow:none!important;
+}
+.ar-organza-sheet.shown{opacity:.42!important;transform:translateY(0) translateX(0) rotate(0) scale(1)}
+.ar-organza-sheet.peeling{opacity:0!important;transform:translateY(-260px) translateX(38px) rotate(13deg) scale(1.14)!important}
+.ar-organza-printed-copy{
+  top:calc(19% + var(--sheet)*12%)!important;
+  font-size:16px!important;line-height:1.15!important;
+}
+.ar-organza-stack.ar-tulle-ready .ar-organza-sheet{opacity:0!important;visibility:hidden!important}
+.ar-tulle-webgl{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none}
+/* AR4 remains the natural live portrait and keeps adding one cloth at a time.
+   Once all five arrive, AR5/AR5-1 deliberately reintroduce the orange wash
+   for the decision; AR6 returns to the undimmed organza-covered portrait. */
+.ar-choice-gradient{
+ position:absolute;inset:0;z-index:5;opacity:0;pointer-events:none;
+ background:radial-gradient(ellipse at 58% 39%,
+ rgba(255,148,105,.68) 0%,rgba(245,78,29,.83) 40%,
+ rgba(226,52,16,.73) 72%,rgba(255,207,186,.82) 100%);
+ transition:opacity 1.05s cubic-bezier(.3,0,.2,1);
+}
+.ar-choice-phase .ar-choice-gradient{opacity:.90}
+.ar-choice-phase .ar-person-segment{filter:blur(2.8px)}
+.ar-choice-phase .ar-copy{color:#25282d;z-index:7}
+.ar-choice-phase .ar-flow-choices{z-index:9}
