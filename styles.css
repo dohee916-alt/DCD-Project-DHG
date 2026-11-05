@@ -963,3 +963,13 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive.ar-matting-active.ar-final-mode .ar-matting-video{
   filter:blur(23px) grayscale(.8) sepia(.7) saturate(2.4) brightness(.62);
 }
+
+/* Keep camera and cutout SHARP throughout all live AR interaction.
+   Blur is reserved for the orange overlay consent (AR5-1) and final
+   gradient messaging (AR9/AR10). Do not blur AR4, AR5, AR5-2, AR6 or AR7. */
+.ar-immersive:not(.ar-choice-phase):not(.ar-final-mode) .ar-person-segment,
+.ar-immersive:not(.ar-choice-phase):not(.ar-final-mode) .ar-matting-video,
+.ar-immersive:not(.ar-choice-phase):not(.ar-final-mode) .ar-portrait-camera{
+  filter:none!important;
+  -webkit-filter:none!important;
+}

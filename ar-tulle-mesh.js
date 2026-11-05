@@ -163,11 +163,18 @@ function create(root){
     // Add a real surface vertex at each eye/mouth center. Triangle fans
     // seal the gaps with the SAME cloth texture and UV deformation.
     geo.capStart=COUNT+geo.oval.length;
-    const vertexCount=geo.capStart+COVERED_HOLES.length;
+    // One uninterrupted underlay spans the entire tracked face contour,
+    // including the eye sockets and open mouth. Render this UV-continuous
+    // fabric beneath the detailed face tessellation to seal all holes.
+    geo.underlayCenter=geo.capStart+COVERED_HOLES.length;
+    const vertexCount=geo.underlayCenter+1;
     vertices=new Float32Array(vertexCount*stride);
     base=new Float32Array(vertexCount*3);
     shades=new Float32Array(vertexCount);
     uvs=new Float32Array(vertexCount*2);
+    geo.underlayIndices=new Uint16Array(
+      geo.oval.flatMap((v,i)=>[geo.underlayCenter,v,geo.oval[(i+1)%geo.oval.length]])
+    );
     indices=new Uint16Array([
       ...geo.triangles,
       ...geo.oval.flatMap((v,i)=>{
@@ -245,6 +252,17 @@ function create(root){
       base[j+1]=py+(py-cy)*.095+(upper?-2:4);
       base[j+2]=base[k+2]-8;
     }
+    // Set a smoothly-following center for the continuous veil underlay.
+    // UV is the average of nose + cheeks rather than a fixed screen ellipse.
+    {
+      const mid=geo.underlayCenter*3;
+      const anchors=[1,4,168,6,195,197];
+      let x=0,y=0,z=0;
+      for(const v of anchors){x+=base[v*3];y+=base[v*3+1];z+=base[v*3+2];}
+      base[mid]=x/anchors.length;
+      base[mid+1]=y/anchors.length;
+      base[mid+2]=z/anchors.length+4;
+    }
     // Slightly lift the hole caps in front of eyelids and lips. Their
     // depth follows the live face so the veil remains uninterrupted during
     // blinking, talking, and head rotation.
@@ -269,6 +287,12 @@ function create(root){
       const src=geo.oval[i],dst=COUNT+i;
       uvs[dst*2]=clamp((uvs[src*2]-.5)*1.095+.5,0,1);
       uvs[dst*2+1]=clamp((uvs[src*2+1]-.5)*1.095+.5,0,1);
+    }
+    {
+      const anchors=[1,4,168,6,195,197],i=geo.underlayCenter*2;
+      let u=0,v=0;
+      for(const j of anchors){u+=uvs[j*2];v+=uvs[j*2+1];}
+      uvs[i]=u/anchors.length;uvs[i+1]=v/anchors.length;
     }
     // Extend the fabric's face-locked UV field across the repaired holes.
     // This also keeps printed text continuous across closed eyelids/lips.
@@ -302,6 +326,7 @@ function create(root){
       for(const j of rim)light+=shades[j];
       shades[geo.capStart+n]=light/rim.length;
     }
+    shades[geo.underlayCenter]=.98;
     root.classList.add('ar-tulle-ready');
   }
   function arrival(t){
@@ -360,7 +385,14 @@ function create(root){
       }
       gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.DYNAMIC_DRAW);
       gl.bindTexture(gl.TEXTURE_2D,tex);
+      // Ensure eyes and lips are NEVER open holes: draw the underlying,
+      // facially tracked cloth first, then the detailed nose/cheek mesh.
+      gl.uniform1f(opacityUniform,opacity*.93);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,geo.underlayIndices,gl.DYNAMIC_DRAW);
+      gl.drawElements(gl.TRIANGLES,geo.underlayIndices.length,gl.UNSIGNED_SHORT,0);
       gl.uniform1f(opacityUniform,opacity);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,indices,gl.DYNAMIC_DRAW);
       gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
     }
     for(let i=layers.length-1;i>=0;i--){
