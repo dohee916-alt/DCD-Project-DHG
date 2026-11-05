@@ -851,3 +851,70 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive .ar-organza-sheet:nth-of-type(5n) .ar-organza-printed-copy{
   transform:rotate(11deg) translate(-21px,18px);
 }
+
+/* AR5-1 precise Figma layout / camera-through-gradient correction.
+   Figma frame 636:672: pack (91.845,236) 244.155×514.784;
+   YES frame (91,761) 134×49; NO frame (202,761) 134×49. */
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient{
+  /* Keep the original gradient artwork, but never flatten the selfie into
+     an opaque white/orange picture. This tint is a translucent color overlay. */
+  background-image:url('assets/figma-current/hd/ar-background-figma.png')!important;
+  background-size:100% 100%!important;
+  background-color:transparent!important;
+  opacity:.52!important;
+  mix-blend-mode:multiply;
+  pointer-events:none;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-person-segment{
+  filter:blur(16px) saturate(.86)!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-portrait-camera{
+  filter:blur(16px) saturate(.86)!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-pack{
+  opacity:1;
+  z-index:7;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-pack .ar-pack-flip{
+  transform:translate(54.31px,124.28px) scale(.7433)!important;
+  transform-origin:0 0!important;
+  animation:none!important;
+}
+/* Each Figma instance has a 134px label frame and a centered 90px pill.
+   Preserve their intentional 23px frame overlap; never spread the labels. */
+.ar-immersive[data-ar-frame="AR5-1"] .ar-flow-choices,
+.ar-immersive[data-ar-frame="AR5"] .ar-flow-choices{
+  position:absolute!important;
+  left:91px!important;top:761px!important;
+  width:245px!important;height:49px!important;
+  display:block!important;gap:0!important;
+  z-index:10;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice,
+.ar-immersive[data-ar-frame="AR5"] .ar-choice{
+  position:absolute!important;top:0!important;
+  width:134px!important;height:49px!important;
+  border:0!important;box-shadow:none!important;
+  background:none!important;border-radius:0!important;
+  color:white!important;font-family:"Source Sans 3",Arial,sans-serif!important;
+  font-size:20px!important;font-weight:700!important;line-height:24px!important;
+  text-align:center!important;
+  isolation:isolate;
+  padding:0!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice.yes,
+.ar-immersive[data-ar-frame="AR5"] .ar-choice.yes{left:0!important}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice.no,
+.ar-immersive[data-ar-frame="AR5"] .ar-choice.no{left:111px!important}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice::before,
+.ar-immersive[data-ar-frame="AR5"] .ar-choice::before{
+  content:"";position:absolute;left:22px;top:0;width:90px;height:49px;
+  border:1px solid rgba(255,255,255,.82);border-radius:26px;
+  z-index:-1;
+  box-shadow:inset 0 2px 4px rgba(255,255,255,.6),0 2px 5px rgba(93,58,58,.26);
+  background:linear-gradient(150deg,#ffd0bb,#ff9e82);
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice.no::before,
+.ar-immersive[data-ar-frame="AR5"] .ar-choice.no::before{
+  background:linear-gradient(150deg,#c9c2be,#98949b);
+}
