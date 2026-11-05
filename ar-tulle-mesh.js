@@ -12,10 +12,10 @@ void main(){
   vec4 col=texture2D(tex,v);
   float u=v.x,y=1.-v.y;
   float side=abs(u-.5)*2.;
-  float halfWidth=.5*(.90-.12*pow(1.-y,6.)+.055*y);
+  float halfWidth=.5*(.88+.075*sin(3.14159*y)-.16*pow(y,3.));
   float sideAlpha=1.-smoothstep(halfWidth-.027,halfWidth+.010,abs(u-.5));
-  float top=.035+.13*pow(side,2.);
-  float bottom=.985-.13*pow(side,2.)-.012*sin(u*32.);
+  float top=.018+.025*pow(side,2.);
+  float bottom=.988-.095*pow(side,2.)-.008*sin(u*24.);
   float ends=smoothstep(top-.012,top+.024,y)*(1.-smoothstep(bottom-.040,bottom,y));
   float thread=clamp(col.a,0.,1.);
   float alpha=thread*sideAlpha*ends*opacity;
@@ -35,18 +35,18 @@ function surface(mask,word,index){
  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=720;
  const x=canvas.getContext('2d');
  // Semi-transparent fine threads: the mesh repeat is 4x smaller than before.
- const tile=document.createElement('canvas');tile.width=32;tile.height=32;
- const tc=tile.getContext('2d'),p=tc.createImageData(32,32);
- for(let y=0;y<32;y++)for(let u=0;u<32;u++){
-   const q=mask?mask[(y*2)*64+u*2]:((u+y)%5===0?98:18);
-   const i=(y*32+u)*4;
+ const tile=document.createElement('canvas');tile.width=16;tile.height=16;
+ const tc=tile.getContext('2d'),p=tc.createImageData(16,16);
+ for(let y=0;y<16;y++)for(let u=0;u<16;u++){ 
+   const q=mask?mask[(y*4)*64+u*4]:((u+y)%5===0?98:18);
+   const i=(y*16+u)*4;
    p.data[i]=236;p.data[i+1]=216;p.data[i+2]=215;
-   p.data[i+3]=Math.round(clamp((q-14)*2.0,0,130));
+   p.data[i+3]=Math.round(clamp((q-14)*1.35,0,100));
  }
  tc.putImageData(p,0,0);
  x.fillStyle=x.createPattern(tile,'repeat');x.fillRect(0,0,512,720);
  // Sheer pink translucency is part of the threads, never a rectangular wash.
- x.fillStyle='rgba(238,211,217,.08)';x.fillRect(0,0,512,720);
+ // No opaque rectangular wash: only gauzy mesh threads and printed ink.
  x.fillStyle='rgba(52,38,45,.96)';x.textAlign='center';x.textBaseline='middle';
  x.font='800 27px Arial, sans-serif';
  const maxWidth=400,terms=word.split(' '),lines=[];let line='';
@@ -106,8 +106,8 @@ function create(root){
    const xs=p.map(q=>q.x),ys=p.map(q=>q.y);
    const left=Math.min(...xs),right=Math.max(...xs),top=Math.min(...ys),bottom=Math.max(...ys),w=right-left,h=bottom-top;
    const next={
-     x:(left+right)/2,y:top+h*.82,
-     w:clamp(w*1.40,205,410),h:clamp(h*2.00,400,740),
+     x:(left+right)/2,y:top+h*.50,
+     w:clamp(w*1.12,145,390),h:clamp(h*1.15,205,505),
      nose:p[1]||p[4],l:p[205]||p[93],r:p[425]||p[323]
    };
    if(!face)face=next;
@@ -137,9 +137,9 @@ function create(root){
      // Each separately arriving fabric starts above/in front of the lens,
      // flutters sideways, then conforms to the head in a soft 3D drape.
      const drift=(layer.index%2?1:-1),flight=layer.removing?e:1-e;
-     const w=face.w*(1+.18*flight),h=face.h*(1+.24*flight);
+     const w=face.w*(1+.12*flight),h=face.h*(1+.15*flight);
      const cx=face.x+drift*(28*flight+7*Math.sin(t*6.2)*flight);
-     const cy=face.y-205*flight;
+     const cy=face.y-145*flight;
      const left=cx-w/2,top=cy-h/2;
      for(let y=0;y<=rows;y++)for(let x=0;x<=cols;x++){
        const u=x/cols,v=y/rows;
@@ -155,7 +155,7 @@ function create(root){
      }
      gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.DYNAMIC_DRAW);
      gl.bindTexture(gl.TEXTURE_2D,tex);
-     gl.uniform1f(oLoc,clamp(a*.69,0,1));
+     gl.uniform1f(oLoc,clamp(a*.85,0,1));
      gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
    }
  }

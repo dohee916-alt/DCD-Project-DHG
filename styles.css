@@ -790,3 +790,26 @@ canvas.figure{object-fit:contain!important}
 .ar-choice-phase .ar-person-segment{filter:blur(2.8px)}
 .ar-choice-phase .ar-copy{color:#25282d;z-index:7}
 .ar-choice-phase .ar-flow-choices{z-index:9}
+
+/* Figma AR5 is the clear portrait; only its YES branch (AR5-1) has
+   the orange gradient, softly blurred portrait and returned blister. */
+.ar-immersive[data-ar-frame="AR5"] .ar-choice-gradient,
+.ar-immersive[data-ar-frame="AR5"] .ar-choice-pack{display:none!important}
+.ar-choice-phase .ar-choice-gradient{
+  background-image:url('assets/figma-current/hd/ar-background-figma.png');
+  background-size:100% 100%;background-position:center;
+  opacity:.92!important;transition:opacity 1.0s ease-in-out;
+}
+.ar-choice-phase .ar-person-segment{filter:blur(12px)!important}
+.ar-choice-pack{
+  position:absolute;inset:0;z-index:7;pointer-events:none;
+  opacity:0;transition:opacity .6s ease-out;
+}
+.ar-choice-phase .ar-choice-pack{opacity:1}
+.ar-choice-pack .ar-pack-flip{
+  position:absolute;inset:0;transform-origin:0 0!important;
+  transform:translate(57px,130px) scale(.73)!important;
+  animation:none!important;pointer-events:none;
+}
+.ar-choice-phase .ar-copy{position:absolute;z-index:9}
+.ar-choice-phase .ar-flow-choices{z-index:10}

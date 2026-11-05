@@ -9,7 +9,7 @@ const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR1
 const state={root:null,video:null,canvas:null,ctx:null,stage:null,frame:'AR3',
   maskCount:0,variant:'first',model:null,face:null,hand:null,
   pending:false,playing:false,requestId:0,lastAnalyzed:0,guideSince:0,
-  pinchStart:null,pinchReady:true,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[]};
+  pinchStart:null,pinchReady:true,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -19,6 +19,7 @@ function markup(){
  '<canvas class="ar-person-segment" width="320" height="692" aria-hidden="true"></canvas>'+
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
  '<div class="ar-choice-gradient" aria-hidden="true"></div>'+
+ '<div class="ar-choice-pack" aria-hidden="true"></div>'+
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
  '<div class="ar-copy" aria-live="polite"></div>'+
@@ -30,12 +31,14 @@ function clearScene(){
  if(!state.root)return;
  state.root.querySelector('.ar-copy').textContent='';
  state.root.querySelector('.ar-flow-choices').innerHTML='';
+ state.root.querySelector('.ar-choice-pack').innerHTML='';
  state.root.classList.toggle('ar-final-mode',state.frame==='AR9'||state.frame==='AR10');
  state.root.classList.toggle('ar-moment',state.frame==='AR8');
  state.root.classList.toggle('ar-first-gesture',state.frame==='AR6');
  state.root.classList.toggle('ar-peel-gesture',state.frame==='AR7');
  state.root.classList.toggle('ar-align-gesture',state.frame==='AR3');
- state.root.classList.toggle('ar-choice-phase',['AR5','AR5-1'].includes(state.frame));
+ state.root.classList.toggle('ar-choice-phase',state.frame==='AR5-1');
+ state.root.classList.toggle('ar-plain-choice',state.frame==='AR5');
 }
 function caption(value){const e=state.root?.querySelector('.ar-copy');if(e)e.textContent=value;}
 function typeCaption(value,duration=1200){
@@ -101,6 +104,13 @@ function enter(frame){
    buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
  case 'AR5-1':
    caption('DO YOU AGREE TO\nTEST IT ON YOU?');
+   // The original Figma AR5-1 contains the full approved blister pack, not
+   // merely the red gradient. Reuse the very same AR pack markup and dolls.
+   const preview=state.root.querySelector('.ar-choice-pack');
+   if(preview&&window.DCD_AR_PACK_PREVIEW){
+     preview.innerHTML=window.DCD_AR_PACK_PREVIEW();
+     window.DCD_RENDER_FIGURES?.();
+   }
    buttons(()=>enter('AR6'),()=>enter('AR5-2'));break;
  case 'AR5-2':
    caption('YOU AGREED TO THESE');
@@ -132,21 +142,36 @@ function observeFace(points,now){
 }
 function observeHands(hands,now){
  if(!['AR6','AR7'].includes(state.frame))return;
- const one=hands?.[0];if(!one?.length){state.guideSince=0;state.pinchStart=null;state.pinchReady=true;return;}
- const palm={x:1-one[9].x,y:one[9].y};
- const onFace=palm.x>.23&&palm.x<.77&&palm.y>.26&&palm.y<.70;
- const thumb=one[4],index=one[8],wrist=one[0],knuckle=one[5];
- const pinch=distance(thumb,index)<distance(wrist,knuckle)*.48;
+ const hand=hands?.[0];
+ if(!hand?.length){state.guideSince=0;state.pinchStart=null;state.pinchReady=true;return;}
+ const display=p=>({x:1-p.x,y:p.y});
+ const index=display(hand[8]),thumb=display(hand[4]),palm=display(hand[9]);
+ const pick={x:(index.x+thumb.x)/2,y:(index.y+thumb.y)/2};
+ const width=Math.max(.045,distance(hand[5],hand[17]));
+ // Palm-size relative threshold works for frontal hands as well as rotated
+ // hands, without requiring users to turn a pinching hand sideways.
+ const pinch=distance(hand[4],hand[8])<Math.max(.045,width*.66);
+ const box=state.faceBox||{l:.25,r:.75,t:.21,b:.77};
+ const near=(p,pad=.055)=>p.x>box.l-pad&&p.x<box.r+pad&&p.y>box.t-pad&&p.y<box.b+pad;
+ const onFace=near(pick)||near(index,.075);
  if(state.frame==='AR6'){
    if(!onFace){state.guideSince=0;return;}
    if(!state.guideSince)state.guideSince=now;
-   if(now-state.guideSince>650)enter('AR7');
+   if(now-state.guideSince>420)enter('AR7');
    return;
  }
  if(!pinch){state.pinchStart=null;state.pinchReady=true;return;}
  if(!state.pinchReady)return;
- if(!state.pinchStart){if(onFace)state.pinchStart={...palm};return;}
- if(distance(palm,state.pinchStart)>.16){
+ const span=Math.max(.06,distance(hand[0],hand[9]));
+ if(!state.pinchStart){
+   if(onFace)state.pinchStart={point:pick,span,near:now};
+   return;
+ }
+ const start=state.pinchStart;
+ const awayFromFace=distance(pick,start.point)>.105;
+ // Pulling towards the camera grows the hand's apparent palm size.
+ const pullTowardCamera=span>start.span*1.27;
+ if((awayFromFace||pullTowardCamera)&&now-start.near>140){
    state.pinchReady=false;state.pinchStart=null;
    removeFabric();
    if(state.maskCount===0)delay(()=>enter('AR8'),420);
@@ -179,7 +204,8 @@ async function initModels(){
 function paintPerson(segment){
  const canvas=state.canvas,video=state.video;
  if(!canvas||!video||!segment?.confidenceMasks?.length)return;
- const mask=segment.confidenceMasks[0];
+ // Official SelfieSegmenter channel 0 is BACKGROUND, channel 1 is PERSON.
+ const mask=segment.confidenceMasks[1]||segment.confidenceMasks[0];
  const values=mask.getAsFloat32Array();
  const w=mask.width,h=mask.height;
  if(!w||!h||!values?.length)return;
@@ -193,7 +219,10 @@ function paintPerson(segment){
    // Feather the low-resolution segmentation boundary before compositing.
    const confidence=Math.max(0,Math.min(1,values[i]));
    const feather=Math.max(0,Math.min(1,(confidence-.16)/.67));
-   pixels.data[i*4+3]=Math.round((feather*feather*(3-2*feather))*255);
+   const current=feather*feather*(3-2*feather);
+   if(!state.alphaHistory||state.alphaHistory.length!==w*h)state.alphaHistory=new Float32Array(w*h);
+   const stabilized=state.alphaHistory[i]=current*.76+state.alphaHistory[i]*.24;
+   pixels.data[i*4+3]=Math.round(stabilized*255);
  }
  maskContext.putImageData(pixels,0,0);
  const ctx=state.ctx,W=canvas.width,H=canvas.height;
@@ -209,7 +238,7 @@ function paintPerson(segment){
  sc.clearRect(0,0,W,H);sc.save();sc.translate(W,0);sc.scale(-1,1);
  sc.drawImage(video,(W-drawW)/2,(H-drawH)/2,drawW,drawH);
  sc.globalCompositeOperation='destination-in';
- sc.save();sc.filter='blur(1.35px)';
+ sc.save();sc.filter='blur(.85px)';
  sc.drawImage(state.maskCanvas,(W-drawW)/2,(H-drawH)/2,drawW,drawH);
  sc.restore();
  sc.restore();sc.globalCompositeOperation='source-over';
@@ -226,7 +255,15 @@ function tick(now){
    if(state.model){const result=state.model.segmentForVideo(video,now);paintPerson(result);result?.confidenceMasks?.forEach(m=>m.close?.());}
    if(state.face&&['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7'].includes(state.frame)){
      const points=state.face.detectForVideo(video,now).faceLandmarks?.[0];
-     if(points?.length)state.tulle?.update(points,video);
+     if(points?.length){
+       state.tulle?.update(points,video);
+       const xs=points.map(p=>1-p.x),ys=points.map(p=>p.y);
+       const candidate={l:Math.min(...xs),r:Math.max(...xs),t:Math.min(...ys),b:Math.max(...ys)};
+       const previous=state.faceBox;state.faceBox=previous?{
+         l:previous.l*.68+candidate.l*.32,r:previous.r*.68+candidate.r*.32,
+         t:previous.t*.68+candidate.t*.32,b:previous.b*.68+candidate.b*.32
+       }:candidate;
+     }
      if(state.frame==='AR3')observeFace(points,now);
    }
    if(state.hand&&['AR6','AR7'].includes(state.frame)){observeHands(state.hand.detectForVideo(video,now).landmarks,now);}
@@ -241,6 +278,7 @@ function mount(stage,video){
  state.canvas=root.querySelector('.ar-person-segment');state.ctx=state.canvas.getContext('2d');
  state.tulle=window.DCD_TULLE?.create(root.querySelector('.ar-organza-stack'))||null;
  state.sheets=[];state.variant='first';state.maskCount=0;state.segmented=false;state.analysisError=false;
+ state.faceBox=null;state.alphaHistory=null;
  enter('AR3');
 }
 function start(video){

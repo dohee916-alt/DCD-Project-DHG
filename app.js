@@ -334,6 +334,9 @@ function arPackMarkup(){
   h+='<div class="ar-pack-face ar-pack-front">'+front+'</div>';
   return h+'</div>';
 }
+// Share the exact approved AR blister with the AR5-1 decision overlay.
+window.DCD_AR_PACK_PREVIEW=arPackMarkup;
+window.DCD_RENDER_FIGURES=drawFigures;
 function arMarkup(){
   if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
   let h=img(A.arBackground,0,0,428,926,'ar-orange-background')+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
