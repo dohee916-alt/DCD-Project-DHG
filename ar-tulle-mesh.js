@@ -8,6 +8,13 @@ const WORDS={
   first:["THAT’S CHEATING.","YOU DIDN’T EARN THAT BODY.","IS THAT EVEN THE REAL YOU?","DID YOU REALLY NEED MEDICATION?","YOU’LL JUST GAIN IT ALL BACK."],
   replacement:["WHY DON’T YOU JUST TAKE GLP-1?","WHAT’S YOUR EXCUSE NOW?","EVERYONE ELSE IS LOSING WEIGHT.","DON’T YOU CARE ABOUT YOUR HEALTH?","YOU’RE NOT EVEN TRYING."]
 };
+// Complete uninterrupted fabric over both eyelids and the lips. These
+// outlines bound holes in MediaPipe's standard facial tessellation.
+const COVERED_HOLES=[
+  [33,246,161,160,159,158,157,173,133,155,154,153,145,144,163,7],
+  [362,398,384,385,386,387,388,466,263,249,390,373,374,380,381,382],
+  [61,185,40,39,37,0,267,269,270,409,291,375,321,405,314,17,84,181,91,146]
+];
 const W=428,H=926,COUNT=468,clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const mix=(a,b,t)=>a+(b-a)*t;
 const ease=t=>t*t*(3-2*t);
@@ -153,7 +160,10 @@ function create(root){
     const next=topology(tri,oval);
     if(!next)return false;
     geo=next;
-    const vertexCount=COUNT+geo.oval.length;
+    // Add a real surface vertex at each eye/mouth center. Triangle fans
+    // seal the gaps with the SAME cloth texture and UV deformation.
+    geo.capStart=COUNT+geo.oval.length;
+    const vertexCount=geo.capStart+COVERED_HOLES.length;
     vertices=new Float32Array(vertexCount*stride);
     base=new Float32Array(vertexCount*3);
     shades=new Float32Array(vertexCount);
@@ -164,6 +174,10 @@ function create(root){
         const w=geo.oval[(i+1)%geo.oval.length];
         const A=COUNT+i,B=COUNT+((i+1)%geo.oval.length);
         return [v,w,B,v,B,A];
+      }),
+      ...COVERED_HOLES.flatMap((rim,i)=>{
+        const center=geo.capStart+i;
+        return rim.flatMap((v,k)=>[center,v,rim[(k+1)%rim.length]]);
       })
     ]);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
@@ -231,6 +245,17 @@ function create(root){
       base[j+1]=py+(py-cy)*.095+(upper?-2:4);
       base[j+2]=base[k+2]-8;
     }
+    // Slightly lift the hole caps in front of eyelids and lips. Their
+    // depth follows the live face so the veil remains uninterrupted during
+    // blinking, talking, and head rotation.
+    for(let n=0;n<COVERED_HOLES.length;n++){
+      const rim=COVERED_HOLES[n],dst=(geo.capStart+n)*3;
+      let x=0,y=0,z=0;
+      for(const j of rim){x+=base[j*3];y+=base[j*3+1];z+=base[j*3+2];}
+      base[dst]=x/rim.length;
+      base[dst+1]=y/rim.length;
+      base[dst+2]=z/rim.length-6;
+    }
     if(!initialUV){
       initialUV=new Float32Array(COUNT*2);
       for(let i=0;i<COUNT;i++){
@@ -244,6 +269,15 @@ function create(root){
       const src=geo.oval[i],dst=COUNT+i;
       uvs[dst*2]=clamp((uvs[src*2]-.5)*1.095+.5,0,1);
       uvs[dst*2+1]=clamp((uvs[src*2+1]-.5)*1.095+.5,0,1);
+    }
+    // Extend the fabric's face-locked UV field across the repaired holes.
+    // This also keeps printed text continuous across closed eyelids/lips.
+    for(let n=0;n<COVERED_HOLES.length;n++){
+      const rim=COVERED_HOLES[n],dst=(geo.capStart+n)*2;
+      let u=0,v=0;
+      for(const j of rim){u+=uvs[j*2];v+=uvs[j*2+1];}
+      uvs[dst]=u/rim.length;
+      uvs[dst+1]=v/rim.length;
     }
     // Estimate a surface normal from real triangles for fabric shading.
     const normal=new Float32Array((COUNT+geo.oval.length)*3);
@@ -263,6 +297,11 @@ function create(root){
       shades[i]=clamp(.95+(-.28*x-.23*y+.60*Math.abs(z))/length*.25,.74,1.18);
     }
     for(let i=0;i<geo.oval.length;i++)shades[COUNT+i]=shades[geo.oval[i]];
+    for(let n=0;n<COVERED_HOLES.length;n++){
+      const rim=COVERED_HOLES[n];let light=0;
+      for(const j of rim)light+=shades[j];
+      shades[geo.capStart+n]=light/rim.length;
+    }
     root.classList.add('ar-tulle-ready');
   }
   function arrival(t){
