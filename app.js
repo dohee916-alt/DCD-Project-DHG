@@ -83,7 +83,28 @@ function localPoint(e){let r=stage.getBoundingClientRect(),dx=dimensions()[0]===
 function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
 const ropes={upper:{line:[6,20,406,596],pull:[-69,-111]},lower:{line:[8,752,406,615],pull:[90,99]}};
 function ropeAt(p){let closest=null,distance=Infinity;for(const [name,{line}] of Object.entries(ropes)){let [x1,y1,x2,y2]=line,t=clamp(((p.x-x1)*(x2-x1)+(p.y-y1)*(y2-y1))/((x2-x1)**2+(y2-y1)**2),0,1),d=Math.hypot(p.x-(x1+t*(x2-x1)),p.y-(y1+t*(y2-y1)));if(d<distance){closest=name;distance=d;}}return distance<=55?closest:null;}
-function pullDistance(g,p){let [dx,dy]=ropes[g.rope].pull,len=Math.hypot(dx,dy);return ((p.x-g.start.x)*dx+(p.y-g.start.y)*dy)/len;}
+function pullDistance(g,p){
+  if(g.type==='touch'){
+    // On phones, the gesture is a two-finger outward spread. The visible
+    // left/right hand guides are not co-located with the two diagonal rope
+    // paths, so using ropeAt() here made the action practically unreachable.
+    return g.rope==='left'?g.start.x-p.x:p.x-g.start.x;
+  }
+  let [dx,dy]=ropes[g.rope].pull,len=Math.hypot(dx,dy);
+  return ((p.x-g.start.x)*dx+(p.y-g.start.y)*dy)/len;
+}
+function mobilePullSide(p){
+  // Separate full-size hit areas in the left and right halves of the poster.
+  // The central gap prevents both fingers from accidentally claiming one side.
+  if(p.y<120||p.y>805)return null;
+  if(p.x<198)return 'left';
+  if(p.x>230)return 'right';
+  return null;
+}
+function completeIntroPull(){
+  gesture.clear();
+  if(s.page==='01'&&s.phase==='guide')setPage('01','rupture');
+}
 function drawFigures(){
   // The same body image is drawn in every scene. The pack geometry, not the
   // body pixels or image transparency, determines the scene's uniform scale.
@@ -1152,19 +1173,28 @@ stage.addEventListener('change',e=>{
   }
   // Legacy checklist (only when explicitly mounted) also needs no rebuild.
 });
-stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s.phase==='guide'){let rope=ropeAt(p);if(!rope)return;e.preventDefault();gesture.set(e.pointerId,{rope,start:p,type:e.pointerType||'mouse',pulled:false});stage.setPointerCapture(e.pointerId);return;}
+stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s.phase==='guide'){
+  const isTouch=e.pointerType==='touch';
+  const rope=isTouch?mobilePullSide(p):ropeAt(p);
+  if(!rope)return;
+  e.preventDefault();
+  // One active finger per poster side; do not replace a finger mid-drag.
+  if(isTouch&&[...gesture.values()].some(g=>g.type==='touch'&&g.rope===rope))return;
+  gesture.set(e.pointerId,{rope,start:p,type:isTouch?'touch':(e.pointerType||'mouse'),pulled:false});
+  try{stage.setPointerCapture(e.pointerId);}catch(error){console.warn('[DCD] Pointer capture:',error);}
+  return;
+}
 if(s.page!=='workbench'||s.phase!=='ready')return;let kind=null,index=-1;if(hit(p,261,125,40,297))kind='syringe';else if(hit(p,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h))kind='doll';else{index=packSlots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();const el=kind==='syringe'?stage.querySelector('.syringe'):kind==='doll'?stage.querySelector('.active-figure'):stage.querySelector('canvas.packed-figure[data-figure="'+index+'"]');drag={kind,index,pointerId:e.pointerId,start:p,last:p,moved:false,angle:kind==='syringe'?(s.loaded?45:-45):0,el};if(el)el.classList.add('dragging');if(kind==='syringe'){s.handGuideDismissed=true;save();stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());if(el){el.style.transition='none';el.style.transform='rotate('+drag.angle+'deg)';}}stage.setPointerCapture(e.pointerId);}});
 stage.addEventListener('pointermove',e=>{
   let p=localPoint(e);
   if(gesture.has(e.pointerId)){
     let g=gesture.get(e.pointerId);
-    g.pulled=pullDistance(g,p)>=14;
-    let active=[...gesture.values()];
-    let both=active.some(v=>v.rope==='upper'&&v.pulled)&&active.some(v=>v.rope==='lower'&&v.pulled);
-    let singlePointerMirror=g.type!=='touch'&&g.pulled;
-    if((both||singlePointerMirror)&&s.page==='01'&&s.phase==='guide'){
-      gesture.clear();setPage('01','rupture');
-    }
+    g.pulled=pullDistance(g,p)>=(g.type==='touch'?25:14);
+    const active=[...gesture.values()];
+    const bothTouch=active.some(v=>v.type==='touch'&&v.rope==='left'&&v.pulled)
+      &&active.some(v=>v.type==='touch'&&v.rope==='right'&&v.pulled);
+    const mousePull=g.type!=='touch'&&g.pulled;
+    if((bothTouch||mousePull)&&s.page==='01'&&s.phase==='guide')completeIntroPull();
     return;
   }
   if(!drag||drag.pointerId!==e.pointerId)return;
