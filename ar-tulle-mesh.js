@@ -11,15 +11,22 @@ uniform sampler2D tex;uniform float opacity;varying vec2 v;
 void main(){
   vec4 col=texture2D(tex,v);
   float u=v.x,y=1.-v.y;
-  float side=abs(u-.5)*2.;
-  float halfWidth=.5*(.88+.075*sin(3.14159*y)-.16*pow(y,3.));
-  float sideAlpha=1.-smoothstep(halfWidth-.027,halfWidth+.010,abs(u-.5));
-  float top=.018+.025*pow(side,2.);
-  float bottom=.988-.095*pow(side,2.)-.008*sin(u*24.);
-  float ends=smoothstep(top-.012,top+.024,y)*(1.-smoothstep(bottom-.040,bottom,y));
-  float thread=clamp(col.a,0.,1.);
-  float alpha=thread*sideAlpha*ends*opacity;
-  gl_FragColor=vec4(col.rgb,alpha);
+  // Actual closed oval silhouette (ellipse), not a softened rectangle.
+  // Wider at the cheeks; slightly tapered at the chin, rounded at the top.
+  float yy=(y-.505)/.495;
+  float taper=1.-.13*smoothstep(.50,.97,y);
+  float xx=(u-.5)/(.486*taper);
+  float radius=xx*xx+yy*yy;
+  float silhouette=1.-smoothstep(.91,1.015,radius);
+  // Dye the fabric warm orange; softened opaque silk gives readable ink.
+  vec3 orange=vec3(.94,.53,.43);
+  float weave=clamp(col.a,0.,1.);
+  float ink=max(max(col.r-col.g,col.b-col.g),0.);
+  float isPrint=step(.32,col.r-col.g);
+  vec3 tint=mix(orange,col.rgb,isPrint);
+  float threadAlpha=max(.20,weave*.66);
+  float alpha=threadAlpha*silhouette*opacity;
+  gl_FragColor=vec4(tint,alpha);
 }`;
 const mix=(a,b,t)=>a+(b-a)*t;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -35,27 +42,37 @@ function surface(mask,word,index){
  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=720;
  const x=canvas.getContext('2d');
  // Semi-transparent fine threads: the mesh repeat is 4x smaller than before.
- const tile=document.createElement('canvas');tile.width=16;tile.height=16;
- const tc=tile.getContext('2d'),p=tc.createImageData(16,16);
- for(let y=0;y<16;y++)for(let u=0;u<16;u++){ 
-   const q=mask?mask[(y*4)*64+u*4]:((u+y)%5===0?98:18);
-   const i=(y*16+u)*4;
-   p.data[i]=236;p.data[i+1]=216;p.data[i+2]=215;
-   p.data[i+3]=Math.round(clamp((q-14)*1.35,0,100));
+ const tile=document.createElement('canvas');tile.width=8;tile.height=8;
+ const tc=tile.getContext('2d'),p=tc.createImageData(8,8);
+ for(let y=0;y<8;y++)for(let u=0;u<8;u++){ 
+   const q=mask?mask[(y*8)*64+u*8]:((u+y)%5===0?98:18);
+   const i=(y*8+u)*4;
+   p.data[i]=242;p.data[i+1]=172;p.data[i+2]=154;
+   p.data[i+3]=Math.round(clamp((q-11)*.85,0,72));
  }
  tc.putImageData(p,0,0);
  x.fillStyle=x.createPattern(tile,'repeat');x.fillRect(0,0,512,720);
  // Sheer pink translucency is part of the threads, never a rectangular wash.
  // No opaque rectangular wash: only gauzy mesh threads and printed ink.
- x.fillStyle='rgba(52,38,45,.96)';x.textAlign='center';x.textBaseline='middle';
- x.font='800 27px Arial, sans-serif';
- const maxWidth=400,terms=word.split(' '),lines=[];let line='';
- for(const term of terms){let candidate=line?line+' '+term:term;
+ // Figma typography: Source Sans 3 Bold 700, 26px / 32px in screen
+ // coordinates. Texture scale is ~1.35, so use 36px / 43px in UV.
+ const spots=[
+   {x:342,y:175,turn:-24},
+   {x:166,y:280,turn:17},
+   {x:320,y:373,turn:-12},
+   {x:183,y:475,turn:12},
+   {x:292,y:566,turn:-8}
+ ];
+ const spot=spots[index];
+ x.save();x.translate(spot.x,spot.y);x.rotate(spot.turn*Math.PI/180);
+ x.fillStyle='#e83d0a';x.textAlign='center';x.textBaseline='middle';
+ x.font='700 35px "Source Sans 3", Arial, sans-serif';
+ const maxWidth=345,terms=word.split(' '),lines=[];let line='';
+ for(const term of terms){const candidate=line?line+' '+term:term;
    if(line&&x.measureText(candidate).width>maxWidth){lines.push(line);line=term;}else line=candidate;}
  if(line)lines.push(line);
- // Dedicated vertical text band for each fabric: no mirrored/backwards text.
- const cy=196+index*86;
- lines.forEach((s,i)=>x.fillText(s,256,cy+(i-(lines.length-1)/2)*31));
+ lines.forEach((text,i)=>x.fillText(text,0,(i-(lines.length-1)/2)*43,maxWidth));
+ x.restore();
  return canvas;
 }
 function create(root){
@@ -107,7 +124,7 @@ function create(root){
    const left=Math.min(...xs),right=Math.max(...xs),top=Math.min(...ys),bottom=Math.max(...ys),w=right-left,h=bottom-top;
    const next={
      x:(left+right)/2,y:top+h*.50,
-     w:clamp(w*1.12,145,390),h:clamp(h*1.15,205,505),
+     w:clamp(w*1.38,190,420),h:clamp(h*1.32,230,535),
      nose:p[1]||p[4],l:p[205]||p[93],r:p[425]||p[323]
    };
    if(!face)face=next;
@@ -155,7 +172,7 @@ function create(root){
      }
      gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.DYNAMIC_DRAW);
      gl.bindTexture(gl.TEXTURE_2D,tex);
-     gl.uniform1f(oLoc,clamp(a*.85,0,1));
+     gl.uniform1f(oLoc,clamp(a*.74,0,1));
      gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
    }
  }

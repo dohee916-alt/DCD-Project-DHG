@@ -7,7 +7,7 @@ const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'];
 const state={root:null,video:null,canvas:null,ctx:null,stage:null,frame:'AR3',
-  maskCount:0,variant:'first',model:null,face:null,hand:null,
+  maskCount:0,variant:'first',model:null,face:null,hand:null,hair:null,hairData:null,lastHairFrame:0,
   pending:false,playing:false,requestId:0,lastAnalyzed:0,guideSince:0,
   pinchStart:null,pinchReady:true,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
@@ -16,7 +16,7 @@ const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 function markup(){
  return '<div class="ar-immersive" data-ar-frame="AR3">'+
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
- '<canvas class="ar-person-segment" width="320" height="692" aria-hidden="true"></canvas>'+
+ '<canvas class="ar-person-segment" width="428" height="926" aria-hidden="true"></canvas>'+
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
  '<div class="ar-choice-gradient" aria-hidden="true"></div>'+
  '<div class="ar-choice-pack" aria-hidden="true"></div>'+
@@ -198,6 +198,14 @@ async function initModels(){
    if(!state.root)return;
    try{state.hand=await load(m.HandLandmarker,'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',{numHands:2});}
    catch(error){console.warn('[DCD AR] Hand tracker:',error);}
+   if(!state.root)return;
+   // 512×512 hair refinement, independent of the 256×256 person model.
+   // CPU delegate to avoid competing GPU contexts with face/hand trackers.
+   try{state.hair=await m.ImageSegmenter.createFromOptions(vision,{
+     baseOptions:{modelAssetPath:MODEL_ROOT+'image_segmenter/hair_segmenter/float32/1/hair_segmenter.tflite',delegate:'CPU'},
+     runningMode:'VIDEO',outputConfidenceMasks:true,outputCategoryMask:false
+   });}
+   catch(error){console.warn('[DCD AR] Optional hair refinement:',error);}
  }catch(error){console.warn('[DCD AR] Vision model unavailable; raw camera remains:',error);}
  finally{state.pending=false;}
 }
@@ -208,6 +216,8 @@ function paintPerson(segment){
  const mask=segment.confidenceMasks[1]||segment.confidenceMasks[0];
  const values=mask.getAsFloat32Array();
  const w=mask.width,h=mask.height;
+ const hairData=state.hairData;
+ const hairW=state.hairWidth||0,hairH=state.hairHeight||0;
  if(!w||!h||!values?.length)return;
  if(!state.maskCanvas||state.maskCanvas.width!==w||state.maskCanvas.height!==h){
    state.maskCanvas=document.createElement('canvas');state.maskCanvas.width=w;state.maskCanvas.height=h;
@@ -217,8 +227,15 @@ function paintPerson(segment){
  for(let i=0;i<w*h;i++){
    pixels.data[i*4]=255;pixels.data[i*4+1]=255;pixels.data[i*4+2]=255;
    // Feather the low-resolution segmentation boundary before compositing.
-   const confidence=Math.max(0,Math.min(1,values[i]));
-   const feather=Math.max(0,Math.min(1,(confidence-.16)/.67));
+   let confidence=Math.max(0,Math.min(1,values[i]));
+   if(hairData&&hairW&&hairH){
+     const x=i%w,y=Math.floor(i/w);
+     const hx=Math.min(hairW-1,Math.floor((x+.5)*hairW/w));
+     const hy=Math.min(hairH-1,Math.floor((y+.5)*hairH/h));
+     const hConf=hairData[hy*hairW+hx];
+     if(Number.isFinite(hConf))confidence=Math.max(confidence,hConf*.92);
+   }
+   const feather=Math.max(0,Math.min(1,(confidence-.12)/.75));
    const current=feather*feather*(3-2*feather);
    if(!state.alphaHistory||state.alphaHistory.length!==w*h)state.alphaHistory=new Float32Array(w*h);
    const stabilized=state.alphaHistory[i]=current*.76+state.alphaHistory[i]*.24;
@@ -252,6 +269,18 @@ function tick(now){
  const video=state.video;if(!video||video.readyState<2||now-state.lastAnalyzed<95)return;
  state.lastAnalyzed=now;
  try{
+   if(state.hair&&now-state.lastHairFrame>=490){
+     state.lastHairFrame=now;
+     try{
+       const hairResult=state.hair.segmentForVideo(video,now);
+       const mask=hairResult?.confidenceMasks?.[1];
+       if(mask){
+         state.hairData=new Float32Array(mask.getAsFloat32Array());
+         state.hairWidth=mask.width;state.hairHeight=mask.height;
+       }
+       hairResult?.confidenceMasks?.forEach(m=>m.close?.());
+     }catch(error){state.hair=null;console.warn('[DCD AR] Hair refinement disabled:',error);}
+   }
    if(state.model){const result=state.model.segmentForVideo(video,now);paintPerson(result);result?.confidenceMasks?.forEach(m=>m.close?.());}
    if(state.face&&['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7'].includes(state.frame)){
      const points=state.face.detectForVideo(video,now).faceLandmarks?.[0];
@@ -278,7 +307,7 @@ function mount(stage,video){
  state.canvas=root.querySelector('.ar-person-segment');state.ctx=state.canvas.getContext('2d');
  state.tulle=window.DCD_TULLE?.create(root.querySelector('.ar-organza-stack'))||null;
  state.sheets=[];state.variant='first';state.maskCount=0;state.segmented=false;state.analysisError=false;
- state.faceBox=null;state.alphaHistory=null;
+ state.faceBox=null;state.alphaHistory=null;state.hairData=null;state.lastHairFrame=0;
  enter('AR3');
 }
 function start(video){

@@ -813,3 +813,41 @@ canvas.figure{object-fit:contain!important}
 }
 .ar-choice-phase .ar-copy{position:absolute;z-index:9}
 .ar-choice-phase .ar-flow-choices{z-index:10}
+
+/* 2026-11-05 AR veil fidelity: true near-circular face oval, finely dyed
+   organdy, Figma typography and softly defocused portrait under the textile.
+   These rules affect only the AR camera experience. */
+.ar-immersive[data-ar-frame="AR4"] .ar-person-segment,
+.ar-immersive[data-ar-frame="AR5"] .ar-person-segment,
+.ar-immersive[data-ar-frame="AR5-2"] .ar-person-segment,
+.ar-immersive[data-ar-frame="AR6"] .ar-person-segment,
+.ar-immersive[data-ar-frame="AR7"] .ar-person-segment{
+  filter:blur(3.8px);
+}
+.ar-immersive .ar-organza-sheet{
+  left:7%!important;top:25%!important;width:86%!important;height:51%!important;
+  background:radial-gradient(ellipse at 43% 39%,
+    rgba(249,174,150,.55),rgba(244,128,102,.43) 64%,rgba(224,98,83,.47))!important;
+  border-radius:49% 49% 46% 46% / 48% 48% 52% 52%!important;
+  -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 91%,transparent 100%)!important;
+  mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 91%,transparent 100%)!important;
+  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+}
+.ar-immersive .ar-organza-printed-copy{
+  color:#e83d0a!important;font-family:"Source Sans 3",Arial,sans-serif!important;
+  font-weight:700!important;font-size:26px!important;line-height:32px!important;
+  width:76%;left:12%;right:12%;
+  text-shadow:none!important;
+}
+.ar-immersive .ar-organza-sheet:nth-of-type(5n + 2) .ar-organza-printed-copy{
+  transform:rotate(-19deg) translate(35px,-26px);
+}
+.ar-immersive .ar-organza-sheet:nth-of-type(5n + 3) .ar-organza-printed-copy{
+  transform:rotate(13deg) translate(-42px,24px);
+}
+.ar-immersive .ar-organza-sheet:nth-of-type(5n + 4) .ar-organza-printed-copy{
+  transform:rotate(-12deg) translate(29px,-15px);
+}
+.ar-immersive .ar-organza-sheet:nth-of-type(5n) .ar-organza-printed-copy{
+  transform:rotate(11deg) translate(-21px,18px);
+}
