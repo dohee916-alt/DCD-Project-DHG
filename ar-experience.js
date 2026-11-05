@@ -9,7 +9,7 @@ const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR1
 const state={root:null,video:null,canvas:null,ctx:null,stage:null,frame:'AR3',
   maskCount:0,variant:'first',model:null,face:null,hand:null,
   pending:false,playing:false,requestId:0,lastAnalyzed:0,guideSince:0,
-  pinchStart:null,pinchReady:true,stepTimer:[],segmented:false,ready:false};
+  pinchStart:null,pinchReady:true,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[]};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -42,27 +42,38 @@ function typeCaption(value,duration=1200){
  function write(){if(!state.root||!frameNames.includes(state.frame))return;element.textContent=letters.slice(0,++i).join('');if(i<letters.length)delay(write,period);}
  write();
 }
+const ORGANZA_TEXT={
+ first:["THAT’S CHEATING.","YOU DIDN’T EARN THAT BODY.","IS THAT EVEN THE REAL YOU?","DID YOU REALLY NEED MEDICATION?","YOU’LL JUST GAIN IT ALL BACK."],
+ replacement:["WHY DON’T YOU JUST TAKE GLP-1?","WHAT’S YOUR EXCUSE NOW?","EVERYONE ELSE IS LOSING WEIGHT.","DON’T YOU CARE ABOUT YOUR HEALTH?","YOU’RE NOT EVEN TRYING."]
+};
 function fabric(){
  const root=state.root?.querySelector('.ar-organza-stack');if(!root)return;
- root.innerHTML='';
- for(let i=0;i<state.maskCount;i++){
-   const layer=document.createElement('div');
+ while(state.sheets.length<state.maskCount){
+   const i=state.sheets.length,layer=document.createElement('div');
    layer.className='ar-organza-sheet';
    layer.style.setProperty('--sheet',i);
    layer.dataset.variant=state.variant;
-   // Keep the lettering empty until the actual text and artwork are approved.
-   root.appendChild(layer);
+   const copy=document.createElement('span');
+   copy.className='ar-organza-printed-copy';
+   copy.textContent=ORGANZA_TEXT[state.variant][i];
+   layer.appendChild(copy);root.appendChild(layer);
+   const surface=state.tulle?.add(state.variant,i)||null;
+   state.sheets.push({layer,surface});
    requestAnimationFrame(()=>layer.classList.add('shown'));
  }
 }
 function addFabric(){
- if(!state.root)return;
- state.maskCount=Math.min(4,state.maskCount+1);fabric();
+ if(!state.root||state.maskCount>=5)return;
+ state.maskCount++;fabric();
 }
 function removeFabric(){
- const root=state.root?.querySelector('.ar-organza-stack');if(!root||state.maskCount===0)return;
- const node=root.lastElementChild;state.maskCount--;
- if(node){node.classList.add('peeling');delay(()=>{node.remove();},400);}
+ if(state.maskCount===0)return;
+ state.maskCount--;
+ const sheet=state.sheets.pop();
+ if(!sheet)return;
+ sheet.layer.classList.add('peeling');
+ state.tulle?.remove(sheet.surface);
+ delay(()=>sheet.layer.remove(),720);
 }
 function buttons(yes,no){
  const area=state.root?.querySelector('.ar-flow-choices');if(!area)return;
@@ -79,8 +90,9 @@ function enter(frame){
  case 'AR3':caption('POSITION YOUR FACE HERE');break;
  case 'AR4':
    caption('YOU AGREED TO THESE');
-   state.maskCount=0;fabric();for(let i=1;i<=4;i++)delay(addFabric,i*680);
-   delay(()=>enter('AR5'),4*680+1000);break;
+   state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());state.sheets=[];
+   for(let i=1;i<=5;i++)delay(addFabric,i*680);
+   delay(()=>enter('AR5'),5*680+1000);break;
  case 'AR5':
    caption('DO YOU WANT TO\nCHANGE YOUR CHOICE?');
    buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
@@ -89,11 +101,11 @@ function enter(frame){
    buttons(()=>enter('AR6'),()=>enter('AR5-2'));break;
  case 'AR5-2':
    caption('YOU AGREED TO THESE');
-   for(let i=0;i<4;i++)delay(removeFabric,500+i*490);
+   for(let i=0;i<5;i++)delay(removeFabric,500+i*490);
    delay(()=>{
-     state.variant='replacement';for(let i=1;i<=4;i++)delay(addFabric,i*680);
-     delay(()=>enter('AR6'),4*680+950);
-   },4*490+520);break;
+     state.variant='replacement';for(let i=1;i<=5;i++)delay(addFabric,i*680);
+     delay(()=>enter('AR6'),5*680+950);
+   },5*490+520);break;
  case 'AR6':caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
  case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
  case 'AR8':
@@ -148,11 +160,16 @@ async function initModels(){
      try{return await Ctor.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL_ROOT+path,delegate:'GPU'},runningMode:'VIDEO',...extra});}
      catch{return await Ctor.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL_ROOT+path,delegate:'CPU'},runningMode:'VIDEO',...extra});}
    };
-   state.model=await load(m.ImageSegmenter,'image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite',{outputConfidenceMasks:true,outputCategoryMask:false});
+   // Segmentation, facial geometry and hand tracking must be independent.
+   // A network/GPU failure in one model must not block the other two.
+   try{state.model=await load(m.ImageSegmenter,'image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite',{outputConfidenceMasks:true,outputCategoryMask:false});}
+   catch(error){console.warn('[DCD AR] Segmentation model:',error);}
    if(!state.root)return;
-   state.face=await load(m.FaceLandmarker,'face_landmarker/face_landmarker/float16/1/face_landmarker.task',{numFaces:1});
+   try{state.face=await load(m.FaceLandmarker,'face_landmarker/face_landmarker/float16/1/face_landmarker.task',{numFaces:1});}
+   catch(error){console.warn('[DCD AR] Face tracker:',error);}
    if(!state.root)return;
-   state.hand=await load(m.HandLandmarker,'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',{numHands:2});
+   try{state.hand=await load(m.HandLandmarker,'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',{numHands:2});}
+   catch(error){console.warn('[DCD AR] Hand tracker:',error);}
  }catch(error){console.warn('[DCD AR] Vision model unavailable; raw camera remains:',error);}
  finally{state.pending=false;}
 }
@@ -199,7 +216,11 @@ function tick(now){
  state.lastAnalyzed=now;
  try{
    if(state.model){const result=state.model.segmentForVideo(video,now);paintPerson(result);result?.confidenceMasks?.forEach(m=>m.close?.());}
-   if(state.face&&state.frame==='AR3'){observeFace(state.face.detectForVideo(video,now).faceLandmarks?.[0],now);}
+   if(state.face&&['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7'].includes(state.frame)){
+     const points=state.face.detectForVideo(video,now).faceLandmarks?.[0];
+     if(points?.length)state.tulle?.update(points,video);
+     if(state.frame==='AR3')observeFace(points,now);
+   }
    if(state.hand&&['AR6','AR7'].includes(state.frame)){observeHands(state.hand.detectForVideo(video,now).landmarks,now);}
  }catch(error){if(!state.analysisError){console.warn('[DCD AR] Camera inference:',error);state.analysisError=true;}}
 }
@@ -210,7 +231,8 @@ function mount(stage,video){
  stop();
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
  state.canvas=root.querySelector('.ar-person-segment');state.ctx=state.canvas.getContext('2d');
- state.variant='first';state.maskCount=0;state.segmented=false;state.analysisError=false;
+ state.tulle=window.DCD_TULLE?.create(root.querySelector('.ar-organza-stack'))||null;
+ state.sheets=[];state.variant='first';state.maskCount=0;state.segmented=false;state.analysisError=false;
  enter('AR3');
 }
 function start(video){
@@ -221,11 +243,12 @@ function start(video){
 }
 function stop(){
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
+ state.tulle?.destroy();state.tulle=null;state.sheets=[];
  state.root=null;state.stage=null;state.video=null;state.canvas=null;state.ctx=null;
 }
 window.DCD_AR_FLOW={markup,mount,start,stop,frame:()=>state.frame,debugNext:()=>{
  const pos=frameNames.indexOf(state.frame);
- if(state.frame==='AR4'){state.maskCount=4;fabric();enter('AR5');}
+ if(state.frame==='AR4'){for(let i=state.maskCount;i<5;i++)addFabric();enter('AR5');}
  else if(state.frame==='AR5'){enter('AR5-1');}
  else if(state.frame==='AR5-1'){enter('AR6');}
  else if(state.frame==='AR6'){enter('AR7');}
