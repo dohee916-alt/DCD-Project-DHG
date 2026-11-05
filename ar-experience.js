@@ -9,7 +9,7 @@ const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR1
 const state={root:null,video:null,canvas:null,ctx:null,stage:null,frame:'AR3',
   maskCount:0,variant:'first',model:null,face:null,hand:null,hair:null,hairData:null,lastHairFrame:0,
   topology:null,pending:false,playing:false,requestId:0,lastAnalyzed:0,guideSince:0,
-  pinchStart:null,pinchReady:true,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null};
+  pinchStart:null,pinchReady:true,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null,matting:null};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -17,6 +17,7 @@ function markup(){
  return '<div class="ar-immersive" data-ar-frame="AR3">'+
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
  '<canvas class="ar-person-segment" width="428" height="926" aria-hidden="true"></canvas>'+
+ '<video class="ar-matting-video" autoplay muted playsinline aria-label="Camera with portrait background removed"></video>'+
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
  '<div class="ar-choice-gradient" aria-hidden="true"></div>'+
  '<div class="ar-choice-pack" aria-hidden="true"></div>'+
@@ -281,7 +282,7 @@ function tick(now){
  const video=state.video;if(!video||video.readyState<2||now-state.lastAnalyzed<95)return;
  state.lastAnalyzed=now;
  try{
-   if(state.hair&&now-state.lastHairFrame>=490){
+   if(!state.matting?.ready&&state.hair&&now-state.lastHairFrame>=490){
      state.lastHairFrame=now;
      try{
        const hairResult=state.hair.segmentForVideo(video,now);
@@ -293,7 +294,7 @@ function tick(now){
        hairResult?.confidenceMasks?.forEach(m=>m.close?.());
      }catch(error){state.hair=null;console.warn('[DCD AR] Hair refinement disabled:',error);}
    }
-   if(state.model){const result=state.model.segmentForVideo(video,now);paintPerson(result);result?.confidenceMasks?.forEach(m=>m.close?.());}
+   if(!state.matting?.ready&&state.model){const result=state.model.segmentForVideo(video,now);paintPerson(result);result?.confidenceMasks?.forEach(m=>m.close?.());}
    if(state.face&&['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7'].includes(state.frame)){
      const points=state.face.detectForVideo(video,now).faceLandmarks?.[0];
      if(points?.length){
@@ -327,10 +328,19 @@ function start(video){
  if(!state.root)return;
  if(video)state.video=video;
  if(state.playing)return;
- state.playing=true;state.requestId=requestAnimationFrame(tick);initModels();
+ state.playing=true;
+ state.requestId=requestAnimationFrame(tick);
+ // MediaPipe stays available for face and hand geometry and as a segmentation
+ // fallback. Longpipe is only the rendered high-quality portrait layer.
+ const inputStream=state.video?.srcObject;
+ if(inputStream&&window.DCD_AR_MATTING){
+   state.matting=window.DCD_AR_MATTING.create(state.root,inputStream);
+ }
+ initModels();
 }
 function stop(){
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
+ state.matting?.stop();state.matting=null;
  state.tulle?.destroy();state.tulle=null;state.sheets=[];
  state.root=null;state.stage=null;state.video=null;state.canvas=null;state.ctx=null;
 }
