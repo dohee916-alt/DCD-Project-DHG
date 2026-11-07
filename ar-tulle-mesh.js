@@ -40,13 +40,13 @@ void main(){
   vec4 src=texture2D(fabric,vUV);
   float ink=smoothstep(0.28,0.43,src.r-src.g);
   float light=clamp(vLight,0.72,1.24);
-  vec3 cloth=vec3(0.965,0.685,0.610)*light;
+  vec3 cloth=vec3(0.965,0.685,0.610)*light*(0.83+0.25*src.a);
   vec3 printed=vec3(0.917,0.238,0.039);
   vec3 color=mix(cloth,printed,ink);
   // Airy transparent organza. One thin layer, NO opaque facial paint.
   // Printed letters remain strong while the face remains fully visible.
-  float weave=0.035+src.a*0.16;
-  float alpha=mix(weave,min(0.88,src.a*1.04),ink);
+  float weave=0.085+src.a*0.58;
+  float alpha=mix(weave,min(0.91,src.a*1.08),ink);
   // The free 3D fringe fades to transparent at the outside boundary.
   alpha*=1.0-vFringe;
   gl_FragColor=vec4(color,alpha*opacity);
@@ -75,10 +75,10 @@ function paintedFabric(height,phrase,index){
       Math.min(63,Math.floor(x*64/12))]:95;
     const thread=(Math.abs((x-y+12)%12)<=1||Math.abs((x+y)%12-6)<=1);
     p.data[i]=245;p.data[i+1]=188;p.data[i+2]=175;
-    p.data[i+3]=thread?clamp(55+h*.3,55,107):12;
+    p.data[i+3]=thread?clamp(114+h*.40,110,188):22;
   }
   tctx.putImageData(p,0,0);
-  ctx.fillStyle='rgba(246,175,158,0.065)';ctx.fillRect(0,0,640,800);
+  ctx.fillStyle='rgba(246,175,158,0.025)';ctx.fillRect(0,0,640,800);
   ctx.fillStyle=ctx.createPattern(tile,'repeat');ctx.fillRect(0,0,640,800);
   // Written directly into each sheet's UV material: follows facial
   // rotation, nose projection, and fabric motion as one physical surface.
@@ -258,8 +258,8 @@ function create(root){
       const k=geo.oval[i]*3,j=(COUNT+i)*3;
       const px=base[k],py=base[k+1];
       const upper=(py-cy)<0;
-      base[j]=px+(px-cx)*.09;
-      base[j+1]=py+(py-cy)*.095+(upper?-2:4);
+      base[j]=px+(px-cx)*.14;
+      base[j+1]=py+(py-cy)*(upper?.22:.11)+(upper?-5:4);
       base[j+2]=base[k+2]-8;
     }
     // Set a smoothly-following center for the continuous veil underlay.
@@ -393,7 +393,7 @@ function create(root){
           releaseY)/H)*2;
         vertices[v+2]=clamp((base[k+2]-layer.index*2-42*fly)/850,-.65,.65);
         vertices[v+3]=uvs[i*2];vertices[v+4]=1-uvs[i*2+1];
-        vertices[v+5]=shades[i];vertices[v+6]=edge;
+        vertices[v+5]=shades[i];vertices[v+6]=edge*.995;
       }
       gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
       gl.bindTexture(gl.TEXTURE_2D,tex);
