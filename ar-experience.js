@@ -9,7 +9,7 @@ const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR1
 const state={root:null,video:null,canvas:null,ctx:null,stage:null,frame:'AR3',
   maskCount:0,variant:'first',model:null,face:null,hand:null,hair:null,hairData:null,lastHairFrame:0,
   topology:null,pending:false,playing:false,requestId:0,lastAnalyzed:0,guideSince:0,
-  pinchStart:null,pinchReady:true,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null,matting:null};
+  pinchStart:null,pinchReady:true,handGuide:null,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null,matting:null};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -38,6 +38,7 @@ function clearScene(){
  state.root.classList.toggle('ar-first-gesture',state.frame==='AR6');
  state.root.classList.toggle('ar-peel-gesture',state.frame==='AR7');
  state.root.classList.toggle('ar-align-gesture',state.frame==='AR3');
+ state.handGuide?.setFrame(state.frame);
  state.root.classList.toggle('ar-choice-phase',state.frame==='AR5-1');
  state.root.classList.toggle('ar-plain-choice',state.frame==='AR5');
 }
@@ -125,8 +126,8 @@ function enter(frame){
      for(let i=0;i<5;i++)delay(addFabric,650+i*4600);
      delay(()=>enter('AR6'),650+4*4600+3000+2000);
    },400+4*1450+1300);break;
- case 'AR6':caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
- case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
+ case 'AR6':caption('WATCH AND FOLLOW THE HAND MOVEMENT');break;
+ case 'AR7':caption('NOW REACH TOWARD YOUR FACE\nAND PULL THE MASKS OFF');break;
  case 'AR8':
    caption('FINALLY!');
    delay(()=>enter('AR9'),1800);break;
@@ -161,9 +162,17 @@ function observeHands(hands,now){
  const near=(p,pad=.055)=>p.x>box.l-pad&&p.x<box.r+pad&&p.y>box.t-pad&&p.y<box.b+pad;
  const onFace=near(pick)||near(index,.075);
  if(state.frame==='AR6'){
-   if(!onFace){state.guideSince=0;return;}
-   if(!state.guideSince)state.guideSince=now;
-   if(now-state.guideSince>420)enter('AR7');
+   // Advance after user imitates the pinch AND pull, not merely face proximity.
+   if(!pinch){state.pinchStart=null;state.pinchReady=true;return;}
+   if(!state.pinchReady)return;
+   const span=Math.max(.06,distance(hand[0],hand[9]));
+   if(!state.pinchStart){state.pinchStart={point:pick,span,near:now};return;}
+   const start=state.pinchStart;
+   if((distance(pick,start.point)>.105||span>start.span*1.27)&&now-start.near>140){
+     state.pinchReady=false;state.pinchStart=null;
+     state.handGuide?.hideOnce(400);
+     enter('AR7');
+   }
    return;
  }
  if(!pinch){state.pinchStart=null;state.pinchReady=true;return;}
@@ -180,6 +189,7 @@ function observeHands(hands,now){
  if((awayFromFace||pullTowardCamera)&&now-start.near>140){
    state.pinchReady=false;state.pinchStart=null;
    removeFabric();
+   state.handGuide?.hideOnce(900);
    if(state.maskCount===0)delay(()=>enter('AR8'),420);
  }
 }
@@ -319,6 +329,7 @@ function mount(stage,video){
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
  state.canvas=root.querySelector('.ar-person-segment');state.ctx=state.canvas.getContext('2d');
  state.tulle=window.DCD_TULLE?.create(root.querySelector('.ar-organza-stack'))||null;
+ state.handGuide=window.DCD_AR_HAND_GUIDE?.create(root)||null;
  if(state.topology)state.tulle?.setConnections(state.topology.triangles,state.topology.outline);
  state.sheets=[];state.variant='first';state.maskCount=0;state.segmented=false;state.analysisError=false;
  state.faceBox=null;state.alphaHistory=null;state.hairData=null;state.lastHairFrame=0;
@@ -342,6 +353,7 @@ function stop(){
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
  state.matting?.stop();state.matting=null;
  state.tulle?.destroy();state.tulle=null;state.sheets=[];
+ state.handGuide?.destroy();state.handGuide=null;
  state.root=null;state.stage=null;state.video=null;state.canvas=null;state.ctx=null;
 }
 window.DCD_AR_FLOW={markup,mount,start,stop,frame:()=>state.frame,debugNext:()=>{
