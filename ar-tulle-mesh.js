@@ -33,6 +33,7 @@ const FRAG=`
 precision mediump float;
 uniform sampler2D fabric;
 uniform float opacity;
+uniform vec4 mouthRegion;
 varying vec2 vUV;
 varying float vLight;
 varying float vFringe;
@@ -45,6 +46,12 @@ void main(){
   vec3 color=mix(cloth,printed,ink);
   float weave=0.065+src.a*0.62;
   float alpha=mix(weave,min(0.96,src.a*1.15),ink);
+  // Natural lips may show through transparent fabric. Locally suppress
+  // camera detail beneath the cloth without painting a lip-shaped overlay.
+  // An extra-wide feather prevents a circular or oval patch edge.
+  vec2 d=(vUV-mouthRegion.xy)/max(mouthRegion.zw,vec2(0.001));
+  float mouthFeather=1.0-smoothstep(0.22,1.85,length(d));
+  alpha=mix(alpha,0.975,mouthFeather);
   // The free 3D fringe fades to transparent at the outside boundary.
   alpha*=1.0-vFringe;
   gl_FragColor=vec4(color,alpha*opacity);
@@ -152,6 +159,8 @@ function create(root){
   const uvAttr=gl.getAttribLocation(program,'uv'),lightAttr=gl.getAttribLocation(program,'lighting');
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
+  const mouthUniform=gl.getUniformLocation(program,'mouthRegion');
+  const mouthRegion=new Float32Array([.5,.33,.18,.10]);
   let geo=null,vertices=null,indices=null,uvs=null,base=null,shades=null,initialUV=null,faceCenter=null;
   let live=true,frameId=0,lastRendered=0;
   const textures={},layers=[],trace=[];
@@ -333,6 +342,12 @@ function create(root){
       for(const j of anchors){u+=uvs[j*2];v+=uvs[j*2+1];}
       uvs[i]=u/anchors.length;uvs[i+1]=v/anchors.length;
     }
+    // Mouth feature is never drawn into the cloth; this tracks its UV center
+    // only to reduce transparency over the live mouth video beneath it.
+    mouthRegion[0]=(uvs[13*2]+uvs[14*2])*.5;
+    mouthRegion[1]=1-(uvs[13*2+1]+uvs[14*2+1])*.5;
+    mouthRegion[2]=Math.max(.10,Math.abs(uvs[61*2]-uvs[291*2])*.82);
+    mouthRegion[3]=Math.max(.075,Math.abs(uvs[0*2+1]-uvs[17*2+1])*2.2);
     // Extend the fabric's face-locked UV field across the repaired holes.
     // Text remains continuous across both eyelids.
     for(let n=0;n<COVERED_HOLES.length;n++){
@@ -392,6 +407,7 @@ function create(root){
     gl.vertexAttribPointer(fringeAttr,1,gl.FLOAT,false,stride*4,6*4);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
     gl.activeTexture(gl.TEXTURE0);gl.uniform1i(texUniform,0);
+    if(mouthUniform)gl.uniform4fv(mouthUniform,mouthRegion);
     for(const layer of layers){
       const tex=textures[layer.variant]?.[layer.index];
       if(!tex)continue;

@@ -970,3 +970,30 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive .ar-matting-video{display:none!important}
 .ar-immersive .ar-person-segment{transition:none!important;will-change:auto}
 .ar-immersive:not(.ar-choice-phase):not(.ar-final-mode) .ar-person-segment{filter:none!important}
+
+/* Exact Figma YES/NO component screenshots (636:503 and 636:504).
+   Includes original gradients, highlights, text, shadow and background blur.
+   Keep the existing accessible button hit targets, without CSS approximations. */
+.ar-immersive[data-ar-frame="AR5"] .ar-choice,
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice{
+  width:134px!important;height:49px!important;
+  background-size:134px 70px!important;background-repeat:no-repeat!important;
+  background-position:left top!important;
+  background-color:transparent!important;
+  border:0!important;border-radius:0!important;
+  box-shadow:none!important;backdrop-filter:none!important;
+  color:transparent!important;font-size:0!important;
+  text-shadow:none!important;
+}
+.ar-immersive[data-ar-frame="AR5"] .ar-choice.yes,
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice.yes{
+  background-image:url('assets/figma-current/hd/ar-choice-yes-figma.png')!important;
+}
+.ar-immersive[data-ar-frame="AR5"] .ar-choice.no,
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice.no{
+  background-image:url('assets/figma-current/hd/ar-choice-no-figma.png')!important;
+}
+.ar-immersive[data-ar-frame="AR5"] .ar-choice::before,
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice::before{
+  content:none!important;display:none!important;
+}
