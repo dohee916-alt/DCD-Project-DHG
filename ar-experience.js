@@ -7,7 +7,7 @@ const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'];
 const state={root:null,video:null,canvas:null,ctx:null,stage:null,frame:'AR3',
-  maskCount:0,variant:'first',model:null,face:null,hand:null,hair:null,hairData:null,lastHairFrame:0,hairEnabled:false,hairSlowFrames:0,personMaskCache:null,
+  maskCount:0,variant:'first',model:null,face:null,hand:null,hair:null,hairData:null,lastHairFrame:0,hairEnabled:false,hairSlowFrames:0,personMaskCache:null,faceAnchor:null,maskAnchor:null,maskMotionAt:0,lastSegmentationVideoTime:-1,lastFaceVideoTime:-1,lastHandVideoTime:-1,
   topology:null,pending:false,playing:false,requestId:0,lastInference:0,lastDrawn:0,lastFace:0,lastMask:0,lastHand:0,inferSlot:0,guideSince:0,
   pinchStart:null,pinchReady:true,handGuide:null,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null,matting:null};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
@@ -247,44 +247,44 @@ function paintPerson(segment){
  const data=mask.getAsFloat32Array(),w=mask.width,h=mask.height;
  if(!w||!h||!data?.length)return;
  state.personMaskCache={data:new Float32Array(data),w,h};
+ state.maskAnchor=state.faceAnchor?{...state.faceAnchor}:null;
+ state.maskMotionAt=performance.now();
  compositePortraitMask();
 }
 function compositePortraitMask(){
- const base=state.personMaskCache;
- if(!base)return;
- const {data,w,h}=base;
+ const base=state.personMaskCache;if(!base)return;
+ const hair=state.hairData;
+ const freshHair=!!(state.hairEnabled&&hair&&hair.w&&hair.h&&performance.now()-state.lastHairFrame<1000);
+ // Preserve all 512 hair pixels instead of downsampling the entire cutout
+ // back to the 256px SelfieSegmenter mask.
+ const w=freshHair?Math.max(base.w,hair.w):base.w;
+ const h=freshHair?Math.max(base.h,hair.h):base.h;
  if(!state.maskCanvas||state.maskCanvas.width!==w||state.maskCanvas.height!==h){
-   state.maskCanvas=document.createElement('canvas');
-   state.maskCanvas.width=w;state.maskCanvas.height=h;
+   state.maskCanvas=document.createElement('canvas');state.maskCanvas.width=w;state.maskCanvas.height=h;
    state.maskContext=state.maskCanvas.getContext('2d',{willReadFrequently:true});
    state.maskPixels=state.maskContext.createImageData(w,h);
    state.alphaHistory=new Float32Array(w*h);
  }
  const pixels=state.maskPixels,history=state.alphaHistory;
- const hair=state.hairData;
- const hasHair=state.hairEnabled&&hair&&hair.w&&hair.h&&
-   performance.now()-state.lastHairFrame<1250;
  for(let y=0;y<h;y++){
-   for(let x=0;x<w;x++){
-     const n=y*w+x,k=n*4;
-     const confidence=Math.max(0,Math.min(1,data[n]));
-     // A wide soft transition keeps individual wisps rather than cutting
-     // hair to an unnaturally crisp binary contour.
-     let alpha=confidence*confidence*(3-2*confidence);
-     if(hasHair){
-       const hx=Math.min(hair.w-1,Math.floor((x+.5)*hair.w/w));
-       const hy=Math.min(hair.h-1,Math.floor((y+.5)*hair.h/h));
-       const hConfidence=Math.max(0,Math.min(1,hair.data[hy*hair.w+hx]));
-       // Only ADD reliably detected hair; hair model never erases face,
-       // clothing or background conservatively accepted by base model.
-       const fineHair=Math.max(0,Math.min(1,(hConfidence-.18)/.75));
-       alpha=Math.max(alpha,fineHair*fineHair*(3-2*fineHair));
-     }
-     // Low temporal lag avoids ghost outlines after moving your head.
-     const stabilized=history[n]=history[n]*.12+alpha*.88;
-     pixels.data[k]=255;pixels.data[k+1]=255;pixels.data[k+2]=255;
-     pixels.data[k+3]=Math.round(stabilized*255);
+  const by=Math.min(base.h-1,Math.floor((y+.5)*base.h/h));
+  const hy=freshHair?Math.min(hair.h-1,Math.floor((y+.5)*hair.h/h)):0;
+  for(let x=0;x<w;x++){
+   const n=y*w+x,k=n*4,bx=Math.min(base.w-1,Math.floor((x+.5)*base.w/w));
+   const b=Math.max(0,Math.min(1,base.data[by*base.w+bx]));
+   let alpha=b*b*(3-2*b);
+   if(freshHair){
+     const hx=Math.min(hair.w-1,Math.floor((x+.5)*hair.w/w));
+     const hv=Math.max(0,Math.min(1,hair.data[hy*hair.w+hx]));
+     const fine=Math.max(0,Math.min(1,(hv-.15)/.8));
+     alpha=Math.max(alpha,fine*fine*(3-2*fine));
    }
+   // Avoid lagging ghost contours. Mask motion compensation is handled
+   // by face tracking, rather than a strong temporal alpha average.
+   const stable=history[n]=alpha*.94+history[n]*.06;
+   pixels.data[k]=255;pixels.data[k+1]=255;pixels.data[k+2]=255;
+   pixels.data[k+3]=Math.round(stable*255);
+  }
  }
  state.maskContext.putImageData(pixels,0,0);
  state.lastMaskAt=performance.now();
@@ -311,10 +311,21 @@ function drawLivePortrait(){
    subject.globalCompositeOperation='destination-in';
    subject.imageSmoothingEnabled=true;
    subject.imageSmoothingQuality='high';
-   subject.filter='blur(1.35px)';
-   // The camera subject is mirrored for selfie view; the alpha must use
-   // the IDENTICAL mirror transform or hair/shoulders detach while moving.
+   subject.filter='blur(.65px)';
+   // Reproject the previous segmentation to current face tracking position.
+   // Coordinates are unmirrored here; both camera/mask are mirrored together.
+   const a=state.faceAnchor,b=state.maskAnchor;
+   let driftX=0,driftY=0,driftScale=1;
+   if(a&&b&&state.lastMaskAt&&performance.now()-state.lastMaskAt<800){
+     driftX=Math.max(-dw*.12,Math.min(dw*.12,(a.x-b.x)*dw));
+     driftY=Math.max(-dh*.12,Math.min(dh*.12,(a.y-b.y)*dh));
+     driftScale=Math.max(.90,Math.min(1.10,a.width/b.width));
+   }
    subject.translate(w,0);subject.scale(-1,1);
+   const cx=dx+dw/2,cy=dy+dh/2;
+   subject.translate(cx+driftX,cy+driftY);
+   subject.scale(driftScale,driftScale);
+   subject.translate(-cx,-cy);
    subject.drawImage(state.maskCanvas,dx,dy,dw,dh);
    subject.restore();
  }
@@ -330,80 +341,74 @@ function tick(now){
  state.requestId=requestAnimationFrame(tick);
  const video=state.video;
  if(!video||video.readyState<2)return;
- // Draw the live frame at ~30 fps even when inference is slower.
- if(now-(state.lastDrawn||0)>32){
+ if(now-(state.lastDrawn||0)>=32){
    state.lastDrawn=now;
-   try{drawLivePortrait();}catch(err){if(!state.drawWarning){console.warn('[DCD AR] portrait draw',err);state.drawWarning=true;}}
+   try{drawLivePortrait()}catch(e){if(!state.drawWarning){console.warn('[DCD AR] portrait draw:',e);state.drawWarning=true}}
  }
- // Do not execute 3 GPU/CPU model predictions in one animation frame.
- // Each job has a separate cadence and a rotating slot. Camera painting
- // precedes inference, so latest pixels remain visible between predictions.
- if(now-(state.lastInference||0)<95)return;
- state.lastInference=now;
- const faceDue=state.face&&now-(state.lastFace||0)>180;
- const handDue=state.hand&&['AR6','AR7'].includes(state.frame)&&now-(state.lastHand||0)>160;
- const maskDue=state.model&&now-(state.lastMask||0)>210;
- const hairDue=state.hairEnabled&&state.hair&&now-(state.lastHairFrame||0)>700;
+ // Use the actual video clock. Calling detectForVideo again for the SAME
+ // frame wastes CPU/GPU time without improving the cutout.
+ const frameTime=video.currentTime;
+ if(now-(state.lastInference||0)<50)return;
+ const maskDue=!!(state.model&&now-(state.lastMask||0)>=115&&frameTime!==state.lastSegmentationVideoTime);
+ const faceDue=!!(state.face&&now-(state.lastFace||0)>=110&&frameTime!==state.lastFaceVideoTime);
+ const handDue=!!(state.hand&&['AR6','AR7'].includes(state.frame)&&now-(state.lastHand||0)>=135&&frameTime!==state.lastHandVideoTime);
+ const hairDue=!!(state.hairEnabled&&state.hair&&now-(state.lastHairFrame||0)>=1100);
+ // Always give the live person matte first priority, instead of the old
+ // round-robin that could postpone masks by 3+ processing intervals.
  try{
-   const slot=state.inferSlot++%3;
-   // Hair inference is never scheduled in a frame with face/hand inference.
-   // Reserve sparse idle slots and disable dynamically on slow devices.
-   if(hairDue && slot===2 && (!handDue||now-state.lastHand<250)){
-     const started=performance.now();
-     state.lastHairFrame=now;
-     try{
-       const hairResult=state.hair.segmentForVideo(video,now);
-       const hm=hairResult.confidenceMasks?.[1]||hairResult.confidenceMasks?.[0];
-       if(hm){
-         state.hairData={data:new Float32Array(hm.getAsFloat32Array()),w:hm.width,h:hm.height};
-         compositePortraitMask();
-       }
-       hairResult.confidenceMasks?.forEach(m=>m.close?.());
-       const latency=performance.now()-started;
-       if(latency>110)state.hairSlowFrames++;else state.hairSlowFrames=Math.max(0,state.hairSlowFrames-1);
-       if(state.hairSlowFrames>=3){
-         state.hairEnabled=false;state.hairData=null;
-         console.info('[DCD AR] Disabled hair refinement on slow device');
-       }
-     }catch(error){
-       state.hairEnabled=false;state.hairData=null;
-       console.warn('[DCD AR] Hair refinement disabled after error',error);
-     }
+   if(maskDue){
+     state.lastInference=now;state.lastMask=now;state.lastSegmentationVideoTime=frameTime;
+     const result=state.model.segmentForVideo(video,now);
+     paintPerson(result);
+     result?.confidenceMasks?.forEach(mask=>mask.close?.());
      return;
    }
-   if(handDue&&(slot===0||!faceDue&&!maskDue)){
-     state.lastHand=now;
-     observeHands(state.hand.detectForVideo(video,now).landmarks,now);
-   }else if(faceDue&&(slot===1||!maskDue)){
-     state.lastFace=now;
-     const points=state.face.detectForVideo(video,now).faceLandmarks?.[0];
-     if(points?.length){
-       state.tulle?.update(points,video);
-       const xs=points.map(p=>1-p.x),ys=points.map(p=>p.y);
+   if(faceDue){
+     state.lastInference=now;state.lastFace=now;state.lastFaceVideoTime=frameTime;
+     const landmarks=state.face.detectForVideo(video,now).faceLandmarks?.[0];
+     if(landmarks?.length){
+       // Landmark 1 follows the nose. Eyes provide rotation-insensitive
+       // scale so prior mattes follow head movement between segmentations.
+       const eyeL=landmarks[33],eyeR=landmarks[263],nose=landmarks[1];
+       const width=Math.max(.03,Math.hypot(eyeL.x-eyeR.x,eyeL.y-eyeR.y));
+       state.faceAnchor={x:nose.x,y:nose.y,width,at:now};
+       state.tulle?.update(landmarks,video);
+       const xs=landmarks.map(p=>1-p.x),ys=landmarks.map(p=>p.y);
        const candidate={l:Math.min(...xs),r:Math.max(...xs),t:Math.min(...ys),b:Math.max(...ys)};
        const previous=state.faceBox;
        state.faceBox=previous?{
-         l:previous.l*.50+candidate.l*.50,r:previous.r*.50+candidate.r*.50,
-         t:previous.t*.50+candidate.t*.50,b:previous.b*.50+candidate.b*.50
+         l:previous.l*.45+candidate.l*.55,r:previous.r*.45+candidate.r*.55,
+         t:previous.t*.45+candidate.t*.55,b:previous.b*.45+candidate.b*.55
        }:candidate;
      }
-     if(state.frame==='AR3')observeFace(points,now);
-   }else if(maskDue){
-     state.lastMask=now;
-     const result=state.model.segmentForVideo(video,now);
-     paintPerson(result);
-     result?.confidenceMasks?.forEach(m=>m.close?.());
-   }else if(faceDue){
-     state.lastFace=now;
-     const points=state.face.detectForVideo(video,now).faceLandmarks?.[0];
-     if(points?.length)state.tulle?.update(points,video);
-     if(state.frame==='AR3')observeFace(points,now);
-   }else if(handDue){
-     state.lastHand=now;
-     observeHands(state.hand.detectForVideo(video,now).landmarks,now);
+     if(state.frame==='AR3')observeFace(landmarks,now);
+     return;
    }
- }catch(error){
-   if(!state.analysisError){console.warn('[DCD AR] Camera inference:',error);state.analysisError=true;}
+   if(handDue){
+     state.lastInference=now;state.lastHand=now;state.lastHandVideoTime=frameTime;
+     observeHands(state.hand.detectForVideo(video,now).landmarks,now);
+     return;
+   }
+   // Expensive 512px hair refinement only when segmentation/face/hand are
+   // not due. It is optional and automatically disabled on slow devices.
+   if(hairDue&&!maskDue&&!faceDue&&!handDue){
+     state.lastInference=now;state.lastHairFrame=now;
+     const started=performance.now();
+     try{
+       const result=state.hair.segmentForVideo(video,now);
+       const mask=result.confidenceMasks?.[1]||result.confidenceMasks?.[0];
+       if(mask)state.hairData={data:new Float32Array(mask.getAsFloat32Array()),w:mask.width,h:mask.height};
+       result.confidenceMasks?.forEach(m=>m.close?.());
+       if(state.hairData)compositePortraitMask();
+       if(performance.now()-started>100)state.hairSlowFrames++;
+       else state.hairSlowFrames=Math.max(0,state.hairSlowFrames-1);
+       if(state.hairSlowFrames>=2){state.hairEnabled=false;state.hairData=null;compositePortraitMask();}
+     }catch(e){
+       state.hairEnabled=false;state.hairData=null;console.warn('[DCD AR] hair model fallback',e);
+     }
+   }
+ }catch(e){
+   if(!state.analysisError){console.warn('[DCD AR] inference:',e);state.analysisError=true;}
  }
 }
 function mount(stage,video){
@@ -417,7 +422,7 @@ function mount(stage,video){
  state.handGuide=window.DCD_AR_HAND_GUIDE?.create(root)||null;
  if(state.topology)state.tulle?.setConnections(state.topology.triangles,state.topology.outline);
  state.sheets=[];state.variant='first';state.maskCount=0;state.segmented=false;state.analysisError=false;
- state.faceBox=null;state.alphaHistory=null;state.hairData=null;state.personMaskCache=null;state.hairSlowFrames=0;state.lastHairFrame=0;state.maskCanvas=null;state.maskContext=null;state.maskPixels=null;
+ state.faceBox=null;state.faceAnchor=null;state.maskAnchor=null;state.alphaHistory=null;state.hairData=null;state.personMaskCache=null;state.hairSlowFrames=0;state.lastHairFrame=0;state.maskCanvas=null;state.maskContext=null;state.maskPixels=null;
  state.subjectCanvas=null;state.subjectContext=null;state.lastInference=0;state.lastDrawn=0;state.lastFace=0;state.lastMask=0;state.lastHand=0;state.inferSlot=0;
  enter('AR3');
 }
@@ -437,7 +442,7 @@ function stop(){
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
  state.matting?.stop();state.matting=null;
  state.subjectCanvas=null;state.subjectContext=null;state.maskCanvas=null;
- state.hairData=null;state.personMaskCache=null;
+ state.faceAnchor=null;state.maskAnchor=null;state.hairData=null;state.personMaskCache=null;
  state.tulle?.destroy();state.tulle=null;state.sheets=[];
  state.handGuide?.destroy();state.handGuide=null;
  state.root=null;state.stage=null;state.video=null;state.canvas=null;state.ctx=null;
