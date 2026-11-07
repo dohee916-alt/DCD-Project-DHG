@@ -43,11 +43,10 @@ void main(){
   vec3 cloth=vec3(0.965,0.685,0.610)*light;
   vec3 printed=vec3(0.917,0.238,0.039);
   vec3 color=mix(cloth,printed,ink);
-  // One uniform cloth layer across the WHOLE face. Do not locally paint a
-  // mouth-shaped alpha patch. Fabric weave comes from source texture/color.
-  float weave=0.10+src.a*0.12;
-  color*=1.0-weave*0.10;
-  float alpha=0.985;
+  // Airy transparent organza. One thin layer, NO opaque facial paint.
+  // Printed letters remain strong while the face remains fully visible.
+  float weave=0.035+src.a*0.16;
+  float alpha=mix(weave,min(0.88,src.a*1.04),ink);
   // The free 3D fringe fades to transparent at the outside boundary.
   alpha*=1.0-vFringe;
   gl_FragColor=vec4(color,alpha*opacity);
@@ -177,20 +176,17 @@ function create(root){
     geo.underlayIndices=new Uint16Array(
       geo.oval.flatMap((v,i)=>[geo.underlayCenter,v,geo.oval[(i+1)%geo.oval.length]])
     );
-    // Reuse the complete MediaPipe face topology. The cloth opacity is
-    // uniform, so skin/lip detail cannot leak through a local gap.
-    indices=new Uint16Array([
-      ...geo.triangles,
-      ...geo.oval.flatMap((v,i)=>{
+    // A single contour-following cloth surface. Reusing the 468 facial
+    // triangles makes lips/nose/eyes visible as embossed shapes and stacking
+    // it over a full-face underlay doubles opacity at the lower face.
+    // Render ONLY the face-oval fan and the feathered exterior rim.
+    indices=new Uint16Array(
+      geo.oval.flatMap((v,i)=>{
         const w=geo.oval[(i+1)%geo.oval.length];
         const A=COUNT+i,B=COUNT+((i+1)%geo.oval.length);
         return [v,w,B,v,B,A];
-      }),
-      ...COVERED_HOLES.flatMap((rim,i)=>{
-        const center=geo.capStart+i;
-        return rim.flatMap((v,k)=>[center,v,rim[(k+1)%rim.length]]);
       })
-    ]);
+    );
     // Upload the two triangle ranges ONCE. The index buffer is static:
     // per-frame bufferData reallocations previously happened for every
     // sheet, twice, even though the topology never changes.
@@ -401,11 +397,11 @@ function create(root){
       }
       gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
       gl.bindTexture(gl.TEXTURE_2D,tex);
-      // Continuous cloth behind eyes/lips, followed by the real
-      // nose/cheek face triangles. Both index ranges share ONE buffer.
-      gl.uniform1f(opacityUniform,opacity*.93);
-      gl.drawElements(gl.TRIANGLES,geo.underlayIndexCount,gl.UNSIGNED_SHORT,0);
+      // Draw center face fan ONCE; no facial tessellation on top.
+      // Exterior rim gets a lighter alpha to avoid a bright second edge.
       gl.uniform1f(opacityUniform,opacity);
+      gl.drawElements(gl.TRIANGLES,geo.underlayIndexCount,gl.UNSIGNED_SHORT,0);
+      gl.uniform1f(opacityUniform,opacity*.48);
       gl.drawElements(gl.TRIANGLES,geo.surfaceIndexCount,gl.UNSIGNED_SHORT,
         geo.underlayIndexCount*Uint16Array.BYTES_PER_ELEMENT);
     }
