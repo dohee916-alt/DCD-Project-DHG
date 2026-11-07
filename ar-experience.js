@@ -7,7 +7,7 @@ const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'];
 const state={root:null,video:null,canvas:null,ctx:null,stage:null,frame:'AR3',
-  maskCount:0,variant:'first',model:null,face:null,hand:null,hair:null,hairData:null,lastHairFrame:0,
+  maskCount:0,variant:'first',model:null,face:null,hand:null,hair:null,hairData:null,lastHairFrame:0,hairEnabled:false,hairSlowFrames:0,personMaskCache:null,
   topology:null,pending:false,playing:false,requestId:0,lastInference:0,lastDrawn:0,lastFace:0,lastMask:0,lastHand:0,inferSlot:0,guideSince:0,
   pinchStart:null,pinchReady:true,handGuide:null,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null,matting:null};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
@@ -220,11 +220,20 @@ async function initModels(){
    try{state.hand=await load(m.HandLandmarker,'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',{numHands:2});}
    catch(error){console.warn('[DCD AR] Hand tracker:',error);}
    if(!state.root)return;
-   // Do NOT run a fourth inference model while Longpipe is attempting
-   // portrait matting. CPU hair refinement competed with WebGL cloth,
-   // FaceLandmarker, HandLandmarker and the 256px portrait fallback.
-   // If Longpipe cannot run, keep SelfieSegmenter as the safe fallback.
-   state.hair=null;state.hairData=null;
+   // Real 512px hair confidence model refines the coarse 256px selfie
+   // outline. This runs only occasionally and adapts to device latency.
+   // Failure or excessive latency always leaves the base portrait intact.
+   if(state.model && state.root){
+     try{
+       state.hair=await load(m.ImageSegmenter,
+         'image_segmenter/hair_segmenter/float32/1/hair_segmenter.tflite',
+         {outputConfidenceMasks:true,outputCategoryMask:false});
+       state.hairEnabled=!!state.hair;
+     }catch(error){
+       state.hair=null;state.hairEnabled=false;
+       console.info('[DCD AR] Hair refinement unavailable, base cutout retained:',error);
+     }
+   }
  }catch(error){console.warn('[DCD AR] Vision model unavailable; raw camera remains:',error);}
  finally{state.pending=false;}
 }
@@ -235,8 +244,15 @@ function paintPerson(segment){
  const video=state.video;
  if(!video||!segment?.confidenceMasks?.length)return;
  const mask=segment.confidenceMasks[1]||segment.confidenceMasks[0];
- const values=mask.getAsFloat32Array(),w=mask.width,h=mask.height;
- if(!w||!h||!values?.length)return;
+ const data=mask.getAsFloat32Array(),w=mask.width,h=mask.height;
+ if(!w||!h||!data?.length)return;
+ state.personMaskCache={data:new Float32Array(data),w,h};
+ compositePortraitMask();
+}
+function compositePortraitMask(){
+ const base=state.personMaskCache;
+ if(!base)return;
+ const {data,w,h}=base;
  if(!state.maskCanvas||state.maskCanvas.width!==w||state.maskCanvas.height!==h){
    state.maskCanvas=document.createElement('canvas');
    state.maskCanvas.width=w;state.maskCanvas.height=h;
@@ -245,15 +261,30 @@ function paintPerson(segment){
    state.alphaHistory=new Float32Array(w*h);
  }
  const pixels=state.maskPixels,history=state.alphaHistory;
- for(let i=0;i<w*h;i++){
-   const k=i*4;
-   // Transparent background with a smooth edge; avoid yellow/white halo.
-   const confidence=Math.max(0,Math.min(1,values[i]));
-   const feather=Math.max(0,Math.min(1,(confidence-.10)/.80));
-   const alpha=feather*feather*(3-2*feather);
-   const stabilized=history[i]=alpha*.86+history[i]*.14;
-   pixels.data[k]=255;pixels.data[k+1]=255;pixels.data[k+2]=255;
-   pixels.data[k+3]=Math.round(stabilized*255);
+ const hair=state.hairData;
+ const hasHair=state.hairEnabled&&hair&&hair.w&&hair.h&&
+   performance.now()-state.lastHairFrame<1250;
+ for(let y=0;y<h;y++){
+   for(let x=0;x<w;x++){
+     const n=y*w+x,k=n*4;
+     const confidence=Math.max(0,Math.min(1,data[n]));
+     // A wide soft transition keeps individual wisps rather than cutting
+     // hair to an unnaturally crisp binary contour.
+     let alpha=confidence*confidence*(3-2*confidence);
+     if(hasHair){
+       const hx=Math.min(hair.w-1,Math.floor((x+.5)*hair.w/w));
+       const hy=Math.min(hair.h-1,Math.floor((y+.5)*hair.h/h));
+       const hConfidence=Math.max(0,Math.min(1,hair.data[hy*hair.w+hx]));
+       // Only ADD reliably detected hair; hair model never erases face,
+       // clothing or background conservatively accepted by base model.
+       const fineHair=Math.max(0,Math.min(1,(hConfidence-.18)/.75));
+       alpha=Math.max(alpha,fineHair*fineHair*(3-2*fineHair));
+     }
+     // Low temporal lag avoids ghost outlines after moving your head.
+     const stabilized=history[n]=history[n]*.12+alpha*.88;
+     pixels.data[k]=255;pixels.data[k+1]=255;pixels.data[k+2]=255;
+     pixels.data[k+3]=Math.round(stabilized*255);
+   }
  }
  state.maskContext.putImageData(pixels,0,0);
  state.lastMaskAt=performance.now();
@@ -312,8 +343,34 @@ function tick(now){
  const faceDue=state.face&&now-(state.lastFace||0)>180;
  const handDue=state.hand&&['AR6','AR7'].includes(state.frame)&&now-(state.lastHand||0)>160;
  const maskDue=state.model&&now-(state.lastMask||0)>210;
+ const hairDue=state.hairEnabled&&state.hair&&now-(state.lastHairFrame||0)>700;
  try{
    const slot=state.inferSlot++%3;
+   // Hair inference is never scheduled in a frame with face/hand inference.
+   // Reserve sparse idle slots and disable dynamically on slow devices.
+   if(hairDue && slot===2 && (!handDue||now-state.lastHand<250)){
+     const started=performance.now();
+     state.lastHairFrame=now;
+     try{
+       const hairResult=state.hair.segmentForVideo(video,now);
+       const hm=hairResult.confidenceMasks?.[1]||hairResult.confidenceMasks?.[0];
+       if(hm){
+         state.hairData={data:new Float32Array(hm.getAsFloat32Array()),w:hm.width,h:hm.height};
+         compositePortraitMask();
+       }
+       hairResult.confidenceMasks?.forEach(m=>m.close?.());
+       const latency=performance.now()-started;
+       if(latency>110)state.hairSlowFrames++;else state.hairSlowFrames=Math.max(0,state.hairSlowFrames-1);
+       if(state.hairSlowFrames>=3){
+         state.hairEnabled=false;state.hairData=null;
+         console.info('[DCD AR] Disabled hair refinement on slow device');
+       }
+     }catch(error){
+       state.hairEnabled=false;state.hairData=null;
+       console.warn('[DCD AR] Hair refinement disabled after error',error);
+     }
+     return;
+   }
    if(handDue&&(slot===0||!faceDue&&!maskDue)){
      state.lastHand=now;
      observeHands(state.hand.detectForVideo(video,now).landmarks,now);
@@ -360,7 +417,7 @@ function mount(stage,video){
  state.handGuide=window.DCD_AR_HAND_GUIDE?.create(root)||null;
  if(state.topology)state.tulle?.setConnections(state.topology.triangles,state.topology.outline);
  state.sheets=[];state.variant='first';state.maskCount=0;state.segmented=false;state.analysisError=false;
- state.faceBox=null;state.alphaHistory=null;state.maskCanvas=null;state.maskContext=null;state.maskPixels=null;
+ state.faceBox=null;state.alphaHistory=null;state.hairData=null;state.personMaskCache=null;state.hairSlowFrames=0;state.lastHairFrame=0;state.maskCanvas=null;state.maskContext=null;state.maskPixels=null;
  state.subjectCanvas=null;state.subjectContext=null;state.lastInference=0;state.lastDrawn=0;state.lastFace=0;state.lastMask=0;state.lastHand=0;state.inferSlot=0;
  enter('AR3');
 }
@@ -380,6 +437,7 @@ function stop(){
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
  state.matting?.stop();state.matting=null;
  state.subjectCanvas=null;state.subjectContext=null;state.maskCanvas=null;
+ state.hairData=null;state.personMaskCache=null;
  state.tulle?.destroy();state.tulle=null;state.sheets=[];
  state.handGuide?.destroy();state.handGuide=null;
  state.root=null;state.stage=null;state.video=null;state.canvas=null;state.ctx=null;
