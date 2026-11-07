@@ -8,12 +8,11 @@ const WORDS={
   first:["THAT’S CHEATING.","YOU DIDN’T EARN THAT BODY.","IS THAT EVEN THE REAL YOU?","DID YOU REALLY NEED MEDICATION?","YOU’LL JUST GAIN IT ALL BACK."],
   replacement:["WHY DON’T YOU JUST TAKE GLP-1?","WHAT’S YOUR EXCUSE NOW?","EVERYONE ELSE IS LOSING WEIGHT.","DON’T YOU CARE ABOUT YOUR HEALTH?","YOU’RE NOT EVEN TRYING."]
 };
-// Complete uninterrupted fabric over both eyelids and the lips. These
-// outlines bound holes in MediaPipe's standard facial tessellation.
+// Only eyelids require a filled tessellation cap. Do not construct a
+// separate mouth/lip cap: the continuous cloth underlay covers that area.
 const COVERED_HOLES=[
   [33,246,161,160,159,158,157,173,133,155,154,153,145,144,163,7],
-  [362,398,384,385,386,387,388,466,263,249,390,373,374,380,381,382],
-  [61,185,40,39,37,0,267,269,270,409,291,375,321,405,314,17,84,181,91,146]
+  [362,398,384,385,386,387,388,466,263,249,390,373,374,380,381,382]
 ];
 const W=428,H=926,COUNT=468,clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const mix=(a,b,t)=>a+(b-a)*t;
@@ -160,11 +159,11 @@ function create(root){
     const next=topology(tri,oval);
     if(!next)return false;
     geo=next;
-    // Add a real surface vertex at each eye/mouth center. Triangle fans
+    // Add a surface vertex at each eyelid center. Triangle fans
     // seal the gaps with the SAME cloth texture and UV deformation.
     geo.capStart=COUNT+geo.oval.length;
     // One uninterrupted underlay spans the entire tracked face contour,
-    // including the eye sockets and open mouth. Render this UV-continuous
+    // including the eye sockets and mouth. Render this UV-continuous
     // fabric beneath the detailed face tessellation to seal all holes.
     geo.underlayCenter=geo.capStart+COVERED_HOLES.length;
     const vertexCount=geo.underlayCenter+1;
@@ -252,6 +251,23 @@ function create(root){
       base[p+1]=coords[p+1]+(coords[p+1]-cy)*.025;
       base[p+2]=z-7;
     }
+    // The printed mask is cloth, not a second face. Flatten any lip/mouth
+    // relief so an outline of a moving mouth cannot appear on its surface.
+    const mouthPoints=[61,291,0,17,13,14,78,308,81,311,40,270,84,314];
+    let mouthX=0,mouthY=0;
+    for(const id of mouthPoints){mouthX+=coords[id*3];mouthY+=coords[id*3+1];}
+    mouthX/=mouthPoints.length;mouthY/=mouthPoints.length;
+    const radiusX=Math.max(12,Math.abs(coords[61*3]-coords[291*3])*.86);
+    const radiusY=Math.max(15,Math.abs(coords[0*3+1]-coords[17*3+1])*2.3);
+    const neutralZ=(base[205*3+2]+base[425*3+2]+base[152*3+2]) / 3;
+    for(let id=0;id<COUNT;id++){
+      const x=(coords[id*3]-mouthX)/radiusX,y=(coords[id*3+1]-mouthY)/radiusY;
+      const radius=Math.hypot(x,y);
+      if(radius<1){
+        const smooth=1-ease(Math.min(1,Math.max(0,(radius-.47)/.53)));
+        base[id*3+2]=mix(base[id*3+2],neutralZ-7,smooth*.92);
+      }
+    }
     // The boundary isn't glued to skin: an independent, lightly floating,
     // alpha-feathered fabric rim is stitched to MediaPipe's real face oval.
     for(let i=0;i<geo.oval.length;i++){
@@ -273,9 +289,8 @@ function create(root){
       base[mid+1]=y/anchors.length;
       base[mid+2]=z/anchors.length+4;
     }
-    // Slightly lift the hole caps in front of eyelids and lips. Their
-    // depth follows the live face so the veil remains uninterrupted during
-    // blinking, talking, and head rotation.
+    // Fill the two eye sockets only. The mouth is NOT its own surface layer.
+    // A continuous veil underlay keeps the mouth area covered.
     for(let n=0;n<COVERED_HOLES.length;n++){
       const rim=COVERED_HOLES[n],dst=(geo.capStart+n)*3;
       let x=0,y=0,z=0;
@@ -305,7 +320,7 @@ function create(root){
       uvs[i]=u/anchors.length;uvs[i+1]=v/anchors.length;
     }
     // Extend the fabric's face-locked UV field across the repaired holes.
-    // This also keeps printed text continuous across closed eyelids/lips.
+    // Text remains continuous across both eyelids.
     for(let n=0;n<COVERED_HOLES.length;n++){
       const rim=COVERED_HOLES[n],dst=(geo.capStart+n)*2;
       let u=0,v=0;
@@ -380,8 +395,8 @@ function create(root){
       const size=1+.19*fly,center=faceCenter||{x:W/2,y:H/2};
       for(let i=0;i<base.length/3;i++){
         const k=i*3,v=i*stride,px=base[k],py=base[k+1];
-        // Only the *outer* loose drape is faded. The 3 eye/mouth hole
-        // caps and face-wide backing are internal fabric: alpha MUST stay.
+        // Only the outer drape fades; the face-wide backing remains opaque enough
+        // to cover the mouth without a separate lip mesh.
         const fringe=i>=COUNT&&i<geo.capStart;
         const edge=fringe?1:0;
         const inertia=fringe?

@@ -249,9 +249,9 @@ function paintPerson(segment){
    const k=i*4;
    // Transparent background with a smooth edge; avoid yellow/white halo.
    const confidence=Math.max(0,Math.min(1,values[i]));
-   const feather=Math.max(0,Math.min(1,(confidence-.13)/.68));
+   const feather=Math.max(0,Math.min(1,(confidence-.18)/.64));
    const alpha=feather*feather*(3-2*feather);
-   const stabilized=history[i]=alpha*.82+history[i]*.18;
+   const stabilized=history[i]=alpha*.72+history[i]*.28;
    pixels.data[k]=255;pixels.data[k+1]=255;pixels.data[k+2]=255;
    pixels.data[k+3]=Math.round(stabilized*255);
  }
@@ -280,7 +280,7 @@ function drawLivePortrait(){
    subject.globalCompositeOperation='destination-in';
    subject.imageSmoothingEnabled=true;
    subject.imageSmoothingQuality='high';
-   subject.filter='blur(.7px)';
+   subject.filter='blur(1px)';
    // The camera subject is mirrored for selfie view; the alpha must use
    // the IDENTICAL mirror transform or hair/shoulders detach while moving.
    subject.translate(w,0);subject.scale(-1,1);
@@ -307,11 +307,11 @@ function tick(now){
  // Do not execute 3 GPU/CPU model predictions in one animation frame.
  // Each job has a separate cadence and a rotating slot. Camera painting
  // precedes inference, so latest pixels remain visible between predictions.
- if(now-(state.lastInference||0)<110)return;
+ if(now-(state.lastInference||0)<95)return;
  state.lastInference=now;
  const faceDue=state.face&&now-(state.lastFace||0)>180;
  const handDue=state.hand&&['AR6','AR7'].includes(state.frame)&&now-(state.lastHand||0)>160;
- const maskDue=state.model&&now-(state.lastMask||0)>270;
+ const maskDue=state.model&&now-(state.lastMask||0)>210;
  try{
    const slot=state.inferSlot++%3;
    if(handDue&&(slot===0||!faceDue&&!maskDue)){
