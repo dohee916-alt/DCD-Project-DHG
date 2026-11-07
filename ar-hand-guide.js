@@ -27,7 +27,43 @@ open=snap(.05);closed=snap(Math.min(1.95,clip.duration*.49));mixer.stopAllAction
 const centered=new THREE.Group();centered.add(model);pivot=new THREE.Group();pivot.add(centered);scene.add(pivot);
 const box=new THREE.Box3().setFromObject(model),c=box.getCenter(new THREE.Vector3()),d=box.getSize(new THREE.Vector3());
 centered.position.set(-c.x,-c.y,-c.z);scale=195/Math.max(1,d.x,d.y);
-model.traverse(o=>{if(o.isMesh){o.frustumCulled=false;if(o.material)o.material.side=THREE.DoubleSide}});
+// Match the warm orange Web tutorial hand without changing the GLB rig.
+ // The original model uses Y=-0.177 at the wrist cut and Y~23 at the tips.
+ // Fade in LOCAL bind-pose coordinates, so moving/rotating the hand does not
+ // make the wrist transparency crawl across the screen.
+ const warmMaterials=[];
+ const wristOrange=new THREE.Color('#e9440a');
+ const fingerOrange=new THREE.Color('#ffae6b');
+ model.traverse(o=>{
+   if(!o.isMesh)return;
+   o.frustumCulled=false;
+   const material=new THREE.MeshStandardMaterial({
+     color:0xffffff,roughness:.78,metalness:0,side:THREE.DoubleSide,
+     transparent:true,depthWrite:false,opacity:.87
+   });
+   material.onBeforeCompile=shader=>{
+     shader.uniforms.handWristOrange={value:wristOrange};
+     shader.uniforms.handFingerOrange={value:fingerOrange};
+     shader.vertexShader=shader.vertexShader.replace(
+       '#include <common>',
+       '#include <common>\nvarying float vHandLocalHeight;'
+     ).replace(
+       '#include <begin_vertex>',
+       '#include <begin_vertex>\nvHandLocalHeight = position.y;'
+     );
+     shader.fragmentShader=shader.fragmentShader.replace(
+       '#include <common>',
+       '#include <common>\nvarying float vHandLocalHeight;\nuniform vec3 handWristOrange;\nuniform vec3 handFingerOrange;'
+     ).replace(
+       '#include <color_fragment>',
+       '#include <color_fragment>\nfloat handGradient = smoothstep(1.4, 19.5, vHandLocalHeight);\nfloat wristFade = smoothstep(-0.18, 5.7, vHandLocalHeight);\ndiffuseColor.rgb = mix(handWristOrange, handFingerOrange, handGradient);\ndiffuseColor.a *= wristFade;'
+     );
+   };
+   material.customProgramCacheKey=()=> 'dcd-orange-hand-wrist-fade-v1';
+   warmMaterials.push(material);
+   o.material=material;
+ });
+ pivot.userData.guideMaterials=warmMaterials;
 }catch(err){console.warn('[DCD AR] Hand guide unavailable',err);el.style.display='none'}
 }
 function render(now){
@@ -51,7 +87,7 @@ for(let i=0;i<nodes.length;i++){const n=nodes[i],a=open[i],b=closed[i];n.positio
 pivot.position.set(x,y,0);pivot.rotation.set(0,ry,0);pivot.scale.setScalar(scale*z);renderer.render(scene,camera);
 }
 init().then(()=>{if(active)raf=requestAnimationFrame(render)});
-return {setFrame,hideOnce,destroy(){active=false;cancelAnimationFrame(raf);renderer?.dispose();renderer?.domElement?.remove();el.replaceChildren();el.style.display='none'}};
+return {setFrame,hideOnce,destroy(){active=false;cancelAnimationFrame(raf);pivot?.userData?.guideMaterials?.forEach(m=>m.dispose());renderer?.dispose();renderer?.domElement?.remove();el.replaceChildren();el.style.display='none'}};
 }
 window.DCD_AR_HAND_GUIDE={create};
 })();
