@@ -14,6 +14,7 @@ scene=new THREE.Scene();camera=new THREE.OrthographicCamera(-214,214,463,-463,.1
 renderer=new THREE.WebGLRenderer({alpha:true,antialias:false,powerPreference:'low-power'});
 renderer.setPixelRatio(1);renderer.setSize(428,926,false);renderer.setClearColor(0,0);renderer.outputColorSpace=THREE.SRGBColorSpace;
 el.replaceChildren(renderer.domElement);
+renderer.domElement.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none';
 scene.add(new THREE.HemisphereLight(0xffffff,0xaaa5ae,2.3));
 const key=new THREE.DirectionalLight(0xffffff,2.4);key.position.set(5,8,12);scene.add(key);
 const gltf=await new GLTFLoader().loadAsync('assets/models/Do_Hand_DetailedRiggedAnimated_shared_16022026.glb');
@@ -32,7 +33,7 @@ model.traverse(o=>{if(o.isMesh){o.frustumCulled=false;if(o.material)o.material.s
 function render(now){
 if(!active)return;raf=requestAnimationFrame(render);
 if(!renderer||!pivot||!['AR6','AR7'].includes(frame)||now<hiddenUntil){el.style.opacity='0';return}
-if(now-last<33)return;last=now;el.style.opacity='1';
+if(now-last<33)return;last=now;el.style.display='block';el.style.opacity='1';el.style.transform='none';
 const t=(now-since)/1000;let x=0,y=0,z=1,p=0,ry=0;
 if(frame==='AR6'){
  const u=t%4.6,pull=ease((u-1.35)/.84)*(1-ease((u-2.85)/.38));

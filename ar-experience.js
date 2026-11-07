@@ -35,8 +35,6 @@ function clearScene(){
  state.root.querySelector('.ar-choice-pack').innerHTML='';
  state.root.classList.toggle('ar-final-mode',state.frame==='AR9'||state.frame==='AR10');
  state.root.classList.toggle('ar-moment',state.frame==='AR8');
- state.root.classList.toggle('ar-first-gesture',state.frame==='AR6');
- state.root.classList.toggle('ar-peel-gesture',state.frame==='AR7');
  state.root.classList.toggle('ar-align-gesture',state.frame==='AR3');
  state.handGuide?.setFrame(state.frame);
  state.root.classList.toggle('ar-choice-phase',state.frame==='AR5-1');
