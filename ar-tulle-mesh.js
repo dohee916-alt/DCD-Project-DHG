@@ -174,8 +174,22 @@ function create(root){
     geo.underlayIndices=new Uint16Array(
       geo.oval.flatMap((v,i)=>[geo.underlayCenter,v,geo.oval[(i+1)%geo.oval.length]])
     );
+    // Remove the tracked lip tessellation entirely. Its silhouette and
+    // shading must not be embossed on the organza; the continuous cloth
+    // underlay remains behind this opening, without a mouth-shaped cap.
+    const lipVertices=new Set([
+      61,291,0,17,13,14,78,308,81,311,40,270,84,314,
+      185,146,91,181,405,321,375,409,37,39,267,269,
+      191,80,82,87,178,88,95,306,292,310,415,318,324
+    ]);
+    const smoothSurface=[];
+    for(let k=0;k<geo.triangles.length;k+=3){
+      const a=geo.triangles[k],b=geo.triangles[k+1],c=geo.triangles[k+2];
+      if(lipVertices.has(a)||lipVertices.has(b)||lipVertices.has(c))continue;
+      smoothSurface.push(a,b,c);
+    }
     indices=new Uint16Array([
-      ...geo.triangles,
+      ...smoothSurface,
       ...geo.oval.flatMap((v,i)=>{
         const w=geo.oval[(i+1)%geo.oval.length];
         const A=COUNT+i,B=COUNT+((i+1)%geo.oval.length);
