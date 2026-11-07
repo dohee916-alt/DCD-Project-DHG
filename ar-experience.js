@@ -249,9 +249,9 @@ function paintPerson(segment){
    const k=i*4;
    // Transparent background with a smooth edge; avoid yellow/white halo.
    const confidence=Math.max(0,Math.min(1,values[i]));
-   const feather=Math.max(0,Math.min(1,(confidence-.18)/.64));
+   const feather=Math.max(0,Math.min(1,(confidence-.10)/.80));
    const alpha=feather*feather*(3-2*feather);
-   const stabilized=history[i]=alpha*.72+history[i]*.28;
+   const stabilized=history[i]=alpha*.86+history[i]*.14;
    pixels.data[k]=255;pixels.data[k+1]=255;pixels.data[k+2]=255;
    pixels.data[k+3]=Math.round(stabilized*255);
  }
@@ -280,7 +280,7 @@ function drawLivePortrait(){
    subject.globalCompositeOperation='destination-in';
    subject.imageSmoothingEnabled=true;
    subject.imageSmoothingQuality='high';
-   subject.filter='blur(1px)';
+   subject.filter='blur(1.35px)';
    // The camera subject is mirrored for selfie view; the alpha must use
    // the IDENTICAL mirror transform or hair/shoulders detach while moving.
    subject.translate(w,0);subject.scale(-1,1);
