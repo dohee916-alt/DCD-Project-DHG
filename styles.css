@@ -965,3 +965,8 @@ canvas.figure{object-fit:contain!important}
   filter:none!important;
   -webkit-filter:none!important;
 }
+
+/* Live portrait: the source frame updates independently from the matte. */
+.ar-immersive .ar-matting-video{display:none!important}
+.ar-immersive .ar-person-segment{transition:none!important;will-change:auto}
+.ar-immersive:not(.ar-choice-phase):not(.ar-final-mode) .ar-person-segment{filter:none!important}
