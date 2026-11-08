@@ -1077,31 +1077,26 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive[data-ar-frame="AR9"] .ar-copy{top:350px!important}
 .ar-immersive[data-ar-frame="AR10"] .ar-copy{top:302px!important}
 
-/* WEB 01 Figma: only two animated START guides.
-   The 30%-opacity nodes in Figma mark end positions; never draw them.
-   Use Figma's relative affine matrices directly, so the rotation
-   is anchored to the same node top-left used for its exact x/y. */
+/* WEB 01 user-approved try-webguide 607:336, not legacy WEB 01.
+   Figma target shapes (30%) are reference points ONLY; no ghost rendering.
+   Source: image fill FILL, 164 x 185, 70% opacity, upper X-mirrored.
+   Upper: (152,370) => (70,257); lower: (252,564) => (353,676). */
 #stage.page-01.phase-guide .gesture{
-  width:122.6888657px!important;
-  height:216.9479675px!important;
-  object-fit:cover!important;
-  object-position:center!important;
-  transform-origin:0 0!important;
-  mix-blend-mode:normal!important;
-  pointer-events:none!important;
-  z-index:6!important;
-  opacity:1!important;
-  animation:figmaStringHandTravel 2.8s ease-in-out infinite!important;
+ width:164px!important;height:185px!important;
+ object-fit:fill!important;transform-origin:0 0!important;
+ mix-blend-mode:normal!important;pointer-events:none!important;
+ z-index:6!important;opacity:.7!important;
+ animation:figmaTryWebguideHands 2.8s ease-in-out infinite!important;
 }
 #stage.page-01.phase-guide .gesture-upper{
-  transform:matrix(-0.8448292613,-0.5350359678,-0.5350359678,0.8448292613,0,0)!important;
-  --gx:-74px;--gy:-96px;
+ transform:scaleX(-1)!important;
+ --gx:-82px;--gy:-113px;
 }
 #stage.page-01.phase-guide .gesture-lower{
-  transform:matrix(0.8448292613,-0.5350359678,0.5350359678,0.8448292613,0,0)!important;
-  --gx:110px;--gy:-44px;
+ transform:none!important;
+ --gx:101px;--gy:112px;
 }
-@keyframes figmaStringHandTravel{
-  0%,10%,100%{translate:0 0}
-  50%,60%{translate:var(--gx) var(--gy)}
+@keyframes figmaTryWebguideHands{
+ 0%,10%,100%{translate:0 0}
+ 50%,60%{translate:var(--gx) var(--gy)}
 }

@@ -147,11 +147,11 @@ function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['p
 function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+figmaGlassText('easiest',64.5,858.5,299,17,'assets/figma-current/hd/poster-tagline-base.svg','assets/figma-current/hd/poster-tagline.svg');if(p==='00'||s.phase==='intro')h+=posterWords();
 if(p==='00'){if(s.phase!=='intro')h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
 else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
-// Figma WEB01: only the TWO opaque START hands are rendered.
-// The 30% TARGET nodes are editor motion references, never visible UI.
-// Their offsets (-74,-96) and (+110,-44) live in the keyframes.
-h+=img(A.gestureHand,210.7261047,251.6430664,122.6888657,216.9479675,'gesture gesture-upper');
-h+=img(A.gestureHand,208,685.6430664,122.6888657,216.9479675,'gesture gesture-lower');
+// Actual Figma try-webguide (607:336): start hands are 164x185,
+// upper mirrored at 152,370 -> target 70,257; lower at 252,564
+// -> target 353,676. Target guide nodes are NOT rendered.
+h+=img(A.gestureHand,152,370,164,185,'gesture gesture-upper');
+h+=img(A.gestureHand,252,564,164,185,'gesture gesture-lower');
 h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
 else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
 return h;}
