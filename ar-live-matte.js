@@ -1,8 +1,8 @@
 /* Present only recent cutouts, with the source frame for face/hand tracking. */
 (() => {
 'use strict';
-const MAX_FRAME_AGE=320, MAX_VISIBLE_AGE=700;
-const workerURL=new URL('ar-matte-worker.js?v=portrait-cutout-3',document.currentScript.src);
+const MAX_FRAME_AGE=380, MAX_VISIBLE_AGE=1100;
+const workerURL=new URL('ar-matte-worker.js?v=verified-longpipe-20261109-2',document.currentScript.src);
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
@@ -12,8 +12,11 @@ function create(root,video,canvas,onFrame){
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true;
  let fallback=null,fallbackStarting=false;
- // Start with the light video model so cutout is available as soon as possible.
- const modes=['mediapipe','small'];
+ // Longpipe's temporal portrait matting is the primary engine.
+ // Prefer large on WebGPU; use its faster small tier on WebGL/mobile.
+ // SelfieSegmenter is a last-resort compatibility fallback only.
+ const webgpu=!!navigator.gpu;
+ const modes=webgpu?['large','small','mediapipe']:['small','mediapipe'];
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
  }
@@ -93,6 +96,7 @@ function create(root,video,canvas,onFrame){
  function next(reason){
   if(reason)console.info('[DCD AR] Changing portrait engine:',reason);
   closeWorker();misses=0;failures=0;firstFrame=true;
+  // Preserve the most recent valid image during model transitions.
   const mode=modes.shift();
   if(!mode||typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'){
    startFallback(reason||'Worker API unavailable');return;
@@ -126,7 +130,7 @@ function create(root,video,canvas,onFrame){
     ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
     ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
     ctx.restore();
-    lastCapture=request.started;visible=true;
+    lastCapture=performance.now();visible=true;
     canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
     // A landmark tracking error must not turn off a working cutout.
@@ -140,14 +144,14 @@ function create(root,video,canvas,onFrame){
  async function submit(now,metadata){
   if(!live)return;
   if(fallback){drawFallback(now);return;}
-  if(visible&&now-lastCapture>MAX_VISIBLE_AGE&&ready){next('Portrait frame stalled');return;}
-  if(pending&&now-pending.started>(firstFrame?3500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
+  if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE&&ready){next('Portrait frame stalled');return;}
+  if(pending&&performance.now()-pending.started>(firstFrame?3500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
   const time=metadata?.mediaTime??video.currentTime;
   if(time<=lastVideoTime)return;
   lastVideoTime=time;
   const current=worker;
-  const request={started:now};pending=request;
+  const request={started:performance.now()};pending=request;
   let source;
   try{
    const timestamp=Math.round(time*1e6);

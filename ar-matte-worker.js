@@ -9,7 +9,7 @@ async function init(mode){
   const vision=await FilesetResolver.forVisionTasks(SDK+'/wasm');
   segmenter=await ImageSegmenter.createFromOptions(vision,{
    baseOptions:{modelAssetPath:SELFIE,delegate:'CPU'},runningMode:'VIDEO',
-   canvas:new OffscreenCanvas(1,1),outputCategoryMask:false,outputConfidenceMasks:true
+   outputCategoryMask:false,outputConfidenceMasks:true
   });
   portrait=new OffscreenCanvas(1,1);portraitCtx=portrait.getContext('2d');
   matte=new OffscreenCanvas(1,1);matteCtx=matte.getContext('2d');
