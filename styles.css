@@ -1104,5 +1104,13 @@ canvas.figure{object-fit:contain!important}
 /* Keep WEB12 checklist invisible in the flight preview; reveal it once typing starts on actual WEB12. */
 .pack-flight-next .new-flow-content{display:none!important}
 
-/* If tracked WebGL cloth is unavailable, keep the lettering black instead of the obsolete red paint. */
-.ar-immersive .ar-organza-stack:not(.ar-tulle-ready) .ar-organza-printed-copy{color:#111315!important}
+/* When GPU cloth cannot initialize, preserve the white/orange palette without
+   making a synthetic texture that could be mistaken for the real woven asset. */
+.ar-immersive .ar-organza-stack:not(.ar-tulle-ready) .ar-organza-sheet{
+  background:rgba(252,250,246,.12)!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
+}
+.ar-immersive .ar-organza-stack:not(.ar-tulle-ready) .ar-organza-printed-copy{
+  color:#f15a13!important;text-shadow:none!important;
+}
