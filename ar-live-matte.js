@@ -3,12 +3,15 @@
 'use strict';
 const MAX_FRAME_AGE=320, MAX_VISIBLE_AGE=700;
 const workerURL=new URL('ar-matte-worker.js?v=portrait-cutout-3',document.currentScript.src);
+const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
+const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
+const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
 function create(root,video,canvas,onFrame){
- if(typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined')return null;
  const ctx=canvas.getContext('2d',{alpha:false});
  if(!ctx)return null;
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true;
+ let fallback=null,fallbackStarting=false;
  // Start with the light video model so cutout is available as soon as possible.
  const modes=['mediapipe','small'];
  function hide(){
@@ -18,21 +21,87 @@ function create(root,video,canvas,onFrame){
   clearTimeout(watchdog);watchdog=0;
   ready=false;pending=null;worker?.terminate();worker=null;
  }
+ async function startFallback(reason){
+  if(!live||fallback||fallbackStarting)return;
+  closeWorker();fallbackStarting=true;
+  console.warn('[DCD AR] Portrait worker unavailable; restoring live cutout:',reason);
+  try{
+   const {ImageSegmenter,FilesetResolver}=await import(SDK);
+   const vision=await FilesetResolver.forVisionTasks(WASM);
+   const create=delegate=>ImageSegmenter.createFromOptions(vision,{
+    baseOptions:{modelAssetPath:SELFIE,delegate},runningMode:'VIDEO',
+    outputCategoryMask:false,outputConfidenceMasks:true
+   });
+   const segmenter=await create('GPU').catch(()=>create('CPU'));
+   if(!live){segmenter.close();return;}
+   const foreground=document.createElement('canvas');
+   foreground.width=canvas.width;foreground.height=canvas.height;
+   fallback={segmenter,foreground,fg:foreground.getContext('2d',{alpha:true}),
+    mask:document.createElement('canvas'),lastSegment:0,hasMask:false};
+   fallback.maskCtx=fallback.mask.getContext('2d',{willReadFrequently:true});
+   root.dataset.arMatte='mediapipe-main';
+  }catch(error){console.warn('[DCD AR] Portrait fallback unavailable:',error);}
+  finally{fallbackStarting=false;}
+ }
+ function drawFallback(now){
+  const f=fallback;
+  if(!f||video.readyState<2||!video.videoWidth)return;
+  const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
+  if(now-f.lastSegment>=115){
+   f.lastSegment=now;
+   try{
+    f.segmenter.segmentForVideo(video,now,result=>{
+     const mask=result.confidenceMasks?.[0];
+     if(!mask)return;
+     if(f.mask.width!==mask.width||f.mask.height!==mask.height){
+      f.mask.width=mask.width;f.mask.height=mask.height;
+     }
+     const pixels=f.maskCtx.createImageData(mask.width,mask.height);
+     const values=mask.getAsFloat32Array();
+     for(let i=0;i<values.length;i++){
+      const k=i*4,a=Math.max(0,Math.min(1,values[i]));
+      pixels.data[k]=pixels.data[k+1]=pixels.data[k+2]=255;
+      pixels.data[k+3]=Math.round(255*a*a*(3-2*a));
+     }
+     f.maskCtx.putImageData(pixels,0,0);
+     f.hasMask=true;
+     result.confidenceMasks?.forEach(value=>value.close?.());
+    });
+   }catch(error){console.warn('[DCD AR] Portrait fallback frame:',error);}
+  }
+  if(!f.hasMask)return;
+  const scale=Math.max(w/vw,h/vh),dw=vw*scale,dh=vh*scale;
+  const x=(w-dw)/2,y=(h-dh)/2;
+  f.fg.clearRect(0,0,w,h);
+  f.fg.save();f.fg.translate(w,0);f.fg.scale(-1,1);
+  f.fg.drawImage(video,x,y,dw,dh);
+  f.fg.globalCompositeOperation='destination-in';
+  f.fg.drawImage(f.mask,x,y,dw,dh);
+  f.fg.restore();
+  ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
+  ctx.drawImage(f.foreground,0,0);
+  visible=true;lastCapture=now;
+  canvas.style.visibility='visible';canvas.style.opacity='1';
+  try{onFrame?.(video,vw,vh);}catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
+ }
  function stop(){
   live=false;closeWorker();clearInterval(timer);
   if(frameHandle)video.cancelVideoFrameCallback?.(frameHandle);
+  fallback?.segmenter.close();fallback=null;
   hide();
  }
  function next(reason){
   if(reason)console.info('[DCD AR] Changing portrait engine:',reason);
   closeWorker();misses=0;failures=0;firstFrame=true;
   const mode=modes.shift();
-  if(!mode){stop();return;}
+  if(!mode||typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'){
+   startFallback(reason||'Worker API unavailable');return;
+  }
   let current;
-  try{current=new Worker(workerURL)}catch(error){stop();return;}
+  try{current=new Worker(workerURL)}catch(error){startFallback(error);return;}
   worker=current;
   watchdog=setTimeout(()=>next(mode+' initialization timeout'),18000);
-  current.onerror=event=>next(event.message||'Worker error');
+  current.onerror=event=>{if(worker===current)next(event.message||'Worker error');};
   current.onmessage=({data})=>{
    if(worker!==current||!live){
     data.source?.close();data.cutout?.close();return;
@@ -70,7 +139,8 @@ function create(root,video,canvas,onFrame){
  }
  async function submit(now,metadata){
   if(!live)return;
-  if(visible&&now-lastCapture>MAX_VISIBLE_AGE)hide();
+  if(fallback){drawFallback(now);return;}
+  if(visible&&now-lastCapture>MAX_VISIBLE_AGE&&ready){next('Portrait frame stalled');return;}
   if(pending&&now-pending.started>(firstFrame?3500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
   const time=metadata?.mediaTime??video.currentTime;

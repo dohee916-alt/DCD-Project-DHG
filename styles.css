@@ -915,7 +915,6 @@ canvas.figure{object-fit:contain!important}
 /* Genuine landmark-driven organza. Never fall back to the old orange
    ellipse once WebGL has initialized. The real mesh casts a soft optical
    veil without a drawn geometric disc over the face. */
-.ar-organza-stack.ar-tulle-gpu .ar-organza-sheet,
 .ar-organza-stack.ar-tulle-ready .ar-organza-sheet {
   display:none!important;
   visibility:hidden!important;
