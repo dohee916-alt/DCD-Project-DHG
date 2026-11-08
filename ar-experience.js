@@ -240,9 +240,17 @@ function tick(){
  if(!state.playing)return;
  state.requestId=requestAnimationFrame(tick);
  const video=state.video;
- if(state.matte?.visible||video.readyState<2||video.currentTime===state.lastVideoTime)return;
+ if(!video||video.readyState<2||!video.videoWidth)return;
+ // Face/hand tracking must NEVER depend on the portrait matte's frame rate.
+ // Large and Medium can produce processed frames too slowly for the AR3
+ // 1350ms alignment timer. Read the live camera independently.
+ const now=performance.now();
+ const dueFace=state.face&&now-state.lastFace>=95;
+ const dueHand=handsDue(now);
+ if(!dueFace&&!dueHand)return;
+ if(video.currentTime===state.lastVideoTime)return;
  state.lastVideoTime=video.currentTime;
- track(video,video.videoWidth,video.videoHeight);
+ track(video,video.videoWidth,video.videoHeight,now);
 }
 function mount(stage,video){
  const root=stage?.querySelector('.ar-immersive');
@@ -262,18 +270,9 @@ function start(video){
  if(state.playing)return;
  state.playing=true;
  const canvas=state.root.querySelector('.ar-person-segment');
- // The landmark API reads dimensions from HTML video/canvas and ImageBitmap,
- // so stage VideoFrame inputs on a reused canvas before tracking.
- const input=document.createElement('canvas'),ctx=input.getContext('2d',{alpha:false});
- state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas,(frame,w,h)=>{
-   const now=performance.now();
-   if(!(state.face&&now-state.lastFace>=42)&&!handsDue(now))return;
-   const scale=Math.min(1,640/Math.max(w,h));
-   const width=Math.round(w*scale),height=Math.round(h*scale);
-   if(input.width!==width||input.height!==height){input.width=width;input.height=height;}
-   ctx.drawImage(frame,0,0,width,height);
-   track(input,w,h,now);
- })||null;
+ // Video matting runs separately. It never drives AR interaction state;
+ // tracking uses the original video, regardless of GPU matte latency.
+ state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas)||null;
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }
