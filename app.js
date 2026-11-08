@@ -78,7 +78,24 @@ function syringeMarkup(cls=''){
 }
 function setPage(p,phase='ready'){if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
 function dimensions(){return ['00','01','02','03','ar','arOpen','arFace'].includes(s.page)?[428,926]:[874,428];}
-function fit(){let [w,h]=dimensions(),v=document.querySelector('#viewport'),W=v.clientWidth,H=v.clientHeight,rotated=false;v.classList.toggle('workbench-viewport',w>h);scale=Math.min((rotated?H:W)/w,(rotated?W:H)/h);stage.style.width=w+'px';stage.style.height=h+'px';stage.style.clipPath='none';stage.style.transform='translate(-50%,-50%) rotate('+(rotated?90:0)+'deg) scale('+scale+')';stage.style.transformOrigin='center';stage.dataset.orientation=rotated?'rotated':'normal';offset={x:W/2,y:H/2};}
+function fit(){
+ const [w,h]=dimensions(),v=document.querySelector('#viewport');
+ const W=v.clientWidth,H=v.clientHeight;
+ // The entire 428x926 AR design stays identical, including blister and dolls.
+ // On a LANDSCAPE PHONE show that portrait composition turned sideways;
+ // when the user physically turns the phone upright, simply unrotate it.
+ // This is a layout fit, NOT a simulated device-orientation animation.
+ const ar=['ar','arOpen','arFace'].includes(s.page);
+ const sideways=ar&&phoneDevice()&&W>H;
+ v.classList.toggle('workbench-viewport',w>h);
+ scale=sideways?Math.min(W/h,H/w):Math.min(W/w,H/h);
+ stage.style.width=w+'px';stage.style.height=h+'px';
+ stage.style.clipPath='none';
+ stage.style.transform='translate(-50%,-50%) rotate('+(sideways?-90:0)+'deg) scale('+scale+')';
+ stage.style.transformOrigin='center';
+ stage.dataset.orientation=sideways?'rotated':'normal';
+ offset={x:W/2,y:H/2};
+}
 function localPoint(e){let r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;if(stage.dataset.orientation==='rotated'){let [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;return{x:w/2+(e.clientY-cy)/scale+dx,y:h/2-(e.clientX-cx)/scale};}return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};}
 function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
 const ropes={upper:{line:[6,20,406,596],pull:[-69,-111]},lower:{line:[8,752,406,615],pull:[90,99]}};
@@ -739,10 +756,12 @@ async function beginAr(){
   const baseX=originalRect.left,baseY=originalRect.top;
   const dstX=target.left+target.width/2,dstY=target.top+target.height/2;
   const startScale=originalRect.width/185.497;
-  // When the portrait target is sideways (desktop), its horizontal width is
-  // the long dimension of a vertically stored blister.
-  const finishScale=mobile?target.width/185.497:target.width/391.108;
-  const finishAngle=mobile?0:-90;
+  // Match the actual AR target orientation. On a landscape phone the
+  // portrait design is shown sideways at its FULL fitted scale; flying
+  // pack and every doll must arrive with that same orientation and size.
+  const sidewaysTarget=!mobile||stage.dataset.orientation==='rotated';
+  const finishScale=sidewaysTarget?target.width/391.108:target.width/185.497;
+  const finishAngle=sidewaysTarget?-90:0;
   const k=(cx,cy,angle,size)=>{
     // Keep the rendered pack CENTER exactly on the interpolated screen center.
     // With transform-origin: 0 0, calculate the rotated/scaled offset of
