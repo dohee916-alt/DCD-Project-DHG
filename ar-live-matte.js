@@ -13,6 +13,9 @@ function create(root,video,canvas,onFrame){
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true,validFrames=0;
  let fallback=null,fallbackStarting=false;
  let medium=null,mediumStarting=false;
+ let mediumFrameTime=-1,mediumUpdatedAt=0,mediumRenderedAt=-1;
+ const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||
+  (navigator.maxTouchPoints>1&&/Macintosh/i.test(navigator.userAgent));
  // The user requires large-quality hair matte; NEVER silently downshift
  // to small or MediaPipe. One retry handles transient GPU initialization.
  const modes=['large'];
@@ -39,6 +42,7 @@ function create(root,video,canvas,onFrame){
    await Promise.all([pipeline.ready,output.play()]);
    if(!live)return;
    medium={pipeline,output};
+   mediumFrameTime=-1;mediumUpdatedAt=0;mediumRenderedAt=-1;
    pipeline=null;output=null;
    root.dataset.arMatte='longpipe-medium-stream';
    console.info('[DCD AR] Actual portrait engine: longpipe-medium-stream');
@@ -54,6 +58,19 @@ function create(root,video,canvas,onFrame){
  function drawMedium(now){
   const output=medium?.output;
   if(!output||output.readyState<2||!output.videoWidth)return;
+  // Avoid painting a cached processed frame forever over a live camera.
+  const time=output.currentTime;
+  if(time!==mediumFrameTime){
+   mediumFrameTime=time;mediumUpdatedAt=now;
+  }else if(now-mediumUpdatedAt>650){
+   if(visible){
+    visible=false;canvas.style.visibility='hidden';
+    root.dataset.arMatte='medium-video-stalled';
+   }
+   return;
+  }
+  if(time===mediumRenderedAt)return;
+  mediumRenderedAt=time;
   const w=canvas.width,h=canvas.height;
   const sw=output.videoWidth,sh=output.videoHeight;
   const factor=Math.max(w/sw,h/sh),dw=sw*factor,dh=sh*factor;
@@ -64,8 +81,6 @@ function create(root,video,canvas,onFrame){
   lastCapture=now;visible=true;
   canvas.style.visibility='visible';canvas.style.opacity='1';
   root.dataset.arMatte='longpipe-medium-stream';
-  try{onFrame?.(video,video.videoWidth,video.videoHeight)}
-  catch(error){console.warn('[DCD AR] Medium tracking:',error)}
  }
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
@@ -242,9 +257,24 @@ function create(root,video,canvas,onFrame){
   submit(now,metadata);
  }
  hide();
- next();
- if(live&&typeof video.requestVideoFrameCallback==='function')frameHandle=video.requestVideoFrameCallback(pump);
- else if(live)timer=setInterval(()=>submit(performance.now()),33);
+ // Never start the large GPU worker on mobile: it can starve camera frames.
+ // Start the supported Medium stream directly, without any Small tier.
+ if(isMobile)startMedium('Mobile stream quality preset');
+ else next();
+ // An independent watchdog prevents indefinite still-frame overlays even
+ // if the source video stops firing requestVideoFrameCallback.
+ timer=setInterval(()=>{
+  if(!live)return;
+  const now=performance.now();
+  if(medium){drawMedium(now);return;}
+  if(visible&&now-lastCapture>1200){
+   canvas.style.visibility='hidden';visible=false;
+   root.dataset.arMatte='frame-stalled';
+  }
+  if(typeof video.requestVideoFrameCallback!=='function')submit(now);
+ },100);
+ if(live&&typeof video.requestVideoFrameCallback==='function')
+  frameHandle=video.requestVideoFrameCallback(pump);
  return {
   get visible(){return visible},
   get engine(){return root.dataset.arMatte},
