@@ -95,7 +95,13 @@ function embroideredLetters(variant,index){
   const sx=.9*TEXTURE_SIZE/300,sy=.9*TEXTURE_SIZE/406;
   const px=TEXTURE_SIZE/2+(config.x-214)*sx;
   const py=TEXTURE_SIZE/2+(config.y-473)*sy;
-  ctx.save();ctx.translate(px,py);ctx.scale(sx,sy);
+  // The live camera is mirrored (x = 1 - landmark.x), while canonical
+  // MediaPipe UVs are not. Mirror the EMBROIDERY ATLAS exactly once so both
+  // the lettering direction and its Figma screen-space placement are correct.
+  // Do not mirror the weave or the physical landmark geometry.
+  ctx.save();
+  ctx.translate(TEXTURE_SIZE,0);ctx.scale(-1,1);
+  ctx.translate(px,py);ctx.scale(sx,sy);
   ctx.rotate(-config.r*Math.PI/180);
   ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#fff';
   let yy=0;
