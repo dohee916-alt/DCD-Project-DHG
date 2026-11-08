@@ -675,69 +675,200 @@ async function beginAr(){
   s.arReturnPage=webPage;
   s.arPackOpened=false;
   save();
-
-  // Animate the LIVE WEB stage. No duplicate prescription screen, no cloned
-  // blister, and no element-by-element simulated screen rotation.
-  const pack=stage.querySelector('.new-pack-assembly');
+  const oldPack=stage.querySelector('.new-pack-assembly');
+  const oldScene=stage.querySelector('.scene-content');
+  if(!oldPack||!oldScene){setPage('ar');arHandoffActive=false;return;}
+  // A viewport-level overlay is independent of either scene's native 874×428
+  // or 428×926 coordinate system. No current animation or figures are modified.
+  const originalRect=oldPack.getBoundingClientRect();
+  const wrapper=document.createElement('div');
+  wrapper.className='dcd-ar-handoff';
+  wrapper.setAttribute('aria-hidden','true');
+  const oldLayer=document.createElement('div');
+  oldLayer.className='dcd-ar-old-page page-'+webPage;
+  oldLayer.style.setProperty('--dcd-old-scale',String(scale));
+  const sceneCopy=oldScene.cloneNode(true);
+  copyRenderedCanvases(oldScene,sceneCopy);
+  oldLayer.appendChild(sceneCopy);
+  sceneCopy.querySelector('.new-pack-assembly')?.remove();
+  // Keep PRESCRIBED visible through the flight, then rotate the text
+  // itself with the AR scene while moving it to the portrait title position.
+  const originalHeading=sceneCopy.querySelector('.new-prescription-title');
+  const heldHeading=document.createElement('div');
+  heldHeading.className='dcd-ar-old-page dcd-ar-heading-holder page-'+webPage;
+  heldHeading.style.setProperty('--dcd-old-scale',String(scale));
+  if(originalHeading){
+    // Preserve one continuous headline through flight and rotation.
+    // Preserve the actual WEB15/16 title: >> PRESCRIBED.
+    const headingScene=document.createElement('div');
+    headingScene.className='scene-content';
+    headingScene.appendChild(originalHeading);
+    heldHeading.appendChild(headingScene);
+  }
+  wrapper.appendChild(oldLayer);
+  if(originalHeading)wrapper.appendChild(heldHeading);
+  const flying=oldPack.cloneNode(true);
+  // Preserve the original class list: it contains the Figma canvas crop
+  // rules for each figure. Only add the handoff-specific positioning class.
+  flying.classList.add('dcd-ar-flying-pack');
+  copyRenderedCanvases(oldPack,flying);
+  flying.style.left=originalRect.left+'px';
+  flying.style.top=originalRect.top+'px';
+  wrapper.appendChild(flying);
+  document.body.appendChild(wrapper);
+  // Do not expose the ordinary blue stage or viewport background while
+  // neither the old nor the new gradient is visible.
   const view=document.querySelector('#viewport');
+  view.classList.add('dcd-ar-warm-bridge');
+  // The old landscape copy covers the newly mounted portrait AR stage.
+  // On desktop the AR stage begins rotated into that same landscape viewport.
+  setPage('ar');
+  const nativeTransform=stage.style.transform;
   const mobile=phoneDevice();
-  const originalTransform=stage.style.transform;
-  const originalOrigin=stage.style.transformOrigin;
-  if(!pack){setPage('ar');arHandoffActive=false;return;}
-  const packRect=pack.getBoundingClientRect();
-  const stageRect=stage.getBoundingClientRect();
-  const centerX=stageRect.left+stageRect.width/2;
-  const centerY=stageRect.top+stageRect.height/2;
-  const packX=packRect.left+packRect.width/2;
-  const packY=packRect.top+packRect.height/2;
-  const dx=(centerX-packX)/scale;
-  const dy=(centerY-packY)/scale;
-  // Keep the approved pack and its four figures mounted from the first
-  // frame through the last frame of the screen turn.
-  const packMotion=pack.animate([
-    {transform:'translate(0,0) scale(1)'},
-    {transform:'translate('+(dx*.35)+'px,'+(dy*.35)+'px) scale(1.28)'},
-    {transform:'translate('+dx+'px,'+dy+'px) scale(1.82)'}
-  ],{duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'});
-
-  let turnMotion=null;
+  const sw=Math.min(view.clientWidth/874,view.clientHeight/428);
+  // Fit the AR PORTRAIT design to the actual landscape viewport while turned
+  // sideways. This is intentionally different from its upright portrait fit:
+  // the blister must finish growing during the flight, and the desktop
+  // screen-turn must interpolate the two real viewport-relative scales.
+  const landscapeArScale=Math.min(view.clientWidth/926,view.clientHeight/428);
+  const sidewaysPortraitTransform='translate(-50%,-50%) rotate(-90deg) scale('+landscapeArScale+')';
+  if(!mobile){
+    stage.style.transform=sidewaysPortraitTransform;
+  }
+  stage.style.opacity='0';
+  stage.classList.add('dcd-ar-handoff-stage');
+  // Prevent the separate default AR-entry animation from replaying when
+  // the handoff class is removed; otherwise the blister snaps and flips again.
+  ['.ar-pack-flip','.ar-orange-background','.ar-headline'].forEach(selector=>{
+    const el=stage.querySelector(selector);
+    if(el)el.style.setProperty('animation','none','important');
+  });
+  const incomingHeading=stage.querySelector('.ar-headline');
+  if(incomingHeading)incomingHeading.style.opacity='0';
+  // Keep the portrait AR gradient invisible through blister flight and
+  // desktop screen rotation; reveal only when orientation has settled.
+  const incomingGradient=stage.querySelector('.ar-orange-background');
+  if(incomingGradient)incomingGradient.style.opacity='0';
+  const target=stage.querySelector('.ar-intact-clear')?.getBoundingClientRect();
+  if(!target){
+    stage.style.opacity='1';stage.style.transform=nativeTransform;
+    if(incomingGradient)incomingGradient.style.opacity='1';
+    if(incomingHeading)incomingHeading.style.opacity='1';
+    view.classList.remove('dcd-ar-warm-bridge');
+    wrapper.remove();arHandoffActive=false;return;
+  }
+  const centerX=originalRect.left+originalRect.width/2,centerY=originalRect.top+originalRect.height/2;
+  // Fixed-position clone is anchored at the original pack's screen top-left.
+  // Its transform origin must match this anchor, otherwise scaling instantly
+  // shifts the entire blister when the animation begins.
+  const baseX=originalRect.left,baseY=originalRect.top;
+  const dstX=target.left+target.width/2,dstY=target.top+target.height/2;
+  const startScale=originalRect.width/185.497;
+  // Match the actual AR target orientation. On a landscape phone the
+  // portrait design is shown sideways at its FULL fitted scale; flying
+  // pack and every doll must arrive with that same orientation and size.
+  const sidewaysTarget=!mobile||stage.dataset.orientation==='rotated';
+  const finishScale=sidewaysTarget?target.width/391.108:target.width/185.497;
+  const finishAngle=sidewaysTarget?-90:0;
+  const k=(cx,cy,angle,size)=>{
+    // Keep the rendered pack CENTER exactly on the interpolated screen center.
+    // With transform-origin: 0 0, calculate the rotated/scaled offset of
+    // the local center rather than mixing top-left and center coordinates.
+    const radians=angle*Math.PI/180,cos=Math.cos(radians),sin=Math.sin(radians);
+    const halfW=185.497/2,halfH=391.108/2;
+    const x=size*(halfW*cos-halfH*sin),y=size*(halfW*sin+halfH*cos);
+    return 'translate('+(cx-baseX-x)+'px,'+(cy-baseY-y)+'px) rotate('+angle+'deg) scale('+size+')';
+  };
+  // Use a single continuous pack scale interpolation, shared by every
+  // nested doll canvas. Never magnify the pack independently at mid-flight:
+  // the old 1.18× / 2.05× / 1.08× values caused the visible size jump.
+  const mix=(a,b,t)=>a+(b-a)*t;
+  const flightFrames=[0,.22,.51,.80,1].map(t=>({
+    offset:t,
+    transform:k(
+      mix(centerX,dstX,t),
+      mix(centerY,dstY,t),
+      mix(0,finishAngle,t),
+      mix(startScale,finishScale,t)
+    ),
+    opacity:1
+  }));
+  const flight=flying.animate(flightFrames,{
+    duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'
+  });
+  // Let the landscape gradient simply dissolve. No gradient rotation,
+  // transform or scaling; the blister alone continues its established flight.
+  oldLayer.querySelectorAll('.new-orange-gradient').forEach(el=>{
+    el.animate([{opacity:1},{opacity:0}],
+      {duration:700,easing:'ease-in-out',fill:'forwards'});
+  });
+  oldLayer.animate([{opacity:1},{opacity:0}],
+    {duration:940,easing:'ease-in-out',fill:'forwards'});
   try{
-    await packMotion.finished;
-    if(!mobile){
-      // On desktop ONLY, turn the actual live screen as one unit.
-      // Every background, word, gradient and the enlarged blister is a
-      // child of this exact #stage; nothing has a separate rotation.
-      const uprightScale=Math.min(view.clientWidth/428,view.clientHeight/874);
-      turnMotion=stage.animate([
-        {transform:originalTransform},
-        {transform:'translate(-50%,-50%) rotate(90deg) scale('+uprightScale+')'}
-      ],{duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'});
-      await turnMotion.finished;
-    }
-    // Swap the web scene for the AR scene only after the full rotation.
-    // Do not insert the old prescription as an overlay behind the AR pack.
-    const hide=stage.animate([{opacity:1},{opacity:0}],
-      {duration:180,easing:'ease-in',fill:'forwards'});
-    await hide.finished;
-    hide.cancel();
-    packMotion.cancel();
-    setPage('ar');
-    turnMotion?.cancel();
-    stage.style.opacity='0';
-    stage.animate([{opacity:0},{opacity:1}],
-      {duration:360,easing:'ease-out',fill:'forwards'}).finished.then(()=>{
-        stage.style.opacity='1';
-      }).catch(()=>{stage.style.opacity='1';});
-  }catch(error){
-    console.warn('[DCD] WEB to AR transition:',error);
-    packMotion.cancel();
-    setPage('ar');
-    turnMotion?.cancel();
+    // The AR pack is already at its final native Figma coordinates behind the
+    // flying object. Replace only at arrival, without a mid-flight asset snap.
+    await flight.finished;
     stage.style.opacity='1';
-  }finally{
-    stage.style.transformOrigin=originalOrigin;
+    const disappear=flying.animate([{opacity:1},{opacity:0}],{duration:220,easing:'ease-out',fill:'forwards'});
+    await disappear.finished;
+    if(!mobile){
+      // Only desktop presentations simulate the screen rotation. Real phones
+      // must be physically turned by their user, never locked in software.
+      // Rotate only the AR scene. The retained landscape heading stays in
+      // viewport space: rotating its 874x428 clipped holder used to send it
+      // off-screen. Move it between two VISIBLE screen positions instead.
+      const rotationTiming={duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'};
+      stage.style.transform=nativeTransform;
+      const destination=incomingHeading?.getBoundingClientRect();
+      stage.style.transform=sidewaysPortraitTransform;
+      const source=originalHeading?.getBoundingClientRect();
+      const dx=source&&destination
+        ?(destination.left+destination.width/2)-(source.left+source.width/2):0;
+      const dy=source&&destination
+        ?(destination.top+destination.height/2)-(source.top+source.height/2):0;
+      const screenTurn=stage.animate([
+        {transform:sidewaysPortraitTransform},
+        {transform:nativeTransform}
+      ],rotationTiming);
+      // The headline must rotate at the SAME TIME as the AR composition.
+      // Spin only the heading around its own center, not its oversized
+      // landscape holder (which previously sent it outside the viewport).
+      // Translate its center to the final headline while rotating 90 degrees.
+      const headingTravel=originalHeading&&destination?heldHeading.animate([
+        {translate:'0px 0px'},
+        {translate:dx+'px '+dy+'px'}
+      ],rotationTiming).finished:Promise.resolve();
+      const headingSpin=originalHeading?originalHeading.animate([
+        {rotate:'0deg'},
+        {rotate:'90deg'}
+      ],rotationTiming).finished:Promise.resolve();
+      await Promise.all([screenTurn.finished,headingTravel,headingSpin]);
+    }
+    // The heading stays fixed in the original landscape location until the
+    // AR screen has reached portrait. Now exchange it for the AR heading.
+    stage.style.transform=nativeTransform;
+    const copyOut=originalHeading?heldHeading.animate([{opacity:1},{opacity:0}],
+      {duration:360,easing:'ease-in-out',fill:'forwards'}).finished:Promise.resolve();
+    const titleIn=incomingHeading?incomingHeading.animate(
+      [{opacity:0},{opacity:1}],{duration:360,easing:'ease-in-out',fill:'forwards'}
+    ).finished:Promise.resolve();
+    const gradientIn=incomingGradient?incomingGradient.animate(
+      [{opacity:0},{opacity:1}],{duration:780,easing:'ease-in-out',fill:'forwards'}
+    ).finished:Promise.resolve();
+    await Promise.allSettled([copyOut,titleIn,gradientIn]);
+    if(incomingHeading)incomingHeading.style.opacity='1';
+    if(incomingGradient)incomingGradient.style.opacity='1';
+  }catch(error){console.warn('[DCD] AR transition:',error);}
+  finally{
+    if(incomingGradient)incomingGradient.style.opacity='1';
+    if(incomingHeading)incomingHeading.style.opacity='1';
+    stage.style.transform=nativeTransform;stage.style.opacity='1';
+    stage.classList.remove('dcd-ar-handoff-stage');
+    wrapper.remove();
+    view.classList.remove('dcd-ar-warm-bridge');
     arHandoffActive=false;
     if(mobile&&window.innerWidth>window.innerHeight){
+      // AR remains portrait. A physical orientation change naturally refits.
       stage.classList.add('dcd-ar-await-portrait');
     }
   }
