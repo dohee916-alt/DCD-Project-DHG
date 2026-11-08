@@ -28,20 +28,29 @@ varying float vLight;
 varying float vFringe;
 void main(){
   vec4 src=texture2D(fabric,vUV);
-  float ink=smoothstep(0.26,0.42,src.r-src.g);
-  // The alpha texture is sampled exclusively from the user's archived
-  // Tulle01Small_2K Height sample (64x64 compressed working copy).
-  // No procedural warp/weft sine lines or artificial square grid.
+  // Preserve Figma's glyph silhouettes, but shade them as raised
+  // embroidery threads instead of a flat orange paint fill.
+  float ink=smoothstep(0.23,0.39,src.r-src.g);
   float fiber=src.a;
-  float light=clamp(vLight,0.82,1.17);
-  vec3 cloth=vec3(0.97,0.77,0.73)*light*(0.92+0.18*fiber);
-  vec3 printed=vec3(0.925,0.235,0.039);
-  vec3 color=mix(cloth,printed,ink);
-  // Each physical veil contributes its own translucent carrier.
-  // Standard alpha blending accumulates it: five settled veils are
-  // substantially denser than one, without introducing a solid oval.
-  float gauze=0.27+0.38*fiber;
-  float alpha=mix(gauze,0.90,ink);
+  vec2 px=vec2(1.0/1024.0,1.0/1024.0);
+  float hx=texture2D(fabric,vUV+vec2(px.x,0.0)).a
+          -texture2D(fabric,vUV-vec2(px.x,0.0)).a;
+  float hy=texture2D(fabric,vUV+vec2(0.0,px.y)).a
+          -texture2D(fabric,vUV-vec2(0.0,px.y)).a;
+  float relief=clamp(0.5+(hx-hy)*1.45,0.0,1.0);
+  float sheen=0.83+0.35*relief;
+  vec3 cloth=vec3(0.967,0.761,0.711)*sheen*(0.92+0.19*fiber);
+  // Only INSIDE lettering: diagonal satin-stitch fibers and raised
+  // thread highlights. Do not overlay any grid on the sheer fabric.
+  float stitch=sin((vUV.x*0.72+vUV.y*0.69)*2800.0);
+  float stitchSheen=0.83+0.17*stitch;
+  float raisedEdge=clamp(1.0-abs(hx-hy)*3.0,0.76,1.0);
+  vec3 embroidery=vec3(0.925,0.228,0.038)*stitchSheen*raisedEdge;
+  vec3 color=mix(cloth,embroidery,ink);
+  // The open carrier remains sheer; actual raised fibers provide the
+  // visual detail, and physical layers still accumulate through blending.
+  float gauze=0.105+0.94*pow(fiber,0.82);
+  float alpha=mix(gauze,0.95,ink);
   // Lightly frayed/feathered outer hem without cutting the face.
   alpha*=1.0-smoothstep(0.79,1.0,vFringe);
   gl_FragColor=vec4(color,clamp(alpha*opacity,0.0,1.0));
@@ -75,7 +84,7 @@ function paintedFabric(height,phrase,index){
   // Stagger the ACTUAL uploaded fiber pattern between sheets. Identical
   // UV alignment previously made five layers look like one flat surface.
   if(weave?.setTransform&&typeof DOMMatrix!=='undefined')
-   weave.setTransform(new DOMMatrix().translate(index*9,index*13).scale(.42));
+   weave.setTransform(new DOMMatrix().translate(index*9,index*13).scale(.56));
   ctx.imageSmoothingEnabled=true;
   ctx.fillStyle=weave;
   ctx.fillRect(0,0,c.width,c.height);
@@ -85,14 +94,18 @@ function paintedFabric(height,phrase,index){
   // The tracked veil samples a 0.05..0.95 UV window around its face oval.
   const config=FIGMA_MASK_TEXT[phrase.variant]?.[index];
   if(config){
-   const sx=.9*640/300,sy=.9*800/406;
-   const px=320+(config.x-214)*sx;
-   const py=400+(config.y-473)*sy;
+   // UV in update(): u=.5+.45*x/rx and v=.5-.45*y/ry.
+   // The texture is 1024x1024 with its true centre at 512,512;
+   // map the exact Figma guide region (64..364, 270..676)
+   // onto that same UV region instead of the erroneous 320,400 origin.
+   const sx=.9*TEXTURE_SIZE/300,sy=.9*TEXTURE_SIZE/406;
+   const px=TEXTURE_SIZE/2+(config.x-214)*sx;
+   const py=TEXTURE_SIZE/2+(config.y-473)*sy;
    ctx.save();
    ctx.translate(px,py);
    ctx.scale(sx,sy);
-   // Figma rotation property is clockwise-positive, while canvas is the
-   // opposite in the underlying stored transform.
+   // Figma transform defines rotation in screen space; use the negative
+   // angle here because of canvas coordinate conventions.
    ctx.rotate(-config.r*Math.PI/180);
    ctx.textAlign='center';ctx.textBaseline='top';
    ctx.fillStyle='#e83d0a';
