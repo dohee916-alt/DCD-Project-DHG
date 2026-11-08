@@ -87,32 +87,64 @@ function paintedFabric(height,index){
   ctx.imageSmoothingEnabled=true;ctx.fillStyle=weave;ctx.fillRect(0,0,c.width,c.height);
   return c;
 }
+// Keep embroidered phrases in stable cloth regions. Facial features are
+// still tracked by the full mesh, but the text must NOT cross eyelids or
+// fold over the nose. Five separated labels remain legible as layers stack.
+const EMBROIDERY_SLOTS={
+  first:[
+    {u:.34,v:.79,max:.23}, // upper left forehead
+    {u:.65,v:.79,max:.24}, // upper right forehead
+    {u:.77,v:.43,max:.25}, // right outer cheek
+    {u:.23,v:.43,max:.25}, // left outer cheek
+    {u:.50,v:.19,max:.28}  // lower chin
+  ],
+  replacement:[
+    {u:.34,v:.79,max:.23},
+    {u:.65,v:.79,max:.24},
+    {u:.50,v:.19,max:.28},
+    {u:.23,v:.43,max:.25},
+    {u:.77,v:.43,max:.25}
+  ]
+};
 function embroideredLetters(variant,index){
   const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
   const ctx=c.getContext('2d');
   const config=FIGMA_MASK_TEXT[variant]?.[index];
-  if(!config)return c;
-  const sx=.9*TEXTURE_SIZE/300,sy=.9*TEXTURE_SIZE/406;
-  const px=TEXTURE_SIZE/2+(config.x-214)*sx;
-  const py=TEXTURE_SIZE/2+(config.y-473)*sy;
-  // The live camera is mirrored (x = 1 - landmark.x), while canonical
-  // MediaPipe UVs are not. Mirror the EMBROIDERY ATLAS exactly once so both
-  // the lettering direction and its Figma screen-space placement are correct.
-  // Do not mirror the weave or the physical landmark geometry.
+  const slot=EMBROIDERY_SLOTS[variant]?.[index];
+  if(!config||!slot)return c;
+  // Canonical UVs have a bottom-left origin. Canvas pixels are top-left.
+  // The camera mesh is mirrored; inverse the atlas once, not each letter.
   ctx.save();
-  ctx.translate(TEXTURE_SIZE,0);ctx.scale(-1,1);
-  ctx.translate(px,py);ctx.scale(sx,sy);
+  ctx.translate(TEXTURE_SIZE,0);
+  ctx.scale(-1,1);
+  ctx.translate(slot.u*TEXTURE_SIZE,(1-slot.v)*TEXTURE_SIZE);
   ctx.rotate(-config.r*Math.PI/180);
-  ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#fff';
-  let yy=0;
-  for(const [line,li] of config.text.split('\n').map((str,i)=>[str,i])){
-    ctx.font='700 '+config.fs[li]+'px "Turret Road",sans-serif';
-    ctx.fillText(line,config.w/2,yy);
-    yy+=config.lh[li];
-  }
+  ctx.fillStyle='#fff';
+  ctx.textAlign='center';
+  ctx.textBaseline='top';
+  const lines=config.text.split('\n');
+  const sizes=lines.map((_,i)=>config.fs[i]||18);
+  const leading=lines.map((_,i)=>config.lh[i]||20);
+  const totalHeight=leading.reduce((a,b)=>a+b,0);
+  let widest=0;
+  lines.forEach((line,i)=>{
+    ctx.font='700 '+sizes[i]+'px "Turret Road",sans-serif';
+    widest=Math.max(widest,ctx.measureText(line).width);
+  });
+  // Limit the ink's atlas footprint so one phrase cannot sprawl across
+  // both eyes or be folded through the sharp nose ridge.
+  const fit=Math.min(2.65,slot.max*TEXTURE_SIZE/Math.max(widest,1));
+  ctx.scale(fit,fit);
+  let y=-totalHeight/2;
+  lines.forEach((line,i)=>{
+    ctx.font='700 '+sizes[i]+'px "Turret Road",sans-serif';
+    ctx.fillText(line,0,y);
+    y+=leading[i];
+  });
   ctx.restore();
   return c;
 }
+
 function faceOutline(connections){
   if(!connections?.length)return [];
   const around=new Map();
