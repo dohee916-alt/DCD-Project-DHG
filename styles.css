@@ -1077,34 +1077,31 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive[data-ar-frame="AR9"] .ar-copy{top:350px!important}
 .ar-immersive[data-ar-frame="AR10"] .ar-copy{top:302px!important}
 
-/* WEB 01: exact Figma opening hand guide image-fill geometry.
-   Both use the existing 96571.webp original, with its CENTER CROP,
-   not the previous stretched/reflipped 154x174 approximation.
-   Figma upper is a mirrored transform, lower is a pure -32.346deg turn. */
-#stage.page-01.phase-guide .gesture,
-#stage.page-01.phase-guide .gesture-target{
-  width:122.689px!important;height:216.948px!important;
-  object-fit:cover!important;object-position:center!important;
-  transform-origin:0 0!important;mix-blend-mode:normal!important;
-  pointer-events:none!important;z-index:6;
+/* WEB 01 Figma: only two animated START guides.
+   The 30%-opacity nodes in Figma mark end positions; never draw them.
+   Use Figma's relative affine matrices directly, so the rotation
+   is anchored to the same node top-left used for its exact x/y. */
+#stage.page-01.phase-guide .gesture{
+  width:122.6888657px!important;
+  height:216.9479675px!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  transform-origin:0 0!important;
+  mix-blend-mode:normal!important;
+  pointer-events:none!important;
+  z-index:6!important;
+  opacity:1!important;
+  animation:figmaStringHandTravel 2.8s ease-in-out infinite!important;
 }
 #stage.page-01.phase-guide .gesture-upper{
-  transform:rotate(32.34635deg) scaleX(-1)!important;
+  transform:matrix(-0.8448292613,-0.5350359678,-0.5350359678,0.8448292613,0,0)!important;
+  --gx:-74px;--gy:-96px;
 }
 #stage.page-01.phase-guide .gesture-lower{
-  transform:rotate(-32.34635deg)!important;
+  transform:matrix(0.8448292613,-0.5350359678,0.5350359678,0.8448292613,0,0)!important;
+  --gx:110px;--gy:-44px;
 }
-#stage.page-01.phase-guide .gesture-target{
-  opacity:.30!important;animation:none!important;
-}
-#stage.page-01.phase-guide .gesture{
-  opacity:1;
-  animation:figmaStringHandCycle 2.8s ease-in-out infinite!important;
-}
-#stage.page-01.phase-guide .gesture-upper{--gx:-74px;--gy:-96px}
-#stage.page-01.phase-guide .gesture-lower{--gx:110px;--gy:-44px}
-@keyframes figmaStringHandCycle{
-  0%,10%{translate:0 0;opacity:1}
-  47%,57%{translate:var(--gx) var(--gy);opacity:.48}
-  94%,100%{translate:0 0;opacity:1}
+@keyframes figmaStringHandTravel{
+  0%,10%,100%{translate:0 0}
+  50%,60%{translate:var(--gx) var(--gy)}
 }
