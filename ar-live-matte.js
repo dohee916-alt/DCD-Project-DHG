@@ -12,13 +12,11 @@ function create(root,video,canvas,onFrame){
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true,validFrames=0;
  let fallback=null,fallbackStarting=false;
- // Longpipe's temporal portrait matting is the primary engine.
- // Prefer large on WebGPU; use its faster small tier on WebGL/mobile.
- // SelfieSegmenter is a last-resort compatibility fallback only.
- const webgpu=!!navigator.gpu;
- const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
- // Mobile: avoid loading the largest model before showing any cutout.
- const modes=webgpu&&!mobile?['large','small','mediapipe']:['small','mediapipe'];
+ // The installed Katana wrapper supports only longpipe-small/large/xl.
+ // Upstream Longpipe "medium" needs a different stream pipeline and cannot
+ // be passed to BackgroundRemover.load(). Keep the working frame API.
+ // Try higher-quality large first on phones too; degrade safely to small.
+ const modes=['large','small','mediapipe'];
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
  }
