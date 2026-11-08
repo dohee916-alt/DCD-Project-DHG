@@ -144,7 +144,7 @@ function create(root){
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
   const stitchUniform=gl.getUniformLocation(program,'embroideryMask');
-  let outline=[],edges=[],triangles=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
+  let outline=[],edges=[],neighborsByVertex=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let vertexCount=0,neutralUV=null;
   let live=true,frameId=0,lastRendered=0;
   const textures={},layers=[];
@@ -165,6 +165,7 @@ function create(root){
       edgeSet.add(pair(start,end));
     }
     edges=[...edgeSet].map(s=>s.split(',').map(Number));
+    neighborsByVertex=Array.from({length:vertexCount},(_,i)=>[...(neighbors.get(i)||[])]);
     const unique=new Set(),indices=[];
     for(const [a,b] of edges){
       for(const c of neighbors.get(a)){
@@ -176,7 +177,6 @@ function create(root){
       }
     }
     if(indices.length<900)return false;
-    triangles=indices;
     indexCount=indices.length;
     mesh=new Float32Array(vertexCount*stride);
     vertices=new Float32Array(mesh.length);
@@ -251,9 +251,8 @@ function create(root){
       // artificially painted nose or cheek shapes.
       let gradX=0,gradY=0,total=0;
       // Nearest connected landmarks determine the local surface tilt.
-      for(const [a,b] of edges){
-        if(a!==i&&b!==i)continue;
-        const n=pos[a===i?b:a],ddx=n.x-p.x,ddy=n.y-p.y;
+      for(const nIndex of neighborsByVertex[i]){
+        const n=pos[nIndex],ddx=n.x-p.x,ddy=n.y-p.y;
         const dz=(n.z-p.z)*dw;
         const d2=ddx*ddx+ddy*ddy+1;
         gradX+=dz*ddx/d2;gradY+=dz*ddy/d2;total++;
@@ -277,7 +276,7 @@ function create(root){
     for(let i=layers.length-1;i>=0;i--){
       if(layers[i].removing&&now-layers[i].exit>1200)layers.splice(i,1);
     }
-    const ready=Boolean(faceCenter&&textures.first&&layers.length);
+    const ready=Boolean(faceCenter&&indexCount&&textures.first&&layers.length);
     root.classList.toggle('ar-tulle-ready',ready);
     if(!ready)return;
     gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);
