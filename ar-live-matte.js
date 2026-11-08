@@ -12,6 +12,51 @@ function create(root,video,canvas,onFrame){
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true;
  let fallback=null,fallbackStarting=false;
+ // Semantic segmentation vetoes only confidently non-human background.
+ // Longpipe remains the sole source of fine hair and skin alpha.
+ let semantic=null,semanticReady=false,semanticBusy=false,semanticDisabled=false;
+ let semanticLast=0,semanticTime=0,semanticGate=null,semanticSlow=0;
+ const subject=document.createElement('canvas');
+ subject.width=canvas.width;subject.height=canvas.height;
+ const subjectCtx=subject.getContext('2d',{alpha:true});
+ function disableSemantic(reason){
+  semanticDisabled=true;semanticReady=false;semanticBusy=false;
+  semanticGate?.close?.();semanticGate=null;
+  semantic?.terminate();semantic=null;
+  if(reason)console.info('[DCD AR] Semantic refinement off:',reason);
+ }
+ function initSemantic(){
+  if(semantic||semanticDisabled||typeof Worker==='undefined'||!subjectCtx)return;
+  try{
+   semantic=new Worker(new URL('ar-semantic-matte-worker.js?v=human-background-v1',document.currentScript.src));
+   semantic.onerror=e=>disableSemantic(e.message||'Semantic worker failure');
+   semantic.onmessage=({data})=>{
+    if(!live){data?.bitmap?.close?.();return}
+    if(data.type==='ready'){semanticReady=true;return}
+    if(data.type==='error'){disableSemantic(data.message);return}
+    if(data.type==='gate'){
+     semanticBusy=false;
+     if(data.latency>290)semanticSlow++;else semanticSlow=Math.max(0,semanticSlow-1);
+     if(semanticSlow>=3){data.bitmap?.close?.();disableSemantic('Processing too slow');return}
+     semanticGate?.close?.();semanticGate=data.bitmap;semanticTime=performance.now();
+    }
+   };
+   semantic.postMessage({type:'init'});
+  }catch(error){disableSemantic(error)}
+ }
+ function offerSemanticFrame(source){
+  const now=performance.now();
+  if(!semanticReady||semanticBusy||!semantic||now-semanticLast<850)return false;
+  semanticLast=now;semanticBusy=true;
+  // Copy the original, unmasked frame before closing the VideoFrame.
+  Promise.resolve().then(()=>createImageBitmap(source)).then(bitmap=>{
+   if(!live||!semanticReady){bitmap.close();semanticBusy=false;return}
+   semantic.postMessage({type:'frame',bitmap,time:now},[bitmap]);
+  }).catch(error=>{semanticBusy=false;console.warn('[DCD AR] Semantic capture:',error)})
+  .finally(()=>source.close?.());
+  return true;
+ }
+
  // Longpipe's temporal portrait matting is the primary engine.
  // Prefer large on WebGPU; use its faster small tier on WebGL/mobile.
  // SelfieSegmenter is a last-resort compatibility fallback only.
@@ -91,6 +136,7 @@ function create(root,video,canvas,onFrame){
   live=false;closeWorker();clearInterval(timer);
   if(frameHandle)video.cancelVideoFrameCallback?.(frameHandle);
   fallback?.segmenter.close();fallback=null;
+  disableSemantic();
   hide();
  }
  function next(reason){
@@ -110,11 +156,16 @@ function create(root,video,canvas,onFrame){
    if(worker!==current||!live){
     data.source?.close();data.cutout?.close();return;
    }
-   if(data.type==='ready'){clearTimeout(watchdog);watchdog=0;ready=true;return;}
+   if(data.type==='ready'){
+    clearTimeout(watchdog);watchdog=0;ready=true;
+    if(data.engine?.startsWith('longpipe'))initSemantic();
+    return;
+   }
    if(data.type==='error'){next(data.message);return;}
    if(data.type!=='frame')return;
    const request=pending;pending=null;
    const warmingUp=firstFrame;firstFrame=false;
+   let semanticOffered=false;
    try{
     const age=request?performance.now()-request.started:Infinity;
     if(age>MAX_FRAME_AGE){
@@ -128,7 +179,23 @@ function create(root,video,canvas,onFrame){
     const scale=Math.max(w/width,h/height),dw=width*scale,dh=height*scale;
     ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
     ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
-    ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+    // Composite in source orientation, then mirror as a whole.
+    // Only confirmed background beyond a wide hair-protection margin
+    // is attenuated; no trimap edge is substituted for Longpipe's edge.
+    if(data.engine?.startsWith('longpipe')&&semanticGate&&
+       performance.now()-semanticTime<1350&&subjectCtx){
+      subjectCtx.clearRect(0,0,w,h);
+      subjectCtx.globalCompositeOperation='source-over';
+      subjectCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+      subjectCtx.globalCompositeOperation='destination-in';
+      subjectCtx.imageSmoothingEnabled=true;
+      subjectCtx.imageSmoothingQuality='high';
+      subjectCtx.drawImage(semanticGate,(w-dw)/2,(h-dh)/2,dw,dh);
+      subjectCtx.globalCompositeOperation='source-over';
+      ctx.drawImage(subject,0,0);
+    }else{
+      ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+    }
     ctx.restore();
     lastCapture=performance.now();visible=true;
     canvas.style.visibility='visible';canvas.style.opacity='1';
@@ -136,8 +203,12 @@ function create(root,video,canvas,onFrame){
     // A landmark tracking error must not turn off a working cutout.
     try{onFrame?.(data.source,width,height);}
     catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
+    if(data.engine?.startsWith('longpipe'))semanticOffered=offerSemanticFrame(data.source);
    }catch(error){next(String(error));}
-   finally{data.source.close();data.cutout.close();}
+   finally{
+    if(!semanticOffered)data.source.close?.();
+    data.cutout.close?.();
+   }
   };
   current.postMessage({type:'init',mode});
  }
