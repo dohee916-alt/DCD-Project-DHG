@@ -700,6 +700,7 @@ async function beginAr(){
     {transform:'translate('+dx+'px,'+dy+'px) scale(1.82)'}
   ],{duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'});
 
+  let turnMotion=null;
   try{
     await packMotion.finished;
     if(!mobile){
@@ -707,11 +708,11 @@ async function beginAr(){
       // Every background, word, gradient and the enlarged blister is a
       // child of this exact #stage; nothing has a separate rotation.
       const uprightScale=Math.min(view.clientWidth/428,view.clientHeight/874);
-      const turn=stage.animate([
+      turnMotion=stage.animate([
         {transform:originalTransform},
         {transform:'translate(-50%,-50%) rotate(90deg) scale('+uprightScale+')'}
       ],{duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'});
-      await turn.finished;
+      await turnMotion.finished;
     }
     // Swap the web scene for the AR scene only after the full rotation.
     // Do not insert the old prescription as an overlay behind the AR pack.
@@ -721,6 +722,7 @@ async function beginAr(){
     hide.cancel();
     packMotion.cancel();
     setPage('ar');
+    turnMotion?.cancel();
     stage.style.opacity='0';
     stage.animate([{opacity:0},{opacity:1}],
       {duration:360,easing:'ease-out',fill:'forwards'}).finished.then(()=>{
@@ -730,6 +732,7 @@ async function beginAr(){
     console.warn('[DCD] WEB to AR transition:',error);
     packMotion.cancel();
     setPage('ar');
+    turnMotion?.cancel();
     stage.style.opacity='1';
   }finally{
     stage.style.transformOrigin=originalOrigin;
