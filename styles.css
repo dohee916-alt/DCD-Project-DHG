@@ -1061,3 +1061,18 @@ canvas.figure{object-fit:contain!important}
  background:radial-gradient(ellipse at 45% 35%,
    rgba(247,212,202,.13),rgba(235,176,160,.08) 72%,transparent)!important;
 }
+
+/* Figma 04_AR places labels in 428x926 phone MOCKUPS.
+   The top 80px of mock-only OS chrome is not part of the live AR stage.
+   Subtract that area from every Figma label Y without changing font,
+   text width, horizontal alignment, or gesture/fabric geometry. */
+.ar-immersive[data-ar-frame="AR3"] .ar-copy,
+.ar-immersive[data-ar-frame="AR6"] .ar-copy,
+.ar-immersive[data-ar-frame="AR7"] .ar-copy{top:61px!important}
+.ar-immersive[data-ar-frame="AR4"] .ar-copy,
+.ar-immersive[data-ar-frame="AR5"] .ar-copy,
+.ar-immersive[data-ar-frame="AR5-1"] .ar-copy,
+.ar-immersive[data-ar-frame="AR5-2"] .ar-copy,
+.ar-immersive[data-ar-frame="AR8"] .ar-copy{top:64px!important}
+.ar-immersive[data-ar-frame="AR9"] .ar-copy{top:350px!important}
+.ar-immersive[data-ar-frame="AR10"] .ar-copy{top:302px!important}

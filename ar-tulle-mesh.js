@@ -41,7 +41,7 @@ void main(){
   // Each physical veil contributes its own translucent carrier.
   // Standard alpha blending accumulates it: five settled veils are
   // substantially denser than one, without introducing a solid oval.
-  float gauze=0.16+0.29*fiber;
+  float gauze=0.27+0.38*fiber;
   float alpha=mix(gauze,0.90,ink);
   // Lightly frayed/feathered outer hem without cutting the face.
   alpha*=1.0-smoothstep(0.79,1.0,vFringe);
@@ -76,7 +76,7 @@ function paintedFabric(height,phrase,index){
   // Stagger the ACTUAL uploaded fiber pattern between sheets. Identical
   // UV alignment previously made five layers look like one flat surface.
   if(weave?.setTransform&&typeof DOMMatrix!=='undefined')
-   weave.setTransform(new DOMMatrix().translate(index*9,index*13));
+   weave.setTransform(new DOMMatrix().translate(index*9,index*13).scale(.42));
   ctx.imageSmoothingEnabled=true;
   ctx.fillStyle=weave;
   ctx.fillRect(0,0,c.width,c.height);
