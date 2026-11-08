@@ -9,7 +9,7 @@ const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR1
 const state={root:null,video:null,canvas:null,ctx:null,stage:null,frame:'AR3',
   maskCount:0,variant:'first',model:null,face:null,hand:null,hair:null,hairData:null,lastHairFrame:0,hairEnabled:false,hairSlowFrames:0,personMaskCache:null,faceAnchor:null,maskAnchor:null,maskMotionAt:0,lastSegmentationVideoTime:-1,lastFaceVideoTime:-1,lastHandVideoTime:-1,
   topology:null,pending:false,playing:false,requestId:0,lastInference:0,lastDrawn:0,lastFace:0,lastMask:0,lastHand:0,inferSlot:0,guideSince:0,
-  pinchStart:null,pinchReady:true,handGuide:null,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null,matting:null};
+  pinchStart:null,pinchReady:true,handGuide:null,stepTimer:[],segmented:false,ready:false,tulle:null,sheets:[],faceBox:null,alphaHistory:null,matting:null,matte:null};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -211,8 +211,10 @@ async function initModels(){
    };
    // Segmentation, facial geometry and hand tracking must be independent.
    // A network/GPU failure in one model must not block the other two.
-   try{state.model=await load(m.ImageSegmenter,'image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite',{outputConfidenceMasks:true,outputCategoryMask:false});}
-   catch(error){console.warn('[DCD AR] Segmentation model:',error);}
+   if(!state.matte?.active){
+     try{state.model=await load(m.ImageSegmenter,'image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite',{outputConfidenceMasks:true,outputCategoryMask:false});}
+     catch(error){console.warn('[DCD AR] Segmentation model:',error);}
+   }
    if(!state.root)return;
    try{state.face=await load(m.FaceLandmarker,'face_landmarker/face_landmarker/float16/1/face_landmarker.task',{numFaces:1});}
    catch(error){console.warn('[DCD AR] Face tracker:',error);}
@@ -223,7 +225,7 @@ async function initModels(){
    // Real 512px hair confidence model refines the coarse 256px selfie
    // outline. This runs only occasionally and adapts to device latency.
    // Failure or excessive latency always leaves the base portrait intact.
-   if(state.model && state.root){
+   if(state.model && state.root && !state.matte?.active){
      try{
        state.hair=await load(m.ImageSegmenter,
          'image_segmenter/hair_segmenter/float32/1/hair_segmenter.tflite',
@@ -240,6 +242,20 @@ async function initModels(){
 // Live camera compositor: never hold a processed/encoded video frame.
 // The segmentation mask is cached at lower rate, while the most recent
 // unmodified camera pixels are composited every animation frame.
+async function enableFallbackMatting(){
+ if(!state.root||state.model||state.fallbackPending)return;
+ state.fallbackPending=true;
+ try{
+  const m=await import(SDK);
+  const vision=await m.FilesetResolver.forVisionTasks(WASM);
+  if(!state.root)return;
+  const options={runningMode:'VIDEO',outputConfidenceMasks:true,outputCategoryMask:false};
+  const modelAssetPath=MODEL_ROOT+'image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
+  try{state.model=await m.ImageSegmenter.createFromOptions(vision,{baseOptions:{modelAssetPath,delegate:'GPU'},...options})}
+  catch{state.model=await m.ImageSegmenter.createFromOptions(vision,{baseOptions:{modelAssetPath,delegate:'CPU'},...options})}
+ }catch(e){console.warn('[DCD AR] All portrait matte paths unavailable:',e)}
+ finally{state.fallbackPending=false}
+}
 function paintPerson(segment){
  const video=state.video;
  if(!video||!segment?.confidenceMasks?.length)return;
@@ -290,6 +306,7 @@ function compositePortraitMask(){
  state.lastMaskAt=performance.now();
 }
 function drawLivePortrait(){
+ if(state.matte?.active)return;
  const canvas=state.canvas,video=state.video;
  if(!canvas||!video||video.readyState<2)return;
  const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
@@ -417,8 +434,15 @@ function mount(stage,video){
  if(state.root===root){state.video=video||state.video;return;}
  stop();
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
+ state.fallbackPending=false;
  state.canvas=root.querySelector('.ar-person-segment');state.ctx=state.canvas.getContext('2d');
  state.tulle=window.DCD_TULLE?.create(root.querySelector('.ar-organza-stack'))||null;
+ state.matte=window.DCD_AR_MATTE?.create(root,state.video,state.canvas,(reason)=>{
+   if(state.root!==root)return;
+   state.matte=null;
+   state.canvas.style.opacity='0';
+   enableFallbackMatting();
+ })||null;
  state.handGuide=window.DCD_AR_HAND_GUIDE?.create(root)||null;
  if(state.topology)state.tulle?.setConnections(state.topology.triangles,state.topology.outline);
  state.sheets=[];state.variant='first';state.maskCount=0;state.segmented=false;state.analysisError=false;
@@ -441,6 +465,7 @@ function start(video){
 function stop(){
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
  state.matting?.stop();state.matting=null;
+ state.matte?.stop();state.matte=null;
  state.subjectCanvas=null;state.subjectContext=null;state.maskCanvas=null;
  state.faceAnchor=null;state.maskAnchor=null;state.hairData=null;state.personMaskCache=null;
  state.tulle?.destroy();state.tulle=null;state.sheets=[];
