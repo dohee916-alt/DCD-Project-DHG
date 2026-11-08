@@ -24,17 +24,14 @@ function gateFromResult(result){
  const bg=masks[0].getAsFloat32Array(),hair=masks[1].getAsFloat32Array();
  const body=masks[2].getAsFloat32Array(),face=masks[3].getAsFloat32Array();
  const clothes=masks[4].getAsFloat32Array(),other=masks[5].getAsFloat32Array();
- // Preserve high-confidence hair/skin/clothing, but remove background
- // connected to an image edge. This avoids punching holes in skin or clothes.
- // The outer background can be peach-colored; never classify by hue alone.
- const inf=65500,dist=new Uint16Array(n),backgroundCandidate=new Uint8Array(n);
- const connected=new Uint8Array(n),queue=new Uint32Array(n);
+ // Protect the uncertain fine-hair boundary: find confidently human
+ // semantic pixels, then calculate city-block distance to human support.
+ const dist=new Uint16Array(n);
+ const inf=65500;
  for(let i=0;i<n;i++){
-  const human=Math.max(hair[i],body[i],face[i],clothes[i],other[i]);
-  dist[i]=human>.31?0:inf;
-  backgroundCandidate[i]=bg[i]>.55&&human<.42?1:0;
+  const person=Math.max(hair[i],body[i],face[i],clothes[i],other[i]);
+  dist[i]=person>0.36?0:inf;
  }
- // Manhattan distance to confident human support protects wispy hair.
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
   const i=y*w+x;
   if(x&&dist[i-1]+1<dist[i])dist[i]=dist[i-1]+1;
@@ -45,33 +42,20 @@ function gateFromResult(result){
   if(x<w-1&&dist[i+1]+1<dist[i])dist[i]=dist[i+1]+1;
   if(y<h-1&&dist[i+w]+1<dist[i])dist[i]=dist[i+w]+1;
  }
- // Only suppress exterior regions attached to an image boundary.
- let head=0,tail=0;
- const seed=i=>{
-  if(backgroundCandidate[i]&&!connected[i]){
-   connected[i]=1;queue[tail++]=i;
-  }
- };
- for(let x=0;x<w;x++){seed(x);seed((h-1)*w+x);}
- for(let y=0;y<h;y++){seed(y*w);seed(y*w+w-1);}
- while(head<tail){
-  const i=queue[head++],x=i%w,y=(i-x)/w;
-  if(x>0)seed(i-1);
-  if(x<w-1)seed(i+1);
-  if(y>0)seed(i-w);
-  if(y<h-1)seed(i+w);
- }
+ // Background only in places with high model certainty AND outside the
+ // 11px safety band near the human / individual wispy hairs.
  if(!buffer||matte.width!==w||matte.height!==h){
   matte.width=w;matte.height=h;buffer=matteCtx.createImageData(w,h);
  }
  for(let i=0;i<n;i++){
-  const human=Math.max(hair[i],body[i],face[i],clothes[i],other[i]);
-  const confidence=Math.min(1,Math.max(0,(bg[i]-.59)/.25));
-  // Five native-model pixels of safety, then a six-pixel soft transition.
-  const safety=Math.min(1,Math.max(0,(dist[i]-5)/6));
-  // Outside edge-connected background only. Strong human pixels stay intact.
-  const veto=connected[i]&&human<.36?confidence*safety:0;
-  const alpha=Math.round(255*(1-.985*veto));
+  const person=Math.max(hair[i],body[i],face[i],clothes[i],other[i]);
+  const background=bg[i];
+  const certainty=Math.min(1,Math.max(0,(background-.85)/.12));
+  const distance=Math.min(1,Math.max(0,(dist[i]-11)/7));
+  // A semantic false positive must not create a hard cut or erase hair:
+  // retain a sliver of the original Longpipe alpha.
+  const veto=certainty*distance*(person<.2?1:0);
+  const alpha=Math.round(255*(1-.96*veto));
   const k=i*4;
   buffer.data[k]=255;buffer.data[k+1]=255;buffer.data[k+2]=255;buffer.data[k+3]=alpha;
  }
