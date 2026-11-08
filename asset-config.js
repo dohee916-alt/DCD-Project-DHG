@@ -33,7 +33,7 @@ window.DCD_ASSETS = Object.freeze({
   arOverlayFrontStates: ["assets/figma-current/hd/ar-overlap-front-0.png","assets/figma-current/hd/ar-overlap-front-1.png","assets/figma-current/hd/ar-overlap-front-2.png"],
   arBackground: "assets/figma-current/hd/ar-background-figma.png",
   arFaceRing: "assets/figma-current/hd/ar-face-ring.svg",
-  gestureHand: "assets/figma/96571.webp",
+  gestureHand: "assets/figma-current/hd/gesture-hand-try-webguide-2x.png",
   figure: (kind, state, view = "front") => `assets/figures-v2/doll-${String(kind).padStart(2, "0")}-level-${String(state).padStart(2, "0")}-${view}.png`
 });
 window.DCD_MOTION = Object.freeze({
