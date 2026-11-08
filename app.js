@@ -145,7 +145,7 @@ function figmaGlassText(kind,x,y,w,h,base,glass){
 }
 function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['poster-brand.svg',109.344,422.73,212,67],['poster-new.svg',143.188,492.73,147,67],['poster-glp.svg',123.235,561.962,181,68]];return words.map(([file,x,y,w,h])=>img('assets/figma-current/hd/'+file,x,y,w,h,'poster-word')).join('');}
 function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+figmaGlassText('easiest',64.5,858.5,299,17,'assets/figma-current/hd/poster-tagline-base.svg','assets/figma-current/hd/poster-tagline.svg');if(p==='00'||s.phase==='intro')h+=posterWords();
-if(p==='00'){if(s.phase!=='intro')h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
+if(p==='00'){h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
 else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
 // Actual Figma try-webguide (607:336): start hands are 164x185,
 // upper mirrored at 152,370 -> target 70,257; lower at 252,564
@@ -699,6 +699,9 @@ async function beginAr(){
   heldHeading.className='dcd-ar-old-page dcd-ar-heading-holder page-'+webPage;
   heldHeading.style.setProperty('--dcd-old-scale',String(scale));
   if(originalHeading){
+    // Keep the previous headline visible as one continuous label throughout
+    // the pack flight and screen turn; no mid-flight disappearance.
+    originalHeading.textContent='>> PRESCRIPTION';
     const headingScene=document.createElement('div');
     headingScene.className='scene-content';
     headingScene.appendChild(originalHeading);
@@ -813,26 +816,37 @@ async function beginAr(){
     if(!mobile){
       // Only desktop presentations simulate the screen rotation. Real phones
       // must be physically turned by their user, never locked in software.
-      // Rotate the complete visible composition together: AR screen and the
-      // retained PRESCRIBED heading share the exact same 800ms clock.
+      // Rotate only the AR scene. The retained landscape heading stays in
+      // viewport space: rotating its 874x428 clipped holder used to send it
+      // off-screen. Move it between two VISIBLE screen positions instead.
       const rotationTiming={duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'};
+      stage.style.transform=nativeTransform;
+      const destination=incomingHeading?.getBoundingClientRect();
+      stage.style.transform=sidewaysPortraitTransform;
+      const source=originalHeading?.getBoundingClientRect();
+      const dx=source&&destination
+        ?(destination.left+destination.width/2)-(source.left+source.width/2):0;
+      const dy=source&&destination
+        ?(destination.top+destination.height/2)-(source.top+source.height/2):0;
       const screenTurn=stage.animate([
         {transform:sidewaysPortraitTransform},
         {transform:nativeTransform}
       ],rotationTiming);
-      const headingTurn=heldHeading.animate([
-        {transform:'translate(-50%,-50%) rotate(0deg) scale('+sw+')'},
-        {transform:'translate(-50%,-50%) rotate(90deg) scale('+sw+')'}
-      ],rotationTiming);
-      await Promise.all([screenTurn.finished,headingTurn.finished]);
+      // Translate, never rotate or scale the holder: the live heading stays
+      // legible and on-screen until the two titles crossfade at arrival.
+      const headingTravel=originalHeading&&destination?heldHeading.animate([
+        {translate:'0px 0px'},
+        {translate:dx+'px '+dy+'px'}
+      ],rotationTiming).finished:Promise.resolve();
+      await Promise.all([screenTurn.finished,headingTravel]);
     }
     // The heading stays fixed in the original landscape location until the
     // AR screen has reached portrait. Now exchange it for the AR heading.
     stage.style.transform=nativeTransform;
-    const copyOut=heldHeading.animate([{opacity:1},{opacity:0}],
-      {duration:180,easing:'ease-in-out',fill:'forwards'}).finished;
+    const copyOut=originalHeading?heldHeading.animate([{opacity:1},{opacity:0}],
+      {duration:360,easing:'ease-in-out',fill:'forwards'}).finished:Promise.resolve();
     const titleIn=incomingHeading?incomingHeading.animate(
-      [{opacity:0},{opacity:1}],{duration:180,easing:'ease-in-out',fill:'forwards'}
+      [{opacity:0},{opacity:1}],{duration:360,easing:'ease-in-out',fill:'forwards'}
     ).finished:Promise.resolve();
     const gradientIn=incomingGradient?incomingGradient.animate(
       [{opacity:0},{opacity:1}],{duration:780,easing:'ease-in-out',fill:'forwards'}
