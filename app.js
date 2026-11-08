@@ -690,23 +690,10 @@ async function beginAr(){
   const sceneCopy=oldScene.cloneNode(true);
   copyRenderedCanvases(oldScene,sceneCopy);
   oldLayer.appendChild(sceneCopy);
-  sceneCopy.querySelector('.new-pack-assembly')?.remove();
-  // Keep PRESCRIBED visible through the flight, then rotate the text
-  // itself with the AR scene while moving it to the portrait title position.
-  const originalHeading=sceneCopy.querySelector('.new-prescription-title');
-  const heldHeading=document.createElement('div');
-  heldHeading.className='dcd-ar-old-page dcd-ar-heading-holder page-'+webPage;
-  heldHeading.style.setProperty('--dcd-old-scale',String(scale));
-  if(originalHeading){
-    // Preserve one continuous headline through flight and rotation.
-    // Preserve the actual WEB15/16 title: >> PRESCRIBED.
-    const headingScene=document.createElement('div');
-    headingScene.className='scene-content';
-    headingScene.appendChild(originalHeading);
-    heldHeading.appendChild(headingScene);
-  }
+  // Preserve the WHOLE source screen, including its real PRESCRIBED title,
+  // backdrop and pack, inside ONE composited layer. Never extract or rotate
+  // the heading independently of the page.
   wrapper.appendChild(oldLayer);
-  if(originalHeading)wrapper.appendChild(heldHeading);
   const flying=oldPack.cloneNode(true);
   // Preserve the original class list: it contains the Figma canvas crop
   // rules for each figure. Only add the handoff-specific positioning class.
@@ -726,6 +713,7 @@ async function beginAr(){
   const nativeTransform=stage.style.transform;
   const mobile=phoneDevice();
   const sw=Math.min(view.clientWidth/874,view.clientHeight/428);
+  const uprightOldScale=Math.min(view.clientWidth/428,view.clientHeight/874);
   // Fit the AR PORTRAIT design to the actual landscape viewport while turned
   // sideways. This is intentionally different from its upright portrait fit:
   // the blister must finish growing during the flight, and the desktop
@@ -796,68 +784,41 @@ async function beginAr(){
   const flight=flying.animate(flightFrames,{
     duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'
   });
-  // Let the landscape gradient simply dissolve. No gradient rotation,
-  // transform or scaling; the blister alone continues its established flight.
-  oldLayer.querySelectorAll('.new-orange-gradient').forEach(el=>{
-    el.animate([{opacity:1},{opacity:0}],
-      {duration:700,easing:'ease-in-out',fill:'forwards'});
-  });
-  oldLayer.animate([{opacity:1},{opacity:0}],
-    {duration:940,easing:'ease-in-out',fill:'forwards'});
+  // The source screen MUST stay fully intact until the whole-screen turn
+  // finishes. Do not fade its gradients, contents or typography early.
   try{
     // The AR pack is already at its final native Figma coordinates behind the
     // flying object. Replace only at arrival, without a mid-flight asset snap.
     await flight.finished;
-    stage.style.opacity='1';
-    const disappear=flying.animate([{opacity:1},{opacity:0}],{duration:220,easing:'ease-out',fill:'forwards'});
+    const disappear=flying.animate([{opacity:1},{opacity:0}],
+      {duration:220,easing:'ease-out',fill:'forwards'});
     await disappear.finished;
+    flying.style.visibility='hidden';
     if(!mobile){
-      // Only desktop presentations simulate the screen rotation. Real phones
-      // must be physically turned by their user, never locked in software.
-      // Rotate only the AR scene. The retained landscape heading stays in
-      // viewport space: rotating its 874x428 clipped holder used to send it
-      // off-screen. Move it between two VISIBLE screen positions instead.
+      // Rotate the COMPLETE WEB15/16 screen: background, imagery, all text,
+      // PRESCRIBED, gradients and elements share one single transform.
+      // The new AR stage stays hidden until this finishes.
       const rotationTiming={duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'};
-      stage.style.transform=nativeTransform;
-      const destination=incomingHeading?.getBoundingClientRect();
-      stage.style.transform=sidewaysPortraitTransform;
-      const source=originalHeading?.getBoundingClientRect();
-      const dx=source&&destination
-        ?(destination.left+destination.width/2)-(source.left+source.width/2):0;
-      const dy=source&&destination
-        ?(destination.top+destination.height/2)-(source.top+source.height/2):0;
-      const screenTurn=stage.animate([
-        {transform:sidewaysPortraitTransform},
-        {transform:nativeTransform}
+      const wholeScreenTurn=oldLayer.animate([
+        {transform:'translate(-50%,-50%) scale('+sw+')'},
+        {transform:'translate(-50%,-50%) rotate(90deg) scale('+uprightOldScale+')'}
       ],rotationTiming);
-      // The headline must rotate at the SAME TIME as the AR composition.
-      // Spin only the heading around its own center, not its oversized
-      // landscape holder (which previously sent it outside the viewport).
-      // Translate its center to the final headline while rotating 90 degrees.
-      const headingTravel=originalHeading&&destination?heldHeading.animate([
-        {translate:'0px 0px'},
-        {translate:dx+'px '+dy+'px'}
-      ],rotationTiming).finished:Promise.resolve();
-      const headingSpin=originalHeading?originalHeading.animate([
-        {rotate:'0deg'},
-        {rotate:'90deg'}
-      ],rotationTiming).finished:Promise.resolve();
-      await Promise.all([screenTurn.finished,headingTravel,headingSpin]);
+      await wholeScreenTurn.finished;
     }
-    // The heading stays fixed in the original landscape location until the
-    // AR screen has reached portrait. Now exchange it for the AR heading.
+    // Only AFTER the source screen completes its rotation do we exchange
+    // the complete visual scene. The heading is never separately spun,
+    // hidden, moved or substituted mid-turn.
     stage.style.transform=nativeTransform;
-    const copyOut=originalHeading?heldHeading.animate([{opacity:1},{opacity:0}],
-      {duration:360,easing:'ease-in-out',fill:'forwards'}).finished:Promise.resolve();
-    const titleIn=incomingHeading?incomingHeading.animate(
-      [{opacity:0},{opacity:1}],{duration:360,easing:'ease-in-out',fill:'forwards'}
-    ).finished:Promise.resolve();
-    const gradientIn=incomingGradient?incomingGradient.animate(
-      [{opacity:0},{opacity:1}],{duration:780,easing:'ease-in-out',fill:'forwards'}
-    ).finished:Promise.resolve();
-    await Promise.allSettled([copyOut,titleIn,gradientIn]);
     if(incomingHeading)incomingHeading.style.opacity='1';
     if(incomingGradient)incomingGradient.style.opacity='1';
+    stage.style.opacity='0';
+    const fadeDuration=480;
+    const oldOut=oldLayer.animate([{opacity:1},{opacity:0}],
+      {duration:fadeDuration,easing:'ease-in-out',fill:'forwards'}).finished;
+    const arIn=stage.animate([{opacity:0},{opacity:1}],
+      {duration:fadeDuration,easing:'ease-in-out',fill:'forwards'}).finished;
+    await Promise.allSettled([oldOut,arIn]);
+    stage.style.opacity='1';
   }catch(error){console.warn('[DCD] AR transition:',error);}
   finally{
     if(incomingGradient)incomingGradient.style.opacity='1';
