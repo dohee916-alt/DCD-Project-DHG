@@ -146,7 +146,14 @@ function figmaGlassText(kind,x,y,w,h,base,glass){
 function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['poster-brand.svg',109.344,422.73,212,67],['poster-new.svg',143.188,492.73,147,67],['poster-glp.svg',123.235,561.962,181,68]];return words.map(([file,x,y,w,h])=>img('assets/figma-current/hd/'+file,x,y,w,h,'poster-word')).join('');}
 function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+figmaGlassText('easiest',64.5,858.5,299,17,'assets/figma-current/hd/poster-tagline-base.svg','assets/figma-current/hd/poster-tagline.svg');if(p==='00'||s.phase==='intro')h+=posterWords();
 if(p==='00'){if(s.phase!=='intro')h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
-else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');h+=img(A.gestureHand,-25,363,154,174,'gesture gesture-left');h+=img(A.gestureHand,288,605,154,174,'gesture gesture-right');h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
+else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
+// WEB 01 Figma image-fill geometry: 122.689 × 216.948, centered CROP.
+// Render the 30%-opacity target guides behind each animated starting hand.
+h+=img(A.gestureHand,136.726,155.643,122.689,216.948,'gesture-target gesture-upper');
+h+=img(A.gestureHand,318,641.643,122.689,216.948,'gesture-target gesture-lower');
+h+=img(A.gestureHand,210.726,251.643,122.689,216.948,'gesture gesture-upper');
+h+=img(A.gestureHand,208,685.643,122.689,216.948,'gesture gesture-lower');
+h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
 else if(s.phase==='rupture'&&A.openingBreakVideo){h+='<video class="rupture-video" autoplay muted playsinline src="'+A.openingBreakVideo+'"></video>';}
 return h;}
 function resultMarkup(){const root='assets/figma-current/hd/';return img(A.posterResult,0,0,428,926,'poster-art poster-result-art')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+figmaGlassText('easiest',64.5,858.5,299,17,root+'poster-tagline-base.svg',root+'poster-tagline.svg')+text('CLICK THE PACK TO START',26,808,376,96,'doto guide-blink poster-click-guide')+'<button class="full-hit" data-action="start" aria-label="Start"></button>';}
