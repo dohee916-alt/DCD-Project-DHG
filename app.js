@@ -684,7 +684,9 @@ async function beginAr(){
   wrapper.appendChild(oldLayer);
   if(originalHeading)wrapper.appendChild(heldHeading);
   const flying=oldPack.cloneNode(true);
-  flying.className='dcd-ar-flying-pack';
+  // Preserve the original class list: it contains the Figma canvas crop
+  // rules for each figure. Only add the handoff-specific positioning class.
+  flying.classList.add('dcd-ar-flying-pack');
   copyRenderedCanvases(oldPack,flying);
   flying.style.left=originalRect.left+'px';
   flying.style.top=originalRect.top+'px';
@@ -731,14 +733,25 @@ async function beginAr(){
     wrapper.remove();arHandoffActive=false;return;
   }
   const centerX=originalRect.left+originalRect.width/2,centerY=originalRect.top+originalRect.height/2;
-  const baseX=originalRect.left+185.497/2,baseY=originalRect.top+391.108/2;
+  // Fixed-position clone is anchored at the original pack's screen top-left.
+  // Its transform origin must match this anchor, otherwise scaling instantly
+  // shifts the entire blister when the animation begins.
+  const baseX=originalRect.left,baseY=originalRect.top;
   const dstX=target.left+target.width/2,dstY=target.top+target.height/2;
   const startScale=originalRect.width/185.497;
   // When the portrait target is sideways (desktop), its horizontal width is
   // the long dimension of a vertically stored blister.
   const finishScale=mobile?target.width/185.497:target.width/391.108;
   const finishAngle=mobile?0:-90;
-  const k=(cx,cy,angle,size)=>'translate('+(cx-baseX)+'px,'+(cy-baseY)+'px) rotate('+angle+'deg) scale('+size+')';
+  const k=(cx,cy,angle,size)=>{
+    // Keep the rendered pack CENTER exactly on the interpolated screen center.
+    // With transform-origin: 0 0, calculate the rotated/scaled offset of
+    // the local center rather than mixing top-left and center coordinates.
+    const radians=angle*Math.PI/180,cos=Math.cos(radians),sin=Math.sin(radians);
+    const halfW=185.497/2,halfH=391.108/2;
+    const x=size*(halfW*cos-halfH*sin),y=size*(halfW*sin+halfH*cos);
+    return 'translate('+(cx-baseX-x)+'px,'+(cy-baseY-y)+'px) rotate('+angle+'deg) scale('+size+')';
+  };
   // Use a single continuous pack scale interpolation, shared by every
   // nested doll canvas. Never magnify the pack independently at mid-flight:
   // the old 1.18× / 2.05× / 1.08× values caused the visible size jump.

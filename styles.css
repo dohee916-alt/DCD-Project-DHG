@@ -660,7 +660,7 @@ canvas.figure{object-fit:contain!important}
 .dcd-ar-old-page{position:absolute;left:50%;top:50%;width:874px;height:428px;transform:translate(-50%,-50%) scale(var(--dcd-old-scale));transform-origin:center;overflow:hidden;background:#fff}
 .dcd-ar-old-page .scene-content{position:absolute;left:-52px;top:0;width:926px;height:428px}
 .dcd-ar-old-page .new-orange-gradient{transform-origin:50% 50%;will-change:transform}
-.dcd-ar-flying-pack{position:fixed;width:185.497px!important;height:391.108px!important;z-index:2;transform-origin:50% 50%;will-change:transform;pointer-events:none}
+.dcd-ar-flying-pack{position:fixed;width:185.497px!important;height:391.108px!important;z-index:2;transform-origin:0 0!important;will-change:transform;pointer-events:none}
 .dcd-ar-handoff-stage .ar-pack-flip,
 .dcd-ar-handoff-stage .ar-orange-background,
 .dcd-ar-handoff-stage .ar-headline{animation:none!important}
