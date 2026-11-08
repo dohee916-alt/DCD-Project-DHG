@@ -135,8 +135,6 @@ function enter(frame){
  }
 }
 function observeFace(points,now){
- // Facial alignment controls AR progression independently of
- // background processing; a slow GPU must never freeze the experience.
  if(state.frame!=='AR3'||!points?.length)return;
  const xs=points.map(p=>1-p.x),ys=points.map(p=>p.y);
  const x=(Math.min(...xs)+Math.max(...xs))/2,y=(Math.min(...ys)+Math.max(...ys))/2;
@@ -144,10 +142,7 @@ function observeFace(points,now){
  const aligned=x>.28&&x<.72&&y>.30&&y<.68&&width>.18;
  if(!aligned){state.guideSince=0;return;}
  if(!state.guideSince)state.guideSince=now;
- // Do not start the physical veil sequence until the actual cutout has
- // rendered several RECENT frames. Face tracking still runs on raw video
- // independently, so initialization does not freeze the camera or tracker.
- if(now-state.guideSince>1350&&state.matte?.readyForExperience)enter('AR4');
+ if(now-state.guideSince>1350)enter('AR4');
 }
 function observeHands(hands,now){
  if(!['AR6','AR7'].includes(state.frame))return;
@@ -243,17 +238,9 @@ function tick(){
  if(!state.playing)return;
  state.requestId=requestAnimationFrame(tick);
  const video=state.video;
- if(!video||video.readyState<2||!video.videoWidth)return;
- // Face/hand tracking must NEVER depend on the portrait matte's frame rate.
- // Large and Medium can produce processed frames too slowly for the AR3
- // 1350ms alignment timer. Read the live camera independently.
- const now=performance.now();
- const dueFace=state.face&&now-state.lastFace>=95;
- const dueHand=handsDue(now);
- if(!dueFace&&!dueHand)return;
- if(video.currentTime===state.lastVideoTime)return;
+ if(state.matte?.visible||video.readyState<2||video.currentTime===state.lastVideoTime)return;
  state.lastVideoTime=video.currentTime;
- track(video,video.videoWidth,video.videoHeight,now);
+ track(video,video.videoWidth,video.videoHeight);
 }
 function mount(stage,video){
  const root=stage?.querySelector('.ar-immersive');
@@ -273,9 +260,18 @@ function start(video){
  if(state.playing)return;
  state.playing=true;
  const canvas=state.root.querySelector('.ar-person-segment');
- // Video matting runs separately. It never drives AR interaction state;
- // tracking uses the original video, regardless of GPU matte latency.
- state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas,null,()=>state.faceBox)||null;
+ // The landmark API reads dimensions from HTML video/canvas and ImageBitmap,
+ // so stage VideoFrame inputs on a reused canvas before tracking.
+ const input=document.createElement('canvas'),ctx=input.getContext('2d',{alpha:false});
+ state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas,(frame,w,h)=>{
+   const now=performance.now();
+   if(!(state.face&&now-state.lastFace>=42)&&!handsDue(now))return;
+   const scale=Math.min(1,640/Math.max(w,h));
+   const width=Math.round(w*scale),height=Math.round(h*scale);
+   if(input.width!==width||input.height!==height){input.width=width;input.height=height;}
+   ctx.drawImage(frame,0,0,width,height);
+   track(input,w,h,now);
+ })||null;
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }

@@ -1,46 +1,67 @@
 /* Present only recent cutouts, with the source frame for face/hand tracking. */
 (() => {
 'use strict';
-const MAX_FRAME_AGE=6500, MAX_VISIBLE_AGE=20000;
+const MAX_FRAME_AGE=380, MAX_VISIBLE_AGE=1100;
 const workerURL=new URL('ar-matte-worker.js?v=verified-longpipe-20261109-2',document.currentScript.src);
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
-function create(root,video,canvas,onFrame,getFaceBounds){
+function create(root,video,canvas,onFrame){
  const ctx=canvas.getContext('2d',{alpha:false});
  if(!ctx)return null;
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true;
  let fallback=null,fallbackStarting=false;
+ // Semantic segmentation vetoes only confidently non-human background.
+ // Longpipe remains the sole source of fine hair and skin alpha.
+ let semantic=null,semanticReady=false,semanticBusy=false,semanticDisabled=false;
+ let semanticLast=0,semanticTime=0,semanticGate=null,semanticSlow=0;
+ const subject=document.createElement('canvas');
+ subject.width=canvas.width;subject.height=canvas.height;
+ const subjectCtx=subject.getContext('2d',{alpha:true});
+ function disableSemantic(reason){
+  semanticDisabled=true;semanticReady=false;semanticBusy=false;
+  semanticGate?.close?.();semanticGate=null;
+  semantic?.terminate();semantic=null;
+  if(reason)console.info('[DCD AR] Semantic refinement off:',reason);
+ }
+ function initSemantic(){
+  if(semantic||semanticDisabled||typeof Worker==='undefined'||!subjectCtx)return;
+  try{
+   semantic=new Worker(new URL('ar-semantic-matte-worker.js?v=human-background-v1',document.currentScript.src));
+   semantic.onerror=e=>disableSemantic(e.message||'Semantic worker failure');
+   semantic.onmessage=({data})=>{
+    if(!live){data?.bitmap?.close?.();return}
+    if(data.type==='ready'){semanticReady=true;return}
+    if(data.type==='error'){disableSemantic(data.message);return}
+    if(data.type==='gate'){
+     semanticBusy=false;
+     if(data.latency>290)semanticSlow++;else semanticSlow=Math.max(0,semanticSlow-1);
+     if(semanticSlow>=3){data.bitmap?.close?.();disableSemantic('Processing too slow');return}
+     semanticGate?.close?.();semanticGate=data.bitmap;semanticTime=performance.now();
+    }
+   };
+   semantic.postMessage({type:'init'});
+  }catch(error){disableSemantic(error)}
+ }
+ function offerSemanticFrame(source){
+  const now=performance.now();
+  if(!semanticReady||semanticBusy||!semantic||now-semanticLast<850)return false;
+  semanticLast=now;semanticBusy=true;
+  // Copy the original, unmasked frame before closing the VideoFrame.
+  Promise.resolve().then(()=>createImageBitmap(source)).then(bitmap=>{
+   if(!live||!semanticReady){bitmap.close();semanticBusy=false;return}
+   semantic.postMessage({type:'frame',bitmap,time:now},[bitmap]);
+  }).catch(error=>{semanticBusy=false;console.warn('[DCD AR] Semantic capture:',error)})
+  .finally(()=>source.close?.());
+  return true;
+ }
+
  // Longpipe's temporal portrait matting is the primary engine.
  // Prefer large on WebGPU; use its faster small tier on WebGL/mobile.
  // SelfieSegmenter is a last-resort compatibility fallback only.
- const modes=['large','large'];
- let processedFrames=0,firstRenderedAt=0;
- let lastSubmitWall=0;
- let maskFace=null,maskFrameAt=0;
- const aligned=document.createElement('canvas');aligned.width=canvas.width;aligned.height=canvas.height;
- const alignedCtx=aligned.getContext('2d',{alpha:true});
- let lastProgress=0;
- function faceBoxCanvas(){
-  const f=getFaceBounds?.();
-  if(!f||!video.videoWidth||!video.videoHeight)return null;
-  const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
-  const k=Math.max(w/vw,h/vh),ox=(w-vw*k)/2,oy=(h-vh*k)/2;
-  const l=ox+f.l*vw*k,r=ox+f.r*vw*k;
-  const t=oy+f.t*vh*k,b=oy+f.b*vh*k;
-  if(![l,r,t,b].every(Number.isFinite)||r<=l||b<=t)return null;
-  return {cx:(l+r)/2,cy:(t+b)/2,w:r-l,h:b-t,b};
- }
- function markOutput(){
-  const now=performance.now();
-  if(now-lastProgress>1500){lastProgress=now;root.dataset.arMatte='longpipe-large-live';}
- }
- const mask=document.createElement('canvas');mask.width=canvas.width;mask.height=canvas.height;
- const maskCtx=mask.getContext('2d',{alpha:true});
- const person=document.createElement('canvas');person.width=canvas.width;person.height=canvas.height;
- const personCtx=person.getContext('2d',{alpha:true});
- let renderFrame=0,hasMask=false,lastCompositedTime=-1;
+ const webgpu=!!navigator.gpu;
+ const modes=webgpu?['large','small','mediapipe']:['small','mediapipe'];
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
  }
@@ -114,23 +135,20 @@ function create(root,video,canvas,onFrame,getFaceBounds){
  function stop(){
   live=false;closeWorker();clearInterval(timer);
   if(frameHandle)video.cancelVideoFrameCallback?.(frameHandle);
-  cancelAnimationFrame(renderFrame);
   fallback?.segmenter.close();fallback=null;
+  disableSemantic();
   hide();
  }
  function next(reason){
   if(reason)console.info('[DCD AR] Changing portrait engine:',reason);
   closeWorker();misses=0;failures=0;firstFrame=true;
-  hasMask=false;visible=false;processedFrames=0;canvas.style.visibility='hidden';
   // Preserve the most recent valid image during model transitions.
   const mode=modes.shift();
   if(!mode||typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'){
-   root.dataset.arMatte='large-failed';
-   console.error('[DCD AR] Large portrait unavailable; refusing Small fallback:',reason);
-   return;
+   startFallback(reason||'Worker API unavailable');return;
   }
   let current;
-  try{current=new Worker(workerURL)}catch(error){root.dataset.arMatte='large-failed';console.error('[DCD AR] Large worker failed:',error);return;}
+  try{current=new Worker(workerURL)}catch(error){startFallback(error);return;}
   worker=current;
   watchdog=setTimeout(()=>next(mode+' initialization timeout'),18000);
   current.onerror=event=>{if(worker===current)next(event.message||'Worker error');};
@@ -138,57 +156,73 @@ function create(root,video,canvas,onFrame,getFaceBounds){
    if(worker!==current||!live){
     data.source?.close();data.cutout?.close();return;
    }
-   if(data.type==='ready'){clearTimeout(watchdog);watchdog=0;ready=true;return;}
+   if(data.type==='ready'){
+    clearTimeout(watchdog);watchdog=0;ready=true;
+    if(data.engine?.startsWith('longpipe'))initSemantic();
+    return;
+   }
    if(data.type==='error'){next(data.message);return;}
    if(data.type!=='frame')return;
    const request=pending;pending=null;
    const warmingUp=firstFrame;firstFrame=false;
+   let semanticOffered=false;
    try{
     const age=request?performance.now()-request.started:Infinity;
-    if(age>MAX_FRAME_AGE&&processedFrames>0){
-     console.warn('[DCD AR] Large matte frame slow:',Math.round(age));
+    if(age>MAX_FRAME_AGE){
+     if(!warmingUp&&++misses>=3)next(data.engine+' frame age '+Math.round(age)+' ms');
+     return;
     }
     misses=0;failures=0;
     const w=canvas.width,h=canvas.height;
     const width=data.cutout.displayWidth||data.cutout.width;
     const height=data.cutout.displayHeight||data.cutout.height;
     const scale=Math.max(w/width,h/height),dw=width*scale,dh=height*scale;
-    // Retain only the segmentation ALPHA, never the processed RGB frame.
-    // The live original camera is drawn independently every animation frame.
-    maskCtx.clearRect(0,0,w,h);
-    maskCtx.save();maskCtx.translate(w,0);maskCtx.scale(-1,1);
-    maskCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
-    maskCtx.restore();
-    maskFace=request?.faceAnchor||null;
-    maskFrameAt=performance.now();
-    hasMask=true;
-    lastCapture=maskFrameAt;processedFrames++;
-    console.info('[DCD AR] Newly computed Large matte frame',processedFrames,'after',Math.round(age),'ms');
-    if(!firstRenderedAt)firstRenderedAt=lastCapture;
+    ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
+    ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
+    // Composite in source orientation, then mirror as a whole.
+    // Only confirmed background beyond a wide hair-protection margin
+    // is attenuated; no trimap edge is substituted for Longpipe's edge.
+    if(data.engine?.startsWith('longpipe')&&semanticGate&&
+       performance.now()-semanticTime<1350&&subjectCtx){
+      subjectCtx.clearRect(0,0,w,h);
+      subjectCtx.globalCompositeOperation='source-over';
+      subjectCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+      subjectCtx.globalCompositeOperation='destination-in';
+      subjectCtx.imageSmoothingEnabled=true;
+      subjectCtx.imageSmoothingQuality='high';
+      subjectCtx.drawImage(semanticGate,(w-dw)/2,(h-dh)/2,dw,dh);
+      subjectCtx.globalCompositeOperation='source-over';
+      ctx.drawImage(subject,0,0);
+    }else{
+      ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+    }
+    ctx.restore();
+    lastCapture=performance.now();visible=true;
+    canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
     // A landmark tracking error must not turn off a working cutout.
     try{onFrame?.(data.source,width,height);}
     catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
+    if(data.engine?.startsWith('longpipe'))semanticOffered=offerSemanticFrame(data.source);
    }catch(error){next(String(error));}
-   finally{data.source.close();data.cutout.close();}
+   finally{
+    if(!semanticOffered)data.source.close?.();
+    data.cutout.close?.();
+   }
   };
   current.postMessage({type:'init',mode});
  }
  async function submit(now,metadata){
   if(!live)return;
   if(fallback){drawFallback(now);return;}
-  // Do not hide the last valid cutout merely because model processing is slow.
-  // The live camera remains behind it until a newer matte is available.
-  if(pending&&performance.now()-pending.started>6000){next('Large inference stalled');return;}
-  if(hasMask&&performance.now()-maskFrameAt>6000){next('No updated Large matte for 6s');return;}
+  if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE&&ready){next('Portrait frame stalled');return;}
+  if(pending&&performance.now()-pending.started>(firstFrame?3500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
   const time=metadata?.mediaTime??video.currentTime;
   if(time<=lastVideoTime)return;
   lastVideoTime=time;
   const current=worker;
-  if(performance.now()-lastSubmitWall<100)return;
-  lastSubmitWall=performance.now();
-  const request={started:performance.now(),faceAnchor:faceBoxCanvas()};pending=request;
+  const request={started:performance.now()};pending=request;
   let source;
   try{
    const timestamp=Math.round(time*1e6);
@@ -206,49 +240,16 @@ function create(root,video,canvas,onFrame,getFaceBounds){
    }
   }finally{source?.close();}
  }
- function paintLive(){
-  if(!live)return;
-  renderFrame=requestAnimationFrame(paintLive);
-  if(!hasMask||video.readyState<2||!video.videoWidth)return;
-  // Freshness check runs EVEN if the camera callback stops advancing.
-  if(performance.now()-maskFrameAt>1400){
-   if(visible){visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='waiting-fresh-matte';}
-   return;
-  }
-  const time=video.currentTime;
-  if(time===lastCompositedTime)return;
-  lastCompositedTime=time;
-  const w=canvas.width,h=canvas.height;
-  const vw=video.videoWidth,vh=video.videoHeight;
-  const sc=Math.max(w/vw,h/vh),dw=vw*sc,dh=vh*sc;
-  // Mask is always the model's actual latest result, never a warped old outline.
-  personCtx.clearRect(0,0,w,h);
-  personCtx.save();personCtx.translate(w,0);personCtx.scale(-1,1);
-  personCtx.drawImage(video,(w-dw)/2,(h-dh)/2,dw,dh);
-  personCtx.restore();
-  personCtx.globalCompositeOperation='destination-in';
-  personCtx.drawImage(mask,0,0);
-  personCtx.globalCompositeOperation='source-over';
-  ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
-  ctx.drawImage(person,0,0);
-  if(!visible){visible=true;canvas.style.visibility='visible';canvas.style.opacity='1';}
-  markOutput();
- }
  function pump(now,metadata){
   if(!live)return;
   frameHandle=video.requestVideoFrameCallback(pump);
   submit(now,metadata);
  }
  hide();
- renderFrame=requestAnimationFrame(paintLive);
  next();
  if(live&&typeof video.requestVideoFrameCallback==='function')frameHandle=video.requestVideoFrameCallback(pump);
  else if(live)timer=setInterval(()=>submit(performance.now()),33);
- return {
-  get visible(){return visible},
-  get readyForExperience(){return visible&&hasMask&&processedFrames>=2&&performance.now()-maskFrameAt<1400&&video.readyState>=2},
-  stop
- };
+ return {get visible(){return visible},stop};
 }
 window.DCD_AR_MATTE={create};
 })();
