@@ -691,17 +691,15 @@ async function beginAr(){
   copyRenderedCanvases(oldScene,sceneCopy);
   oldLayer.appendChild(sceneCopy);
   sceneCopy.querySelector('.new-pack-assembly')?.remove();
-  // PRESCRIBED is a stationary foreground label through the entire handoff.
-  // Keep it independent of the fading landscape scene and replace it ONLY
-  // after the portrait turn has completely finished.
+  // Keep PRESCRIBED visible through the flight, then rotate the text
+  // itself with the AR scene while moving it to the portrait title position.
   const originalHeading=sceneCopy.querySelector('.new-prescription-title');
   const heldHeading=document.createElement('div');
   heldHeading.className='dcd-ar-old-page dcd-ar-heading-holder page-'+webPage;
   heldHeading.style.setProperty('--dcd-old-scale',String(scale));
   if(originalHeading){
-    // Keep the previous headline visible as one continuous label throughout
-    // the pack flight and screen turn; no mid-flight disappearance.
-    originalHeading.textContent='>> PRESCRIPTION';
+    // Preserve one continuous headline through flight and rotation.
+    // Preserve the actual WEB15/16 title: >> PRESCRIBED.
     const headingScene=document.createElement('div');
     headingScene.className='scene-content';
     headingScene.appendChild(originalHeading);
@@ -832,13 +830,19 @@ async function beginAr(){
         {transform:sidewaysPortraitTransform},
         {transform:nativeTransform}
       ],rotationTiming);
-      // Translate, never rotate or scale the holder: the live heading stays
-      // legible and on-screen until the two titles crossfade at arrival.
+      // The headline must rotate at the SAME TIME as the AR composition.
+      // Spin only the heading around its own center, not its oversized
+      // landscape holder (which previously sent it outside the viewport).
+      // Translate its center to the final headline while rotating 90 degrees.
       const headingTravel=originalHeading&&destination?heldHeading.animate([
         {translate:'0px 0px'},
         {translate:dx+'px '+dy+'px'}
       ],rotationTiming).finished:Promise.resolve();
-      await Promise.all([screenTurn.finished,headingTravel]);
+      const headingSpin=originalHeading?originalHeading.animate([
+        {rotate:'0deg'},
+        {rotate:'90deg'}
+      ],rotationTiming).finished:Promise.resolve();
+      await Promise.all([screenTurn.finished,headingTravel,headingSpin]);
     }
     // The heading stays fixed in the original landscape location until the
     // AR screen has reached portrait. Now exchange it for the AR heading.
