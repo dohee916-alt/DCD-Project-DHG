@@ -719,11 +719,12 @@ async function beginAr(){
   const nativeTransform=stage.style.transform;
   const mobile=phoneDevice();
   const sw=Math.min(view.clientWidth/874,view.clientHeight/428);
-  // AR pack/dolls must already be at their FINAL portrait size before the
-  // screen rotates. The flying WEB clone grows to this same target size.
-  // Only rotate the screen afterwards; never scale it a second time.
-  const portraitScale=scale;
-  const sidewaysPortraitTransform='translate(-50%,-50%) rotate(-90deg) scale('+portraitScale+')';
+  // Fit the AR PORTRAIT design to the actual landscape viewport while turned
+  // sideways. This is intentionally different from its upright portrait fit:
+  // the blister must finish growing during the flight, and the desktop
+  // screen-turn must interpolate the two real viewport-relative scales.
+  const landscapeArScale=Math.min(view.clientWidth/926,view.clientHeight/428);
+  const sidewaysPortraitTransform='translate(-50%,-50%) rotate(-90deg) scale('+landscapeArScale+')';
   if(!mobile){
     stage.style.transform=sidewaysPortraitTransform;
   }
