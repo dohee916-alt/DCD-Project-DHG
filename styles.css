@@ -337,7 +337,7 @@
 @keyframes newTintIn{from{opacity:0}to{opacity:1}}
 .new-consent-copy{z-index:7;color:#d83a00;font:700 22px/30px 'Source Sans 3',Arial,sans-serif;text-align:center}
 .poster-gradient-wash{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.26),transparent 31%,rgba(102,39,10,.16));mix-blend-mode:multiply}
-.poster-word{z-index:3;object-fit:contain;opacity:.72}
+.poster-word{z-index:3;object-fit:contain;opacity:.35}
 .poster-cta-svg,.poster-tagline-svg{z-index:5;object-fit:contain}
 .gesture{animation:gestureOneWay 1.4s ease-in-out infinite!important}
 @keyframes gestureOneWay{0%{translate:0 0;opacity:1}99.9%{translate:var(--gx) var(--gy);opacity:.3}100%{translate:var(--gx) var(--gy);opacity:.3}}
