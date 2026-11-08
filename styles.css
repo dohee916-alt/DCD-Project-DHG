@@ -1103,3 +1103,19 @@ canvas.figure{object-fit:contain!important}
 
 /* Keep WEB12 checklist invisible in the flight preview; reveal it once typing starts on actual WEB12. */
 .pack-flight-next .new-flow-content{display:none!important}
+
+/* Orange fine-gauge fabric fallback only when tracked WebGL tulle is unavailable.
+   Leave webcam segmentation, face geometry and sheet interactions untouched. */
+.ar-immersive .ar-organza-stack:not(.ar-tulle-ready) .ar-organza-sheet{
+  background:
+    repeating-linear-gradient(45deg,rgba(255,116,36,.38) 0 .65px,transparent .65px 5px),
+    repeating-linear-gradient(-45deg,rgba(255,142,53,.33) 0 .65px,transparent .65px 5px)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
+  border:0!important;
+}
+.ar-immersive .ar-organza-stack:not(.ar-tulle-ready) .ar-organza-printed-copy{
+  color:#111315!important;
+  text-shadow:.3px .4px 0 rgba(15,15,15,.35),-.25px -.25px 0 rgba(245,245,245,.22)!important;
+}
