@@ -38,7 +38,10 @@ void main(){
   vec3 cloth=vec3(0.97,0.77,0.73)*light*(0.92+0.18*fiber);
   vec3 printed=vec3(0.925,0.235,0.039);
   vec3 color=mix(cloth,printed,ink);
-  float gauze=0.035+0.48*fiber;
+  // Each physical veil contributes its own translucent carrier.
+  // Standard alpha blending accumulates it: five settled veils are
+  // substantially denser than one, without introducing a solid oval.
+  float gauze=0.16+0.29*fiber;
   float alpha=mix(gauze,0.90,ink);
   // Lightly frayed/feathered outer hem without cutting the face.
   alpha*=1.0-smoothstep(0.79,1.0,vFringe);
@@ -70,6 +73,10 @@ function paintedFabric(height,phrase,index){
   }
   tctx.putImageData(pixels,0,0);
   const weave=ctx.createPattern(tile,'repeat');
+  // Stagger the ACTUAL uploaded fiber pattern between sheets. Identical
+  // UV alignment previously made five layers look like one flat surface.
+  if(weave?.setTransform&&typeof DOMMatrix!=='undefined')
+   weave.setTransform(new DOMMatrix().translate(index*9,index*13));
   ctx.imageSmoothingEnabled=true;
   ctx.fillStyle=weave;
   ctx.fillRect(0,0,c.width,c.height);
@@ -254,6 +261,8 @@ function create(root){
     gl.vertexAttribPointer(fringeAttr,1,gl.FLOAT,false,stride*4,6*4);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
     gl.activeTexture(gl.TEXTURE0);gl.uniform1i(texUniform,0);
+    // Draw already-settled layers first; each new veil remains on top.
+    // Standard source-over accumulates alpha across all five physical layers.
     for(const layer of layers){
       const tex=textures[layer.variant]?.[layer.index];
       if(!tex)continue;
@@ -269,12 +278,17 @@ function create(root){
       const settle=progress>=.90?Math.sin((progress-.9)*Math.PI*20)*
         Math.exp(-(progress-.9)*23)*1.8:0;
       const size=1+.12*fly,center=faceCenter;
+      // Distinct cloth rims are essential for a visible layered stack.
+      // Settled layers shift just 1–3 px rather than sharing one exact outline.
+      const rimX=(layer.index-2)*1.35;
+      const rimY=(layer.index%2===0?-1:1)*(1.2+layer.index*.45);
+      const rimScale=1+(layer.index-2)*.006;
       for(let at=0;at<mesh.length;at+=stride){
         const x=mesh[at]-center.x,y=mesh[at+1]-center.y;
         const sway=mesh[at+6]**2*Math.sin(now*.0029+y*.041+layer.index*.7)*2.1;
         const lift=ease(leave);
-        vertices[at]=(center.x+x*size+offsetX+settle+sway+lift*(38-y*.23))/W*2-1;
-        vertices[at+1]=1-(center.y+y*size+offsetY+lift*(-165+x*.23))/H*2;
+        vertices[at]=(center.x+x*size*rimScale+offsetX+rimX+settle+sway+lift*(38-y*.23))/W*2-1;
+        vertices[at+1]=1-(center.y+y*size*rimScale+offsetY+rimY+lift*(-165+x*.23))/H*2;
         vertices[at+2]=0;
         for(let i=3;i<stride;i++)vertices[at+i]=mesh[at+i];
       }
