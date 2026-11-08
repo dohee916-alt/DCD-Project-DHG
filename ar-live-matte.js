@@ -12,11 +12,10 @@ function create(root,video,canvas,onFrame){
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true,validFrames=0;
  let fallback=null,fallbackStarting=false;
- // The installed Katana wrapper supports only longpipe-small/large/xl.
- // Upstream Longpipe "medium" needs a different stream pipeline and cannot
- // be passed to BackgroundRemover.load(). Keep the working frame API.
- // Try higher-quality large first on phones too; degrade safely to small.
- const modes=['large','small','mediapipe'];
+ // The user requires large-quality hair matte; NEVER silently downshift
+ // to small or MediaPipe. One retry handles transient GPU initialization.
+ const modes=['large','large'];
+ let activeEngine='initializing';
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
  }
@@ -99,10 +98,16 @@ function create(root,video,canvas,onFrame){
   // Preserve the most recent valid image during model transitions.
   const mode=modes.shift();
   if(!mode||typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'){
-   startFallback(reason||'Worker API unavailable');return;
+   activeEngine='large-unavailable';
+   root.dataset.arMatte='large-unavailable';
+   console.error('[DCD AR] Longpipe Large unavailable; Small is disabled:',reason);
+   return;
   }
   let current;
-  try{current=new Worker(workerURL)}catch(error){startFallback(error);return;}
+  try{current=new Worker(workerURL)}catch(error){
+   console.error('[DCD AR] Large worker creation failed:',error);
+   next(String(error));return;
+  }
   worker=current;
   watchdog=setTimeout(()=>next(mode+' initialization timeout'),18000);
   current.onerror=event=>{if(worker===current)next(event.message||'Worker error');};
@@ -112,7 +117,9 @@ function create(root,video,canvas,onFrame){
    }
    if(data.type==='ready'){
     clearTimeout(watchdog);watchdog=0;ready=true;
+    activeEngine=data.engine;
     root.dataset.arMatte='loading-'+data.engine;
+    console.info('[DCD AR] Actual portrait engine initialized:',data.engine);
     return;
    }
    if(data.type==='error'){next(data.message);return;}
@@ -138,6 +145,7 @@ function create(root,video,canvas,onFrame){
     lastCapture=performance.now();visible=true;validFrames++;
     canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
+    if(validFrames===1)console.info('[DCD AR] First displayed portrait frame:',data.engine);
     // A landmark tracking error must not turn off a working cutout.
     try{onFrame?.(data.source,width,height);}
     catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
@@ -183,7 +191,11 @@ function create(root,video,canvas,onFrame){
  next();
  if(live&&typeof video.requestVideoFrameCallback==='function')frameHandle=video.requestVideoFrameCallback(pump);
  else if(live)timer=setInterval(()=>submit(performance.now()),33);
- return {get visible(){return visible},stop};
+ return {
+  get visible(){return visible},
+  get engine(){return root.dataset.arMatte},
+  stop
+ };
 }
 window.DCD_AR_MATTE={create};
 })();
