@@ -1055,11 +1055,9 @@ canvas.figure{object-fit:contain!important}
  display:block;white-space:pre-line;
  font:700 26px/32px 'Source Sans 3',Arial,sans-serif;
 }
-/* The fallback mask is used only before actual WebGL cloth is ready.
-   Keep its threads visible, without applying an opaque peach paint layer. */
+/* No synthetic square-grid fallback. The authentic archived tulle
+   heightmap is rendered by ar-tulle-mesh.js when WebGL is ready. */
 .ar-immersive .ar-organza-sheet{
- background:
- repeating-linear-gradient(0deg,rgba(250,229,222,.26) 0 .7px,transparent .7px 3.6px),
- repeating-linear-gradient(90deg,rgba(255,237,229,.26) 0 .7px,transparent .7px 3.6px),
- radial-gradient(ellipse at 45% 35%,rgba(246,200,187,.14),rgba(232,158,144,.10))!important;
+ background:radial-gradient(ellipse at 45% 35%,
+   rgba(247,212,202,.13),rgba(235,176,160,.08) 72%,transparent)!important;
 }

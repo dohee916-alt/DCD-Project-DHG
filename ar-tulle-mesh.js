@@ -30,19 +30,16 @@ varying float vFringe;
 void main(){
   vec4 src=texture2D(fabric,vUV);
   float ink=smoothstep(0.26,0.42,src.r-src.g);
-  // Visible semi-open organza weave (not a solid pink face overlay).
-  // Approximately 4 screen pixels per thread on a 300px-wide mask.
-  float warp=pow(1.0-abs(sin(vUV.x*228.0)),7.0);
-  float weft=pow(1.0-abs(sin(vUV.y*218.0)),7.0);
-  float threads=max(warp,weft);
-  float crossings=warp*weft;
-  float light=clamp(vLight,0.78,1.22);
-  float sheen=0.80+0.22*threads+0.13*crossings;
-  vec3 cloth=vec3(0.982,0.745,0.680)*light*sheen;
+  // The alpha texture is sampled exclusively from the user's archived
+  // Tulle01Small_2K Height sample (64x64 compressed working copy).
+  // No procedural warp/weft sine lines or artificial square grid.
+  float fiber=src.a;
+  float light=clamp(vLight,0.82,1.17);
+  vec3 cloth=vec3(0.97,0.77,0.73)*light*(0.92+0.18*fiber);
   vec3 printed=vec3(0.925,0.235,0.039);
   vec3 color=mix(cloth,printed,ink);
-  float gauze=0.065+0.29*threads+0.15*crossings+0.10*src.a;
-  float alpha=mix(gauze,0.93,ink);
+  float gauze=0.035+0.48*fiber;
+  float alpha=mix(gauze,0.90,ink);
   // Lightly frayed/feathered outer hem without cutting the face.
   alpha*=1.0-smoothstep(0.79,1.0,vFringe);
   gl_FragColor=vec4(color,clamp(alpha*opacity,0.0,1.0));
@@ -61,20 +58,21 @@ async function getHeight(){
 function paintedFabric(height,phrase,index){
   const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
   const ctx=c.getContext('2d');
-  // Use the full supplied height map to vary the woven threads. Keep the
-  // fiber scale independent of the printed artwork.
+  // Render only the archived uploaded tulle heightmap. Its 64x64
+  // working copy is reconstructed without fabricating missing fibers.
   const tile=document.createElement('canvas');tile.width=tile.height=64;
-  const tctx=tile.getContext('2d'),p=tctx.createImageData(64,64);
-  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
-    const i=(y*64+x)*4;
-    const fiber=height?.[y*64+x]??((x%16===0||y%16===0)?85:0);
-    p.data[i]=245;p.data[i+1]=188;p.data[i+2]=175;
-    p.data[i+3]=4+Math.min(1,fiber/143)*127;
+  const tctx=tile.getContext('2d'),pixels=tctx.createImageData(64,64);
+  for(let i=0;i<4096;i++){
+    const fiber=height?.[i]??0,k=i*4;
+    pixels.data[k]=245;pixels.data[k+1]=188;pixels.data[k+2]=175;
+    // Original height amplitude is the only source of texture relief.
+    pixels.data[k+3]=Math.round(Math.max(0,Math.min(255,fiber)));
   }
-  tctx.putImageData(p,0,0);
+  tctx.putImageData(pixels,0,0);
   const weave=ctx.createPattern(tile,'repeat');
-  weave.setTransform(new DOMMatrix().scale(.5));
-  ctx.fillStyle=weave;ctx.fillRect(0,0,c.width,c.height);
+  ctx.imageSmoothingEnabled=true;
+  ctx.fillStyle=weave;
+  ctx.fillRect(0,0,c.width,c.height);
   ctx.scale(c.width/640,c.height/800);
   const spots=[
     {x:445,y:185,r:-22},
