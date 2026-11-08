@@ -1100,3 +1100,6 @@ canvas.figure{object-fit:contain!important}
  0%,10%,100%{translate:0 0}
  50%,60%{translate:var(--gx) var(--gy)}
 }
+
+/* Keep WEB12 checklist invisible in the flight preview; reveal it once typing starts on actual WEB12. */
+.pack-flight-next .new-flow-content{display:none!important}
