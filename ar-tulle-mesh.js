@@ -41,7 +41,7 @@ void main(){
   vec2 slope=vec2(rightFiber-leftFiber,downFiber-upFiber);
   float lit=clamp(0.90+0.29*(-slope.x+slope.y),0.72,1.22);
   float strand=pow(clamp(fiber,0.0,1.0),0.72);
-  vec3 cloth=vec3(0.951,0.778,0.748)*lit*(0.82+0.23*strand);
+  vec3 cloth=vec3(0.925,0.690,0.663)*lit*(0.80+0.35*strand);
   // Red ink in the texture is the Figma glyph silhouette only.
   float ink=smoothstep(0.27,0.48,src.r-src.g);
   // Raised satin-style embroidery: tiny alternating thread highlights
@@ -53,10 +53,14 @@ void main(){
   float stitchRim=clamp(0.96+0.16*(ink-glyphEdge),0.86,1.05);
   vec3 embroidery=vec3(0.88,0.236,0.076)*threadLight*stitchRim;
   vec3 color=mix(cloth,embroidery,ink);
-  float gauze=0.018+0.90*strand;
+  // A single translucent carrier contributes real opacity. Five sheets
+  // accumulate to ~83% coverage even at an open hole (1 - .7^5).
+  // Raised threads are much denser than the open carrier.
+  float gauze=0.30+0.69*strand;
   float alpha=mix(gauze,0.97,ink);
   // Lightly frayed/feathered outer hem without cutting the face.
-  alpha*=1.0-smoothstep(0.79,1.0,vFringe);
+  // Preserve a visible soft rim for each newly stacked veil.
+  alpha*=1.0-0.84*smoothstep(0.88,1.0,vFringe);
   gl_FragColor=vec4(color,clamp(alpha*opacity,0.0,1.0));
 }`;
 function shader(gl,type,code){
@@ -81,7 +85,9 @@ function paintedFabric(height,phrase,index){
     const fiber=height?.[i]??0,k=i*4;
     pixels.data[k]=245;pixels.data[k+1]=188;pixels.data[k+2]=175;
     // Original height amplitude is the only source of texture relief.
-    pixels.data[k+3]=Math.round(Math.max(0,Math.min(255,fiber)));
+    // Archived height values top out at 143, not 255.
+    // Preserve zero as open mesh while using the full alpha range for fibers.
+    pixels.data[k+3]=Math.round(Math.max(0,Math.min(255,fiber*255/143)));
   }
   tctx.putImageData(pixels,0,0);
   const weave=ctx.createPattern(tile,'repeat');
