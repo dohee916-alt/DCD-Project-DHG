@@ -790,10 +790,34 @@ async function beginAr(){
     // The AR pack is already at its final native Figma coordinates behind the
     // flying object. Replace only at arrival, without a mid-flight asset snap.
     await flight.finished;
-    const disappear=flying.animate([{opacity:1},{opacity:0}],
-      {duration:220,easing:'ease-out',fill:'forwards'});
-    await disappear.finished;
-    flying.style.visibility='hidden';
+    // Move the very same rendered blister into the rotating screen.
+    // Previously the flying blister faded away BEFORE rotation and exposed
+    // the older pack underneath the cloned prescription page.
+    const oldLayerRect=oldLayer.getBoundingClientRect();
+    const finalScale=finishScale/sw;
+    const finalCx=(dstX-oldLayerRect.left)/sw;
+    const finalCy=(dstY-oldLayerRect.top)/sw;
+    const anchorX=(baseX-oldLayerRect.left)/sw;
+    const anchorY=(baseY-oldLayerRect.top)/sw;
+    // The flight is now complete. Transfer the actual bitmap-backed node,
+    // rather than redrawing a second, potentially stale blister.
+    flight.cancel();
+    flying.style.position='absolute';
+    flying.style.left=anchorX+'px';
+    flying.style.top=anchorY+'px';
+    flying.style.opacity='1';
+    flying.style.visibility='visible';
+    flying.style.transformOrigin='0 0';
+    flying.style.transform=(function(){
+      const radians=finishAngle*Math.PI/180;
+      const x=finalScale*(185.497/2*Math.cos(radians)-391.108/2*Math.sin(radians));
+      const y=finalScale*(185.497/2*Math.sin(radians)+391.108/2*Math.cos(radians));
+      return 'translate('+(finalCx-anchorX-x)+'px,'+(finalCy-anchorY-y)+'px) rotate('+finishAngle+'deg) scale('+finalScale+')';
+    })();
+    // Do not allow the earlier, unmoved blister to reappear behind it.
+    const stalePack=sceneCopy.querySelector('.new-pack-assembly');
+    if(stalePack)stalePack.style.visibility='hidden';
+    oldLayer.appendChild(flying);
     if(!mobile){
       // Rotate the COMPLETE WEB15/16 screen: background, imagery, all text,
       // PRESCRIBED, gradients and elements share one single transform.
