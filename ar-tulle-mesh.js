@@ -154,7 +154,20 @@ function create(root){
     const canonical=window.DCD_FACE_CANONICAL;
     if(!canonical||canonical.uv.length!==468||canonical.triangles.length<2000)return false;
     vertexCount=canonical.uv.length;
-    indexCount=canonical.triangles.length;
+    // MediaPipe's canonical surface leaves eye and mouth openings. This is
+    // a continuous piece of tulle, so bridge those openings using the exact
+    // surrounding facial landmarks. Never cut holes around features.
+    const patches=[
+      [33,160,158,133,153,144],
+      [362,385,387,263,373,380],
+      [61,40,37,0,267,270,291,321,314,17,84,91]
+    ];
+    const completeTriangles=canonical.triangles.slice();
+    for(const loop of patches){
+      for(let i=1;i<loop.length-1;i++)
+        completeTriangles.push(loop[0],loop[i],loop[i+1]);
+    }
+    indexCount=completeTriangles.length;
     mesh=new Float32Array(vertexCount*stride);
     vertices=new Float32Array(mesh.length);
     neutralUV=new Float32Array(vertexCount*2);
@@ -164,7 +177,7 @@ function create(root){
       neutralUV[i*2+1]=canonical.uv[i][1];
     }
     for(let k=0;k<indexCount;k+=3){
-      const [a,b,c]=canonical.triangles.slice(k,k+3);
+      const [a,b,c]=completeTriangles.slice(k,k+3);
       neighborsByVertex[a].add(b);neighborsByVertex[a].add(c);
       neighborsByVertex[b].add(a);neighborsByVertex[b].add(c);
       neighborsByVertex[c].add(a);neighborsByVertex[c].add(b);
@@ -172,7 +185,7 @@ function create(root){
     neighborsByVertex=neighborsByVertex.map(x=>[...x]);
     outline=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(canonical.triangles),gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(completeTriangles),gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
     gl.bufferData(gl.ARRAY_BUFFER,vertices.byteLength,gl.DYNAMIC_DRAW);
     return true;
