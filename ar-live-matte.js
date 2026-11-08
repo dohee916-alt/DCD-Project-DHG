@@ -15,7 +15,7 @@ function create(root,video,canvas,onFrame,getFaceBounds){
  // Longpipe's temporal portrait matting is the primary engine.
  // Prefer large on WebGPU; use its faster small tier on WebGL/mobile.
  // SelfieSegmenter is a last-resort compatibility fallback only.
- const modes=['large'];
+ const modes=['large','large'];
  let processedFrames=0,firstRenderedAt=0;
  let lastSubmitWall=0;
  let maskFace=null,maskFrameAt=0;
@@ -121,6 +121,7 @@ function create(root,video,canvas,onFrame,getFaceBounds){
  function next(reason){
   if(reason)console.info('[DCD AR] Changing portrait engine:',reason);
   closeWorker();misses=0;failures=0;firstFrame=true;
+  hasMask=false;visible=false;processedFrames=0;canvas.style.visibility='hidden';
   // Preserve the most recent valid image during model transitions.
   const mode=modes.shift();
   if(!mode||typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'){
@@ -162,6 +163,7 @@ function create(root,video,canvas,onFrame,getFaceBounds){
     maskFrameAt=performance.now();
     hasMask=true;
     lastCapture=maskFrameAt;processedFrames++;
+    console.info('[DCD AR] Newly computed Large matte frame',processedFrames,'after',Math.round(age),'ms');
     if(!firstRenderedAt)firstRenderedAt=lastCapture;
     root.dataset.arMatte=data.engine;
     // A landmark tracking error must not turn off a working cutout.
@@ -177,7 +179,8 @@ function create(root,video,canvas,onFrame,getFaceBounds){
   if(fallback){drawFallback(now);return;}
   // Do not hide the last valid cutout merely because model processing is slow.
   // The live camera remains behind it until a newer matte is available.
-  if(pending&&performance.now()-pending.started>20000){next('Frame processing timed out');return;}
+  if(pending&&performance.now()-pending.started>6000){next('Large inference stalled');return;}
+  if(hasMask&&performance.now()-maskFrameAt>6000){next('No updated Large matte for 6s');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
   const time=metadata?.mediaTime??video.currentTime;
   if(time<=lastVideoTime)return;
@@ -207,33 +210,24 @@ function create(root,video,canvas,onFrame,getFaceBounds){
   if(!live)return;
   renderFrame=requestAnimationFrame(paintLive);
   if(!hasMask||video.readyState<2||!video.videoWidth)return;
+  // Freshness check runs EVEN if the camera callback stops advancing.
+  if(performance.now()-maskFrameAt>1400){
+   if(visible){visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='waiting-fresh-matte';}
+   return;
+  }
   const time=video.currentTime;
   if(time===lastCompositedTime)return;
   lastCompositedTime=time;
   const w=canvas.width,h=canvas.height;
   const vw=video.videoWidth,vh=video.videoHeight;
   const sc=Math.max(w/vw,h/vh),dw=vw*sc,dh=vh*sc;
-  const face=faceBoxCanvas();
-  if(!face)return; // Do not present a frozen silhouette without tracking.
-  alignedCtx.clearRect(0,0,w,h);
-  if(maskFace){
-   // Move the last high-quality hair alpha with current face landmarks
-   // between slower Large inference results. RGB always comes from LIVE video.
-   const sx=Math.max(.75,Math.min(1.35,face.w/maskFace.w));
-   const sy=Math.max(.75,Math.min(1.35,face.h/maskFace.h));
-   alignedCtx.save();
-   alignedCtx.translate(face.cx,face.cy);
-   alignedCtx.scale(sx,sy);
-   alignedCtx.translate(-maskFace.cx,-maskFace.cy);
-   alignedCtx.drawImage(mask,0,0);
-   alignedCtx.restore();
-  }else alignedCtx.drawImage(mask,0,0);
+  // Mask is always the model's actual latest result, never a warped old outline.
   personCtx.clearRect(0,0,w,h);
   personCtx.save();personCtx.translate(w,0);personCtx.scale(-1,1);
   personCtx.drawImage(video,(w-dw)/2,(h-dh)/2,dw,dh);
   personCtx.restore();
   personCtx.globalCompositeOperation='destination-in';
-  personCtx.drawImage(aligned,0,0);
+  personCtx.drawImage(mask,0,0);
   personCtx.globalCompositeOperation='source-over';
   ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
   ctx.drawImage(person,0,0);
@@ -252,7 +246,7 @@ function create(root,video,canvas,onFrame,getFaceBounds){
  else if(live)timer=setInterval(()=>submit(performance.now()),33);
  return {
   get visible(){return visible},
-  get readyForExperience(){return visible&&hasMask&&processedFrames>=1&&video.readyState>=2},
+  get readyForExperience(){return visible&&hasMask&&processedFrames>=2&&performance.now()-maskFrameAt<1400&&video.readyState>=2},
   stop
  };
 }
