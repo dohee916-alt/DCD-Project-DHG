@@ -29,14 +29,23 @@ varying float vLight;
 varying float vFringe;
 void main(){
   vec4 src=texture2D(fabric,vUV);
-  float ink=smoothstep(0.28,0.43,src.r-src.g);
-  float light=clamp(vLight,0.72,1.24);
-  vec3 cloth=vec3(0.965,0.685,0.610)*light*(0.83+0.25*src.a);
-  vec3 printed=vec3(0.917,0.238,0.039);
+  float ink=smoothstep(0.26,0.42,src.r-src.g);
+  // Visible semi-open organza weave (not a solid pink face overlay).
+  // Approximately 4 screen pixels per thread on a 300px-wide mask.
+  float warp=pow(1.0-abs(sin(vUV.x*228.0)),7.0);
+  float weft=pow(1.0-abs(sin(vUV.y*218.0)),7.0);
+  float threads=max(warp,weft);
+  float crossings=warp*weft;
+  float light=clamp(vLight,0.78,1.22);
+  float sheen=0.80+0.22*threads+0.13*crossings;
+  vec3 cloth=vec3(0.982,0.745,0.680)*light*sheen;
+  vec3 printed=vec3(0.925,0.235,0.039);
   vec3 color=mix(cloth,printed,ink);
-  float alpha=mix(0.018+src.a*0.56,min(0.91,src.a*1.08),ink);
-  alpha*=1.0-smoothstep(0.65,1.0,vFringe);
-  gl_FragColor=vec4(color,alpha*opacity);
+  float gauze=0.065+0.29*threads+0.15*crossings+0.10*src.a;
+  float alpha=mix(gauze,0.93,ink);
+  // Lightly frayed/feathered outer hem without cutting the face.
+  alpha*=1.0-smoothstep(0.79,1.0,vFringe);
+  gl_FragColor=vec4(color,clamp(alpha*opacity,0.0,1.0));
 }`;
 function shader(gl,type,code){
   const s=gl.createShader(type);gl.shaderSource(s,code);gl.compileShader(s);
@@ -218,9 +227,10 @@ function create(root){
     }
   }
   function arrival(t){
-    // 65% of the flight: float nearer only a little; final 35%:
-    // accelerate rapidly toward the tracked face.
-    return t<.65 ? .19*ease(t/.65) : .19+.81*Math.pow((t-.65)/.35,2);
+    // One short, decisive approach with a softly decelerating landing.
+    // The slow 65%-of-flight drift in the prior version is removed.
+    t=clamp(t,0,1);
+    return 1-Math.pow(1-t,3);
   }
   function render(now){
     if(!live)return;
@@ -249,21 +259,21 @@ function create(root){
     for(const layer of layers){
       const tex=textures[layer.variant]?.[layer.index];
       if(!tex)continue;
-      const seconds=(now-layer.start)/1000,progress=clamp(seconds/3.0,0,1);
+      const seconds=(now-layer.start)/1000,progress=clamp(seconds/1.25,0,1);
       const approaching=layer.removing?1:arrival(progress);
       const fly=1-approaching;
-      const fadeIn=clamp(seconds/.8,0,1);
+      const fadeIn=clamp(seconds/.24,0,1);
       const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
       const opacity=layer.removing?1-ease(leave):fadeIn;
       if(opacity<=0)continue;
       const offsetX=(layer.index%2?-1:1)*(56*fly);
-      const offsetY=-115*fly;
+      const offsetY=-85*fly;
       const settle=progress>=.90?Math.sin((progress-.9)*Math.PI*20)*
         Math.exp(-(progress-.9)*23)*1.8:0;
-      const size=1+.19*fly,center=faceCenter;
+      const size=1+.12*fly,center=faceCenter;
       for(let at=0;at<mesh.length;at+=stride){
         const x=mesh[at]-center.x,y=mesh[at+1]-center.y;
-        const sway=mesh[at+6]**2*Math.sin(now*.0024+y*.055+layer.index*.8)*1.25;
+        const sway=mesh[at+6]**2*Math.sin(now*.0029+y*.041+layer.index*.7)*2.1;
         const lift=ease(leave);
         vertices[at]=(center.x+x*size+offsetX+settle+sway+lift*(38-y*.23))/W*2-1;
         vertices[at+1]=1-(center.y+y*size+offsetY+lift*(-165+x*.23))/H*2;

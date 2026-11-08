@@ -43,7 +43,19 @@ function caption(value){const e=state.root?.querySelector('.ar-copy');if(e)e.tex
 function typeCaption(value,duration=1200){
  const element=state.root?.querySelector('.ar-copy');if(!element)return;
  const letters=[...value];let i=0;const period=duration/Math.max(1,letters.length);
- function write(){if(!state.root||!frameNames.includes(state.frame))return;element.textContent=letters.slice(0,++i).join('');if(i<letters.length)delay(write,period);}
+ function write(){
+  if(!state.root||!frameNames.includes(state.frame))return;
+  const chars=letters.slice(0,++i).join('');
+  if(state.frame==='AR10'){
+   // Figma AR10 uses a separate 64px NOT and 26px supporting statement.
+   const top=chars.slice(0,3);
+   const lower=chars.length>4?chars.slice(4):'';
+   element.innerHTML='<span class="ar-final-not"></span><span class="ar-final-rest"></span>';
+   element.querySelector('.ar-final-not').textContent=top;
+   element.querySelector('.ar-final-rest').textContent=lower;
+  }else element.textContent=chars;
+  if(i<letters.length)delay(write,period);
+ }
  write();
 }
 const ORGANZA_TEXT={
@@ -96,11 +108,10 @@ function enter(frame){
    caption('YOU AGREED TO THESE');
    state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());
    state.sheets=[];state.tulle?.clear();
-   // Each sheet takes 3s to travel: slow drifting approach, then sharp
-   // near-face acceleration. Hold 1.6s to read the previous printed phrase.
-   const firstAt=650,between=4600;
+   // Faster fabric flight (~1.25s) and a clear but brief reading hold.
+   const firstAt=250,between=2000;
    for(let i=0;i<5;i++)delay(addFabric,firstAt+i*between);
-   delay(()=>enter('AR5'),firstAt+4*between+3000+2000);break;
+   delay(()=>enter('AR5'),firstAt+4*between+1250+1100);break;
  case 'AR5':
    caption('DO YOU WANT TO\nCHANGE YOUR CHOICE?');
    buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
@@ -117,14 +128,14 @@ function enter(frame){
  case 'AR5-2':
    caption('YOU AGREED TO THESE');
    // Remove the original five fabrics with time to see them separate.
-   for(let i=0;i<5;i++)delay(removeFabric,400+i*1450);
+   for(let i=0;i<5;i++)delay(removeFabric,220+i*800);
    delay(()=>{
      state.variant='replacement';
-     for(let i=0;i<5;i++)delay(addFabric,650+i*4600);
-     delay(()=>enter('AR6'),650+4*4600+3000+2000);
-   },400+4*1450+1300);break;
- case 'AR6':caption('WATCH AND FOLLOW THE HAND MOVEMENT');break;
- case 'AR7':caption('NOW REACH TOWARD YOUR FACE\nAND PULL THE MASKS OFF');break;
+     for(let i=0;i<5;i++)delay(addFabric,250+i*2000);
+     delay(()=>enter('AR6'),250+4*2000+1250+1100);
+   },220+4*800+700);break;
+ case 'AR6':caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
+ case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
  case 'AR8':
    caption('FINALLY!');
    delay(()=>enter('AR9'),1800);break;
