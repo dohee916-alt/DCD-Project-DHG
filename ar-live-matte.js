@@ -1,7 +1,7 @@
 /* Present only recent cutouts, with the source frame for face/hand tracking. */
 (() => {
 'use strict';
-const MAX_FRAME_AGE=380, MAX_VISIBLE_AGE=1100;
+const MAX_FRAME_AGE=1200, MAX_VISIBLE_AGE=3500;
 const workerURL=new URL('ar-matte-worker.js?v=verified-longpipe-20261109-2',document.currentScript.src);
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
@@ -10,7 +10,7 @@ function create(root,video,canvas,onFrame){
  const ctx=canvas.getContext('2d',{alpha:false});
  if(!ctx)return null;
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
- let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true;
+ let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true,validFrames=0;
  let fallback=null,fallbackStarting=false;
  // Longpipe's temporal portrait matting is the primary engine.
  // Prefer large on WebGPU; use its faster small tier on WebGL/mobile.
@@ -97,7 +97,7 @@ function create(root,video,canvas,onFrame){
  }
  function next(reason){
   if(reason)console.info('[DCD AR] Changing portrait engine:',reason);
-  closeWorker();misses=0;failures=0;firstFrame=true;
+  closeWorker();misses=0;failures=0;firstFrame=true;validFrames=0;
   // Preserve the most recent valid image during model transitions.
   const mode=modes.shift();
   if(!mode||typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'){
@@ -123,8 +123,9 @@ function create(root,video,canvas,onFrame){
    const warmingUp=firstFrame;firstFrame=false;
    try{
     const age=request?performance.now()-request.started:Infinity;
-    if(age>MAX_FRAME_AGE){
-     if(!warmingUp&&++misses>=3)next(data.engine+' frame age '+Math.round(age)+' ms');
+    // Do not throw away the very first processed frame on slower phones.
+    if(!warmingUp&&validFrames>0&&age>MAX_FRAME_AGE){
+     if(++misses>=6)next(data.engine+' frame age '+Math.round(age)+' ms');
      return;
     }
     misses=0;failures=0;
@@ -136,7 +137,7 @@ function create(root,video,canvas,onFrame){
     ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
     ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
     ctx.restore();
-    lastCapture=performance.now();visible=true;
+    lastCapture=performance.now();visible=true;validFrames++;
     canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
     // A landmark tracking error must not turn off a working cutout.
@@ -151,7 +152,7 @@ function create(root,video,canvas,onFrame){
   if(!live)return;
   if(fallback){drawFallback(now);return;}
   if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE&&ready){next('Portrait frame stalled');return;}
-  if(pending&&performance.now()-pending.started>(firstFrame?3500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
+  if(pending&&performance.now()-pending.started>(firstFrame?9000:5500)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
   const time=metadata?.mediaTime??video.currentTime;
   if(time<=lastVideoTime)return;

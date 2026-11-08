@@ -135,7 +135,10 @@ function enter(frame){
  }
 }
 function observeFace(points,now){
+ // Do not advance to the mask experience while only raw camera is shown.
+ // Face tracking can succeed before portrait matting initializes.
  if(state.frame!=='AR3'||!points?.length)return;
+ if(!state.matte?.visible){state.guideSince=0;return;}
  const xs=points.map(p=>1-p.x),ys=points.map(p=>p.y);
  const x=(Math.min(...xs)+Math.max(...xs))/2,y=(Math.min(...ys)+Math.max(...ys))/2;
  const width=Math.max(...xs)-Math.min(...xs);
