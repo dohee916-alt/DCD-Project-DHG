@@ -20,49 +20,42 @@ void main(){
   gl_Position=vec4(position.xy,clamp(position.z,-0.8,0.8),1.0);
 }`;
 const FRAG=`
-precision mediump float;
+precision highp float;
 uniform sampler2D fabric;
+uniform sampler2D embroideryMask;
 uniform float opacity;
 varying vec2 vUV;
 varying float vLight;
 varying float vFringe;
 void main(){
-  vec4 src=texture2D(fabric,vUV);
-  // Preserve Figma's glyph silhouettes, but shade them as raised
-  // embroidery threads instead of a flat orange paint fill.
-  // The actual supplied height-map controls where individual fibers lie.
-  // Open holes stay clear even when five separate cloth layers accumulate.
-  float fiber=src.a;
-  vec2 texel=vec2(1.0/1024.0);
-  float leftFiber=texture2D(fabric,vUV-vec2(texel.x,0.0)).a;
-  float rightFiber=texture2D(fabric,vUV+vec2(texel.x,0.0)).a;
-  float upFiber=texture2D(fabric,vUV-vec2(0.0,texel.y)).a;
-  float downFiber=texture2D(fabric,vUV+vec2(0.0,texel.y)).a;
-  vec2 slope=vec2(rightFiber-leftFiber,downFiber-upFiber);
-  float lit=clamp(0.90+0.29*(-slope.x+slope.y),0.72,1.22);
-  float strand=pow(clamp(fiber,0.0,1.0),0.72);
-  vec3 cloth=vec3(1.0,0.39,0.08)*lit*(0.80+0.35*strand);
-  // Red ink in the texture is the Figma glyph silhouette only.
-  float ink=smoothstep(0.27,0.48,src.r-src.g);
-  // Raised satin-style embroidery: tiny alternating thread highlights
-  // and shadow on glyph edges. Never applied to the mesh holes.
-  float stitches=sin((vUV.x*0.86+vUV.y*0.51)*4100.0);
-  float threadLight=clamp(0.89+0.12*stitches,0.77,1.01);
-  float glyphEdge=texture2D(fabric,vUV+vec2(texel.x,texel.y)).r
-                 -texture2D(fabric,vUV+vec2(texel.x,texel.y)).g;
-  float stitchRim=clamp(0.96+0.16*(ink-glyphEdge),0.86,1.05);
-  vec3 embroidery=vec3(0.055,0.054,0.053)*threadLight*stitchRim;
-  vec3 color=mix(cloth,embroidery,ink);
-  // A single translucent carrier contributes real opacity. Five sheets
-  // accumulate to ~83% coverage even at an open hole (1 - .7^5).
-  // Raised threads are much denser than the open carrier.
-  float gauze=0.02+0.64*strand;
-  float alpha=mix(gauze,0.97,ink);
-  // Lightly frayed/feathered outer hem without cutting the face.
-  // Preserve a visible soft rim for each newly stacked veil.
-  alpha*=1.0-0.84*smoothstep(0.88,1.0,vFringe);
+  vec4 clothSample=texture2D(fabric,vUV);
+  float fiber=clothSample.a;
+  vec2 pixel=vec2(1.0/1024.0);
+  float dx=texture2D(fabric,vUV+vec2(pixel.x,0.0)).a-texture2D(fabric,vUV-vec2(pixel.x,0.0)).a;
+  float dy=texture2D(fabric,vUV+vec2(0.0,pixel.y)).a-texture2D(fabric,vUV-vec2(0.0,pixel.y)).a;
+  // The actual archived cloth relief controls lighting and opacity; the
+  // holes remain transparent. No flat red overlay or procedural grid.
+  float raised=smoothstep(0.07,0.75,fiber);
+  float clothLight=clamp(vLight+0.23*(-dx+dy),0.66,1.24);
+  vec3 orange=vec3(1.0,0.37,0.065)*clothLight;
+  float clothAlpha=0.012+0.52*raised;
+  // Black lettering is a separate alpha texture. Its opacity is never
+  // inferred from the orange fibers' RGB, preventing false dark stripes.
+  float stitched=texture2D(embroideryMask,vUV).a;
+  float edgeX=texture2D(embroideryMask,vUV+vec2(pixel.x,0.0)).a-
+    texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
+  float edgeY=texture2D(embroideryMask,vUV+vec2(0.0,pixel.y)).a-
+    texture2D(embroideryMask,vUV-vec2(0.0,pixel.y)).a;
+  // Reuse the existing cloth's physical fiber height as micro-relief
+  // instead of inventing a separate simulated stitch pattern.
+  float threadShine=clamp(0.85+0.12*fiber+0.11*(-edgeX+edgeY)+0.08*(vLight-0.9),0.67,1.05);
+  vec3 blackThread=vec3(0.045,0.046,0.049)*threadShine;
+  float alpha=mix(clothAlpha,0.985,stitched);
+  alpha*=1.0-0.92*smoothstep(0.90,1.0,vFringe);
+  vec3 color=mix(orange,blackThread,stitched);
   gl_FragColor=vec4(color,clamp(alpha*opacity,0.0,1.0));
 }`;
+
 function shader(gl,type,code){
   const s=gl.createShader(type);gl.shaderSource(s,code);gl.compileShader(s);
   if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));
@@ -74,59 +67,42 @@ async function getHeight(){
   const stream=new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
-function paintedFabric(height,phrase,index){
+function paintedFabric(height,index){
   const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
   const ctx=c.getContext('2d');
-  // Render only the archived uploaded tulle heightmap. Its 64x64
-  // working copy is reconstructed without fabricating missing fibers.
+  // Retain the existing archived 64x64 photographed fiber heightmap.
   const tile=document.createElement('canvas');tile.width=tile.height=64;
   const tctx=tile.getContext('2d'),pixels=tctx.createImageData(64,64);
   for(let i=0;i<4096;i++){
     const fiber=height?.[i]??0,k=i*4;
-    pixels.data[k]=245;pixels.data[k+1]=188;pixels.data[k+2]=175;
-    // Original height amplitude is the only source of texture relief.
-    // Archived height values top out at 143, not 255.
-    // Preserve zero as open mesh while using the full alpha range for fibers.
+    pixels.data[k]=245;pixels.data[k+1]=116;pixels.data[k+2]=35;
     pixels.data[k+3]=Math.round(Math.max(0,Math.min(255,fiber*255/143)));
   }
   tctx.putImageData(pixels,0,0);
   const weave=ctx.createPattern(tile,'repeat');
-  // Stagger the ACTUAL uploaded fiber pattern between sheets. Identical
-  // UV alignment previously made five layers look like one flat surface.
   if(weave?.setTransform&&typeof DOMMatrix!=='undefined')
-   weave.setTransform(new DOMMatrix().translate(index*9,index*13).scale(.56));
-  ctx.imageSmoothingEnabled=true;
-  ctx.fillStyle=weave;
-  ctx.fillRect(0,0,c.width,c.height);
-  // 05_AR_MASK_TEXT_EDIT: exact per-layer text, position, rotation, size,
-  // and leading supplied by the user in Figma. Their placement boards use
-  // 428x926; the head-guide in those boards is x=64..364,y=270..676.
-  // The tracked veil samples a 0.05..0.95 UV window around its face oval.
-  const config=FIGMA_MASK_TEXT[phrase.variant]?.[index];
-  if(config){
-   // UV in update(): u=.5+.45*x/rx and v=.5-.45*y/ry.
-   // The texture is 1024x1024 with its true centre at 512,512;
-   // map the exact Figma guide region (64..364, 270..676)
-   // onto that same UV region instead of the erroneous 320,400 origin.
-   const sx=.9*TEXTURE_SIZE/300,sy=.9*TEXTURE_SIZE/406;
-   const px=TEXTURE_SIZE/2+(config.x-214)*sx;
-   const py=TEXTURE_SIZE/2+(config.y-473)*sy;
-   ctx.save();
-   ctx.translate(px,py);
-   ctx.scale(sx,sy);
-   // Figma transform defines rotation in screen space; use the negative
-   // angle here because of canvas coordinate conventions.
-   ctx.rotate(-config.r*Math.PI/180);
-   ctx.textAlign='center';ctx.textBaseline='top';
-   ctx.fillStyle='#e83d0a';
-   let yy=0;
-   for(const [line,li] of config.text.split('\n').map((str,i)=>[str,i])){
+    weave.setTransform(new DOMMatrix().translate(index*9,index*13).scale(.56));
+  ctx.imageSmoothingEnabled=true;ctx.fillStyle=weave;ctx.fillRect(0,0,c.width,c.height);
+  return c;
+}
+function embroideredLetters(variant,index){
+  const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
+  const ctx=c.getContext('2d');
+  const config=FIGMA_MASK_TEXT[variant]?.[index];
+  if(!config)return c;
+  const sx=.9*TEXTURE_SIZE/300,sy=.9*TEXTURE_SIZE/406;
+  const px=TEXTURE_SIZE/2+(config.x-214)*sx;
+  const py=TEXTURE_SIZE/2+(config.y-473)*sy;
+  ctx.save();ctx.translate(px,py);ctx.scale(sx,sy);
+  ctx.rotate(-config.r*Math.PI/180);
+  ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#fff';
+  let yy=0;
+  for(const [line,li] of config.text.split('\n').map((str,i)=>[str,i])){
     ctx.font='700 '+config.fs[li]+'px "Turret Road",sans-serif';
     ctx.fillText(line,config.w/2,yy);
     yy+=config.lh[li];
-   }
-   ctx.restore();
   }
+  ctx.restore();
   return c;
 }
 function faceOutline(connections){
@@ -167,28 +143,44 @@ function create(root){
   const uvAttr=gl.getAttribLocation(program,'uv'),lightAttr=gl.getAttribLocation(program,'lighting');
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
-  const rings=[.30,.60,.82,1];
-  let outline=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
+  const stitchUniform=gl.getUniformLocation(program,'embroideryMask');
+  let outline=[],edges=[],triangles=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
+  let vertexCount=0,neutralUV=null;
   let live=true,frameId=0,lastRendered=0;
   const textures={},layers=[];
-  function setConnections(connections){
-    outline=faceOutline(connections);
-    if(outline.length<25)return false;
-    const size=outline.length;
-    const indices=[];
-    for(let i=0;i<size;i++){
-      const j=(i+1)%size;
-      indices.push(0,1+i,1+j);
-      for(let ring=1;ring<rings.length;ring++){
-        const a=1+(ring-1)*size+i,b=1+(ring-1)*size+j;
-        const c=1+ring*size+i,d=1+ring*size+j;
-        indices.push(a,c,d,a,d,b);
+  function setConnections(tessellation,ovalConnections){
+    outline=faceOutline(ovalConnections);
+    if(outline.length<25||!tessellation?.length)return false;
+    // MediaPipe triangle connectivity spans the cheeks, nose, lips and eyes.
+    // Reconstruct each triangular face from the undirected edge graph.
+    const neighbors=new Map(),edgeSet=new Set();
+    const pair=(a,b)=>a<b?a+','+b:b+','+a;
+    vertexCount=0;
+    for(const {start,end} of tessellation){
+      if(start===end)continue;
+      vertexCount=Math.max(vertexCount,start+1,end+1);
+      if(!neighbors.has(start))neighbors.set(start,new Set());
+      if(!neighbors.has(end))neighbors.set(end,new Set());
+      neighbors.get(start).add(end);neighbors.get(end).add(start);
+      edgeSet.add(pair(start,end));
+    }
+    edges=[...edgeSet].map(s=>s.split(',').map(Number));
+    const unique=new Set(),indices=[];
+    for(const [a,b] of edges){
+      for(const c of neighbors.get(a)){
+        if(c===b||!neighbors.get(b)?.has(c))continue;
+        const tri=[a,b,c].sort((x,y)=>x-y);
+        const key=tri.join(',');
+        if(unique.has(key))continue;
+        unique.add(key);indices.push(...tri);
       }
     }
+    if(indices.length<900)return false;
+    triangles=indices;
     indexCount=indices.length;
-    const count=1+rings.length*size;
-    mesh=new Float32Array(count*stride);
+    mesh=new Float32Array(vertexCount*stride);
     vertices=new Float32Array(mesh.length);
+    neutralUV=null;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
@@ -214,46 +206,62 @@ function create(root){
         document.fonts?.load('700 18px "Turret Road"').catch(()=>{})||Promise.resolve()
       ]);
       if(!live)return;
+      const fiberTextures=Array.from({length:5},(_,i)=>makeTexture(paintedFabric(height,i)));
       for(const variant of ['first','replacement']){
-        textures[variant]=WORDS[variant].map((phrase,i)=>makeTexture(paintedFabric(height,{variant},i)));
+        textures[variant]=WORDS[variant].map((phrase,i)=>({
+          fabric:fiberTextures[i],
+          thread:makeTexture(embroideredLetters(variant,i))
+        }));
       }
     }catch(error){console.warn('[DCD] Cloth texture preparation:',error);}
   })();
   function update(points,width,height){
-    if(!mesh||!points?.length||!width||!height){faceCenter=null;return;}
-    const scale=Math.max(W/width,H/height),dw=width*scale,dh=height*scale;
+    if(!mesh||!points?.length||points.length<vertexCount||!width||!height){
+      faceCenter=null;return;
+    }
+    const fit=Math.max(W/width,H/height),dw=width*fit,dh=height*fit;
     const offsetX=(W-dw)/2,offsetY=(H-dh)/2;
-    const oval=outline.map(i=>({
-      x:offsetX+(1-points[i].x)*dw,y:offsetY+points[i].y*dh
-    }));
+    const project=p=>({x:offsetX+(1-p.x)*dw,y:offsetY+p.y*dh,z:p.z||0});
+    const oval=outline.map(i=>project(points[i]));
     const center=oval.reduce((sum,p)=>({x:sum.x+p.x/oval.length,y:sum.y+p.y/oval.length}),{x:0,y:0});
-    // Unroll the face to assign one continuous UV field. The geometry uses
-    // only the outer contour, so expressions cannot emboss eyes or lips.
-    const left=points[263],right=points[33];
-    const dx=(left.x-right.x)*dw,dy=(right.y-left.y)*dh;
+    const left=project(points[263]),right=project(points[33]);
+    const dx=left.x-right.x,dy=right.y-left.y;
     const length=Math.hypot(dx,dy)||1,cos=dx/length,sin=dy/length;
-    const local=oval.map(p=>{
-      const x=p.x-center.x,y=p.y-center.y;
-      return {x:x*cos+y*sin,y:y*cos-x*sin};
-    });
+    const local=oval.map(p=>{const x=p.x-center.x,y=p.y-center.y;return{x:x*cos+y*sin,y:y*cos-x*sin};});
     const rx=Math.max(...local.map(p=>Math.abs(p.x)))*1.20;
     const ry=Math.max(...local.map(p=>Math.abs(p.y)))*1.20;
     if(!Number.isFinite(rx)||rx<18||ry<25){faceCenter=null;return;}
     faceCenter=center;
-    mesh.set([center.x,center.y,0,.5,.5,1,0],0);
-    for(let ring=0;ring<rings.length;ring++){
-      const r=rings[ring];
-      local.forEach((p,i)=>{
-        const x=p.x*1.18*r,y=p.y*(p.y<0?1.25:1.15)*r;
-        const at=(1+ring*local.length+i)*stride;
-        mesh[at]=center.x+x*cos-y*sin;
-        mesh[at+1]=center.y+x*sin+y*cos;
-        mesh[at+2]=0;
-        mesh[at+3]=.5+.45*x/rx;
-        mesh[at+4]=.5-.45*y/ry;
-        mesh[at+5]=.99-.11*r*r+.045*(x/rx-y/ry);
-        mesh[at+6]=r;
-      });
+    // Capture stable UV registration per landmark, rather than projecting
+    // every letter onto a rigid oval that ignores nose, mouth and cheeks.
+    if(!neutralUV)neutralUV=new Float32Array(vertexCount*2);
+    const pos=Array.from({length:vertexCount},(_,i)=>project(points[i]));
+    for(let i=0;i<vertexCount;i++){
+      const p=pos[i],x=p.x-center.x,y=p.y-center.y;
+      const lx=x*cos+y*sin,ly=y*cos-x*sin;
+      const off=i*stride;
+      mesh[off]=p.x;mesh[off+1]=p.y;mesh[off+2]=p.z;
+      if(!neutralUV[i*2]&&!neutralUV[i*2+1]){
+        neutralUV[i*2]=.5+.45*lx/rx;
+        neutralUV[i*2+1]=.5-.45*ly/ry;
+      }
+      mesh[off+3]=neutralUV[i*2];
+      mesh[off+4]=neutralUV[i*2+1];
+      // Derived from the actual tracked 3D vertex depth changes, not
+      // artificially painted nose or cheek shapes.
+      let gradX=0,gradY=0,total=0;
+      // Nearest connected landmarks determine the local surface tilt.
+      for(const [a,b] of edges){
+        if(a!==i&&b!==i)continue;
+        const n=pos[a===i?b:a],ddx=n.x-p.x,ddy=n.y-p.y;
+        const dz=(n.z-p.z)*dw;
+        const d2=ddx*ddx+ddy*ddy+1;
+        gradX+=dz*ddx/d2;gradY+=dz*ddy/d2;total++;
+      }
+      mesh[off+5]=clamp(0.94-0.24*gradX+0.23*gradY,0.67,1.19);
+      // Fade only the physical cloth edge, not the interior eyes or mouth.
+      const norm=Math.hypot(lx/rx,ly/ry);
+      mesh[off+6]=clamp((norm-.65)/.37,0,1);
     }
   }
   function arrival(t){
@@ -286,6 +294,7 @@ function create(root){
     gl.vertexAttribPointer(fringeAttr,1,gl.FLOAT,false,stride*4,6*4);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
     gl.activeTexture(gl.TEXTURE0);gl.uniform1i(texUniform,0);
+    gl.uniform1i(stitchUniform,1);
     // Draw already-settled layers first; each new veil remains on top.
     // Standard source-over accumulates alpha across all five physical layers.
     for(const layer of layers){
@@ -318,7 +327,8 @@ function create(root){
         for(let i=3;i<stride;i++)vertices[at+i]=mesh[at+i];
       }
       gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
-      gl.bindTexture(gl.TEXTURE_2D,tex);
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.fabric);
+      gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.thread);
       gl.uniform1f(opacityUniform,opacity);
       gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
     }
@@ -341,7 +351,10 @@ function create(root){
   function clear(){layers.length=0;}
   function destroy(){
     live=false;cancelAnimationFrame(frameId);layers.length=0;
-    for(const texArray of Object.values(textures))for(const tex of texArray)gl.deleteTexture(tex);
+    const seen=new Set();
+    for(const texArray of Object.values(textures))for(const pair of texArray){
+      for(const t of [pair.fabric,pair.thread])if(!seen.has(t)){gl.deleteTexture(t);seen.add(t);}
+    }
     gl.deleteBuffer(vb);gl.deleteBuffer(ib);gl.deleteProgram(program);canvas.remove();
     root.classList.remove('ar-tulle-gpu','ar-tulle-ready');
   }
