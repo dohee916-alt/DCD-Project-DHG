@@ -1000,3 +1000,14 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive[data-ar-frame="AR5-1"] .ar-choice.no::after{
   background-image:url('assets/figma-current/hd/ar-choice-no-figma.png');
 }
+
+/* Live Medium output: render the actual processed video stream directly.
+   Keep it in the DOM while transparent to avoid mobile video throttling. */
+.ar-immersive .ar-medium-live-video{
+ position:absolute;inset:0;width:100%;height:100%;z-index:2;
+ object-fit:cover;transform:scaleX(-1);pointer-events:none;
+ opacity:0;background:#e5edf6;transition:none;
+}
+.ar-immersive .ar-medium-live-video.ar-medium-ready{opacity:1}
+.ar-immersive.ar-choice-phase .ar-medium-live-video{filter:blur(16px) saturate(.86)}
+.ar-immersive.ar-final-mode .ar-medium-live-video{filter:blur(23px) grayscale(.8) sepia(.7) saturate(2.4) brightness(.62)}

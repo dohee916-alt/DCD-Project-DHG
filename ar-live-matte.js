@@ -14,6 +14,7 @@ function create(root,video,canvas,onFrame){
  let fallback=null,fallbackStarting=false;
  let medium=null,mediumStarting=false;
  let mediumFrameTime=-1,mediumUpdatedAt=0,mediumRenderedAt=-1;
+ let mediumFirstVisibleAt=0,mediumLastFreshAt=0;
  let contiguousMatteFrames=0,previousMatteDraw=0;
  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||
   (navigator.maxTouchPoints>1&&/Macintosh/i.test(navigator.userAgent));
@@ -38,8 +39,12 @@ function create(root,video,canvas,onFrame){
     background:{color:'#e5edf6'},preset:'medium',adaptive:false
    });
    output=document.createElement('video');
+   output.className='ar-medium-live-video';
    output.autoplay=true;output.muted=true;output.playsInline=true;
    output.srcObject=pipeline.stream;
+   // Keep the processed stream attached to the DOM. An off-DOM video
+   // may be throttled on mobile browsers even while play() is resolved.
+   root.appendChild(output);
    await Promise.all([pipeline.ready,output.play()]);
    if(!live)return;
    medium={pipeline,output};
@@ -53,40 +58,35 @@ function create(root,video,canvas,onFrame){
    console.error('[DCD AR] Medium stream failed; Small remains disabled:',error);
   }finally{
    if(pipeline)try{pipeline.destroy()}catch{}
-   if(output)output.srcObject=null;
+   if(output){output.pause();output.srcObject=null;output.remove();}
    mediumStarting=false;
   }
  }
  function drawMedium(now){
   const output=medium?.output;
   if(!output||output.readyState<2||!output.videoWidth)return;
-  // Avoid painting a cached processed frame forever over a live camera.
+  // Display the native, continuously playing processed MediaStream.
+  // Do not re-rasterize it into a low-resolution canvas or hide it
+  // after a brief GPU scheduling delay.
   const time=output.currentTime;
   if(time!==mediumFrameTime){
-   mediumFrameTime=time;mediumUpdatedAt=now;
-  }else if(now-mediumUpdatedAt>650){
-   if(visible){
-    visible=false;canvas.style.visibility='hidden';
-    root.dataset.arMatte='medium-video-stalled';
+   mediumFrameTime=time;mediumUpdatedAt=now;mediumLastFreshAt=now;
+   if(previousMatteDraw&&now-previousMatteDraw<1600)contiguousMatteFrames++;
+   else contiguousMatteFrames=1;
+   previousMatteDraw=now;
+   if(contiguousMatteFrames>=3){
+    if(!mediumFirstVisibleAt)mediumFirstVisibleAt=now;
+    output.classList.add('ar-medium-ready');
+    canvas.style.visibility='hidden';
+    visible=true;lastCapture=now;
+    root.dataset.arMatte='longpipe-medium-live';
    }
-   contiguousMatteFrames=0;previousMatteDraw=0;
-   return;
+  }else if(now-mediumUpdatedAt>3500){
+   // A genuinely dead output is NOT a valid matte for progression.
+   // Preserve the displayed image rather than flashing the background.
+   root.dataset.arMatte='medium-stream-stalled';
+   contiguousMatteFrames=0;mediumFirstVisibleAt=0;
   }
-  if(time===mediumRenderedAt)return;
-  mediumRenderedAt=time;
-  const w=canvas.width,h=canvas.height;
-  const sw=output.videoWidth,sh=output.videoHeight;
-  const factor=Math.max(w/sw,h/sh),dw=sw*factor,dh=sh*factor;
-  ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
-  ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
-  ctx.drawImage(output,(w-dw)/2,(h-dh)/2,dw,dh);
-  ctx.restore();
-  if(previousMatteDraw&&now-previousMatteDraw<950)contiguousMatteFrames++;
-  else contiguousMatteFrames=1;
-  previousMatteDraw=now;
-  lastCapture=now;visible=true;
-  canvas.style.visibility='visible';canvas.style.opacity='1';
-  root.dataset.arMatte='longpipe-medium-stream';
  }
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
@@ -162,7 +162,11 @@ function create(root,video,canvas,onFrame){
   live=false;closeWorker();clearInterval(timer);
   if(frameHandle)video.cancelVideoFrameCallback?.(frameHandle);
   fallback?.segmenter.close();fallback=null;
-  if(medium){try{medium.pipeline.destroy()}catch{}medium.output.srcObject=null;medium=null;}
+  if(medium){
+   medium.output.pause();medium.output.srcObject=null;medium.output.remove();
+   try{medium.pipeline.destroy()}catch{}
+   medium=null;
+  }
   hide();
  }
  function next(reason){
@@ -287,9 +291,14 @@ function create(root,video,canvas,onFrame){
  if(live&&typeof video.requestVideoFrameCallback==='function')
   frameHandle=video.requestVideoFrameCallback(pump);
  return {
-  get visible(){return visible&&performance.now()-lastCapture<1000},
-  // Gate only after several actual, recent processed output frames.
-  get readyForExperience(){return live&&visible&&contiguousMatteFrames>=3&&performance.now()-lastCapture<1000},
+  get visible(){return visible},
+  // The output stream must be initialized and actually rendering;
+  // do not interpret the raw input's camera frames as a valid matte.
+  get readyForExperience(){
+   if(medium)return live&&mediumFirstVisibleAt>0&&
+    contiguousMatteFrames>=3&&performance.now()-mediumLastFreshAt<1600;
+   return live&&visible&&contiguousMatteFrames>=3&&performance.now()-lastCapture<1600;
+  },
   get engine(){return root.dataset.arMatte},
   stop
  };
