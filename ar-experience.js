@@ -275,7 +275,7 @@ function start(video){
  const canvas=state.root.querySelector('.ar-person-segment');
  // Video matting runs separately. It never drives AR interaction state;
  // tracking uses the original video, regardless of GPU matte latency.
- state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas)||null;
+ state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas,null,()=>state.faceBox)||null;
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }

@@ -6,7 +6,7 @@ const workerURL=new URL('ar-matte-worker.js?v=verified-longpipe-20261109-2',docu
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
-function create(root,video,canvas,onFrame){
+function create(root,video,canvas,onFrame,getFaceBounds){
  const ctx=canvas.getContext('2d',{alpha:false});
  if(!ctx)return null;
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
@@ -18,6 +18,24 @@ function create(root,video,canvas,onFrame){
  const modes=['large'];
  let processedFrames=0,firstRenderedAt=0;
  let lastSubmitWall=0;
+ let maskFace=null,maskFrameAt=0;
+ const aligned=document.createElement('canvas');aligned.width=canvas.width;aligned.height=canvas.height;
+ const alignedCtx=aligned.getContext('2d',{alpha:true});
+ let lastProgress=0;
+ function faceBoxCanvas(){
+  const f=getFaceBounds?.();
+  if(!f||!video.videoWidth||!video.videoHeight)return null;
+  const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
+  const k=Math.max(w/vw,h/vh),ox=(w-vw*k)/2,oy=(h-vh*k)/2;
+  const l=ox+f.l*vw*k,r=ox+f.r*vw*k;
+  const t=oy+f.t*vh*k,b=oy+f.b*vh*k;
+  if(![l,r,t,b].every(Number.isFinite)||r<=l||b<=t)return null;
+  return {cx:(l+r)/2,cy:(t+b)/2,w:r-l,h:b-t,b};
+ }
+ function markOutput(){
+  const now=performance.now();
+  if(now-lastProgress>1500){lastProgress=now;root.dataset.arMatte='longpipe-large-live';}
+ }
  const mask=document.createElement('canvas');mask.width=canvas.width;mask.height=canvas.height;
  const maskCtx=mask.getContext('2d',{alpha:true});
  const person=document.createElement('canvas');person.width=canvas.width;person.height=canvas.height;
@@ -140,8 +158,10 @@ function create(root,video,canvas,onFrame){
     maskCtx.save();maskCtx.translate(w,0);maskCtx.scale(-1,1);
     maskCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
     maskCtx.restore();
+    maskFace=request?.faceAnchor||null;
+    maskFrameAt=performance.now();
     hasMask=true;
-    lastCapture=performance.now();processedFrames++;
+    lastCapture=maskFrameAt;processedFrames++;
     if(!firstRenderedAt)firstRenderedAt=lastCapture;
     root.dataset.arMatte=data.engine;
     // A landmark tracking error must not turn off a working cutout.
@@ -163,9 +183,9 @@ function create(root,video,canvas,onFrame){
   if(time<=lastVideoTime)return;
   lastVideoTime=time;
   const current=worker;
-  if(performance.now()-lastSubmitWall<800)return;
+  if(performance.now()-lastSubmitWall<100)return;
   lastSubmitWall=performance.now();
-  const request={started:performance.now()};pending=request;
+  const request={started:performance.now(),faceAnchor:faceBoxCanvas()};pending=request;
   let source;
   try{
    const timestamp=Math.round(time*1e6);
@@ -193,16 +213,43 @@ function create(root,video,canvas,onFrame){
   const w=canvas.width,h=canvas.height;
   const vw=video.videoWidth,vh=video.videoHeight;
   const sc=Math.max(w/vw,h/vh),dw=vw*sc,dh=vh*sc;
+  const face=faceBoxCanvas();
+  if(!face)return; // Do not present a frozen silhouette without tracking.
+  alignedCtx.clearRect(0,0,w,h);
+  if(maskFace){
+   // Move the last high-quality hair alpha with current face landmarks
+   // between slower Large inference results. RGB always comes from LIVE video.
+   const sx=Math.max(.75,Math.min(1.35,face.w/maskFace.w));
+   const sy=Math.max(.75,Math.min(1.35,face.h/maskFace.h));
+   alignedCtx.save();
+   alignedCtx.translate(face.cx,face.cy);
+   alignedCtx.scale(sx,sy);
+   alignedCtx.translate(-maskFace.cx,-maskFace.cy);
+   alignedCtx.drawImage(mask,0,0);
+   alignedCtx.restore();
+  }else alignedCtx.drawImage(mask,0,0);
   personCtx.clearRect(0,0,w,h);
   personCtx.save();personCtx.translate(w,0);personCtx.scale(-1,1);
   personCtx.drawImage(video,(w-dw)/2,(h-dh)/2,dw,dh);
   personCtx.restore();
   personCtx.globalCompositeOperation='destination-in';
-  personCtx.drawImage(mask,0,0);
+  personCtx.drawImage(aligned,0,0);
+  // The experience overlays fabric on the face. Remove the torso/clothes
+  // below the head with a soft fade rather than a rectangular cut.
+  const bottom=Math.min(h,face.b+Math.max(15,face.h*.28));
+  const fade=Math.max(14,Math.min(38,face.h*.16));
+  const cut=personCtx.createLinearGradient(0,bottom-fade,0,bottom+fade);
+  cut.addColorStop(0,'rgba(255,255,255,1)');
+  cut.addColorStop(1,'rgba(255,255,255,0)');
+  personCtx.globalCompositeOperation='destination-in';
+  personCtx.fillStyle=cut;
+  personCtx.fillRect(0,0,w,Math.min(h,bottom+fade));
+  personCtx.clearRect(0,Math.min(h,Math.ceil(bottom+fade)),w,h);
   personCtx.globalCompositeOperation='source-over';
   ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
   ctx.drawImage(person,0,0);
   if(!visible){visible=true;canvas.style.visibility='visible';canvas.style.opacity='1';}
+  markOutput();
  }
  function pump(now,metadata){
   if(!live)return;
