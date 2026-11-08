@@ -18,6 +18,11 @@ function create(root,video,canvas,onFrame){
  const modes=['large'];
  let processedFrames=0,firstRenderedAt=0;
  let lastSubmitWall=0;
+ const mask=document.createElement('canvas');mask.width=canvas.width;mask.height=canvas.height;
+ const maskCtx=mask.getContext('2d',{alpha:true});
+ const person=document.createElement('canvas');person.width=canvas.width;person.height=canvas.height;
+ const personCtx=person.getContext('2d',{alpha:true});
+ let renderFrame=0,hasMask=false,lastCompositedTime=-1;
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
  }
@@ -91,6 +96,7 @@ function create(root,video,canvas,onFrame){
  function stop(){
   live=false;closeWorker();clearInterval(timer);
   if(frameHandle)video.cancelVideoFrameCallback?.(frameHandle);
+  cancelAnimationFrame(renderFrame);
   fallback?.segmenter.close();fallback=null;
   hide();
  }
@@ -128,13 +134,15 @@ function create(root,video,canvas,onFrame){
     const width=data.cutout.displayWidth||data.cutout.width;
     const height=data.cutout.displayHeight||data.cutout.height;
     const scale=Math.max(w/width,h/height),dw=width*scale,dh=height*scale;
-    ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
-    ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
-    ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
-    ctx.restore();
-    lastCapture=performance.now();visible=true;processedFrames++;
+    // Retain only the segmentation ALPHA, never the processed RGB frame.
+    // The live original camera is drawn independently every animation frame.
+    maskCtx.clearRect(0,0,w,h);
+    maskCtx.save();maskCtx.translate(w,0);maskCtx.scale(-1,1);
+    maskCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+    maskCtx.restore();
+    hasMask=true;
+    lastCapture=performance.now();processedFrames++;
     if(!firstRenderedAt)firstRenderedAt=lastCapture;
-    canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
     // A landmark tracking error must not turn off a working cutout.
     try{onFrame?.(data.source,width,height);}
@@ -155,7 +163,7 @@ function create(root,video,canvas,onFrame){
   if(time<=lastVideoTime)return;
   lastVideoTime=time;
   const current=worker;
-  if(performance.now()-lastSubmitWall<250)return;
+  if(performance.now()-lastSubmitWall<800)return;
   lastSubmitWall=performance.now();
   const request={started:performance.now()};pending=request;
   let source;
@@ -175,18 +183,40 @@ function create(root,video,canvas,onFrame){
    }
   }finally{source?.close();}
  }
+ function paintLive(){
+  if(!live)return;
+  renderFrame=requestAnimationFrame(paintLive);
+  if(!hasMask||video.readyState<2||!video.videoWidth)return;
+  const time=video.currentTime;
+  if(time===lastCompositedTime)return;
+  lastCompositedTime=time;
+  const w=canvas.width,h=canvas.height;
+  const vw=video.videoWidth,vh=video.videoHeight;
+  const sc=Math.max(w/vw,h/vh),dw=vw*sc,dh=vh*sc;
+  personCtx.clearRect(0,0,w,h);
+  personCtx.save();personCtx.translate(w,0);personCtx.scale(-1,1);
+  personCtx.drawImage(video,(w-dw)/2,(h-dh)/2,dw,dh);
+  personCtx.restore();
+  personCtx.globalCompositeOperation='destination-in';
+  personCtx.drawImage(mask,0,0);
+  personCtx.globalCompositeOperation='source-over';
+  ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
+  ctx.drawImage(person,0,0);
+  if(!visible){visible=true;canvas.style.visibility='visible';canvas.style.opacity='1';}
+ }
  function pump(now,metadata){
   if(!live)return;
   frameHandle=video.requestVideoFrameCallback(pump);
   submit(now,metadata);
  }
  hide();
+ renderFrame=requestAnimationFrame(paintLive);
  next();
  if(live&&typeof video.requestVideoFrameCallback==='function')frameHandle=video.requestVideoFrameCallback(pump);
  else if(live)timer=setInterval(()=>submit(performance.now()),33);
  return {
   get visible(){return visible},
-  get readyForExperience(){return visible&&processedFrames>=2&&performance.now()-lastCapture<8000},
+  get readyForExperience(){return visible&&hasMask&&processedFrames>=1&&video.readyState>=2},
   stop
  };
 }
