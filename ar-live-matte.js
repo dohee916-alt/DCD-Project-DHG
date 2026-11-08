@@ -1,15 +1,16 @@
 /* Present only recent cutouts, with the source frame for face/hand tracking. */
 (() => {
 'use strict';
-const MAX_FRAME_AGE=125, MAX_VISIBLE_AGE=200;
-const workerURL=new URL('ar-matte-worker.js?v=synced-portrait-2',document.currentScript.src);
+const MAX_FRAME_AGE=320, MAX_VISIBLE_AGE=700;
+const workerURL=new URL('ar-matte-worker.js?v=portrait-cutout-3',document.currentScript.src);
 function create(root,video,canvas,onFrame){
  if(typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined')return null;
  const ctx=canvas.getContext('2d',{alpha:false});
  if(!ctx)return null;
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true;
- const modes=navigator.maxTouchPoints>0?['small','mediapipe']:['large','small','mediapipe'];
+ // Start with the light video model so cutout is available as soon as possible.
+ const modes=['mediapipe','small'];
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
  }
@@ -24,7 +25,7 @@ function create(root,video,canvas,onFrame){
  }
  function next(reason){
   if(reason)console.info('[DCD AR] Changing portrait engine:',reason);
-  closeWorker();hide();misses=0;failures=0;firstFrame=true;
+  closeWorker();misses=0;failures=0;firstFrame=true;
   const mode=modes.shift();
   if(!mode){stop();return;}
   let current;
@@ -59,7 +60,9 @@ function create(root,video,canvas,onFrame){
     lastCapture=request.started;visible=true;
     canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
-    onFrame(data.source,width,height);
+    // A landmark tracking error must not turn off a working cutout.
+    try{onFrame?.(data.source,width,height);}
+    catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
    }catch(error){next(String(error));}
    finally{data.source.close();data.cutout.close();}
   };
@@ -68,7 +71,7 @@ function create(root,video,canvas,onFrame){
  async function submit(now,metadata){
   if(!live)return;
   if(visible&&now-lastCapture>MAX_VISIBLE_AGE)hide();
-  if(pending&&now-pending.started>(firstFrame?3500:500)){next('Frame processing timed out');return;}
+  if(pending&&now-pending.started>(firstFrame?3500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
   const time=metadata?.mediaTime??video.currentTime;
   if(time<=lastVideoTime)return;

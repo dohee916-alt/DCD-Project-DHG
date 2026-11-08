@@ -2,7 +2,7 @@
 const KATANA='https://cdn.jsdelivr.net/npm/@katana-video/web-bg-removal@0.1.1/+esm';
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21';
 const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
-let processor,segmenter,engine,portrait,portraitCtx,matte,matteCtx,pixels;
+let processor,segmenter,engine,portrait,portraitCtx,matte,matteCtx,pixels,input,inputCtx;
 async function init(mode){
  if(mode==='mediapipe'){
   const {ImageSegmenter,FilesetResolver}=await import(SDK+'/+esm');
@@ -13,6 +13,7 @@ async function init(mode){
   });
   portrait=new OffscreenCanvas(1,1);portraitCtx=portrait.getContext('2d');
   matte=new OffscreenCanvas(1,1);matteCtx=matte.getContext('2d');
+  input=new OffscreenCanvas(1,1);inputCtx=input.getContext('2d');
   engine='mediapipe-worker';
  }else{
   const {BackgroundRemover}=await import(KATANA);
@@ -28,7 +29,12 @@ function segment(source,timestamp){
  // here because VideoFrame dimensions are exposed as displayWidth/Height.
  portraitCtx.globalCompositeOperation='copy';
  portraitCtx.drawImage(source,0,0,width,height);
- segmenter.segmentForVideo(portrait,timestamp/1000,result=>{
+ const scale=Math.min(1,512/Math.max(width,height));
+ const iw=Math.max(1,Math.round(width*scale)),ih=Math.max(1,Math.round(height*scale));
+ if(input.width!==iw||input.height!==ih){input.width=iw;input.height=ih;}
+ inputCtx.globalCompositeOperation='copy';
+ inputCtx.drawImage(source,0,0,iw,ih);
+ segmenter.segmentForVideo(input,timestamp/1000,result=>{
   // The pinned SelfieSegmenter model metadata contains one label, "selfie".
   const mask=result.confidenceMasks?.[0];
   if(!mask)throw Error('Missing foreground confidence mask');
