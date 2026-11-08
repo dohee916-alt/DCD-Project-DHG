@@ -28,7 +28,7 @@ function create(root,video,canvas,onFrame){
  function initSemantic(){
   if(semantic||semanticDisabled||typeof Worker==='undefined'||!subjectCtx)return;
   try{
-   semantic=new Worker(new URL('ar-semantic-matte-worker.js?v=human-background-v1',document.currentScript.src));
+   semantic=new Worker(new URL('ar-semantic-matte-worker.js?v=exterior-background-v2',document.currentScript.src));
    semantic.onerror=e=>disableSemantic(e.message||'Semantic worker failure');
    semantic.onmessage=({data})=>{
     if(!live){data?.bitmap?.close?.();return}
@@ -36,8 +36,10 @@ function create(root,video,canvas,onFrame){
     if(data.type==='error'){disableSemantic(data.message);return}
     if(data.type==='gate'){
      semanticBusy=false;
-     if(data.latency>290)semanticSlow++;else semanticSlow=Math.max(0,semanticSlow-1);
-     if(semanticSlow>=3){data.bitmap?.close?.();disableSemantic('Processing too slow');return}
+     // CPU segmentation can take longer than 290ms on phones.
+     // Do not permanently disable the entire background refinement.
+     // Semantic frames run independently and are never allowed to stall
+     // Longpipe's primary foreground processing.
      semanticGate?.close?.();semanticGate=data.bitmap;semanticTime=performance.now();
     }
    };
@@ -183,7 +185,7 @@ function create(root,video,canvas,onFrame){
     // Only confirmed background beyond a wide hair-protection margin
     // is attenuated; no trimap edge is substituted for Longpipe's edge.
     if(data.engine?.startsWith('longpipe')&&semanticGate&&
-       performance.now()-semanticTime<1350&&subjectCtx){
+       performance.now()-semanticTime<2600&&subjectCtx){
       subjectCtx.clearRect(0,0,w,h);
       subjectCtx.globalCompositeOperation='source-over';
       subjectCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
