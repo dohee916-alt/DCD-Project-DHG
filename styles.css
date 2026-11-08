@@ -1083,7 +1083,7 @@ canvas.figure{object-fit:contain!important}
    Upper: (152,370) => (70,257); lower: (252,564) => (353,676). */
 #stage.page-01.phase-guide .gesture{
  width:164px!important;height:185px!important;
- object-fit:fill!important;transform-origin:0 0!important;
+ object-fit:cover!important;object-position:center!important;transform-origin:0 0!important;
  mix-blend-mode:normal!important;pointer-events:none!important;
  z-index:6!important;opacity:.7!important;
  animation:figmaTryWebguideHands 2.8s ease-in-out infinite!important;
