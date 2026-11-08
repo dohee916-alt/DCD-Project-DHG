@@ -1,20 +1,11 @@
-/* DCD AR face-conforming organza prototype.
-   Uses MediaPipe's genuine face triangles, smoothed 3D landmark depth,
-   expanded free fabric edge, live face-locked UV print and 5 cloth layers.
-   No static ellipse, no opaque face-shaped shape, no external 3D renderer. */
+/* Landmark-driven organza with a continuous feathered surface. */
 (()=>{'use strict';
 const RAW='eNpjYAABRr0KeQYkQCqfQb1BmRI+o2YLZXzTLjlK+KJZOaas5POFYzzEnU3YyOULhTtzMPC7m7ORxxcMsmcHUgI+1uzk8AV8YeKBEHHS+PweFuwwd4WB3EUSn1MEJVyi0cKJID8gw5QNOV4yc0njp/ZTlG4YNXooS7cK7RTlGwb5KlT36JeTxlfLEEXhO+WSxjdPFkTh++aQxnfIFELh+xWQxneoE0PhuzWQxjer9WRH4vN5VpHGd5VNcEQI8DmbkMi3YhSNsoWlSH4PYJYmjQ80SyTUCiIAzZik8hmE/c3YEMUC6XwGIS9jVkihRB6fQdDVQDLGHc4lmc8g4FXmz8lAPp/RtUmcgRK+X6EQRXxS8w06n9R8i84ntdxA44/W/6P1/2j9P1r/j9b/o/X/aP0/APW/S44IeXwA8coG+g==';
 const WORDS={
   first:["THAT’S CHEATING.","YOU DIDN’T EARN THAT BODY.","IS THAT EVEN THE REAL YOU?","DID YOU REALLY NEED MEDICATION?","YOU’LL JUST GAIN IT ALL BACK."],
   replacement:["WHY DON’T YOU JUST TAKE GLP-1?","WHAT’S YOUR EXCUSE NOW?","EVERYONE ELSE IS LOSING WEIGHT.","DON’T YOU CARE ABOUT YOUR HEALTH?","YOU’RE NOT EVEN TRYING."]
 };
-// Only eyelids require a filled tessellation cap. Do not construct a
-// separate mouth/lip cap: the continuous cloth underlay covers that area.
-const COVERED_HOLES=[
-  [33,246,161,160,159,158,157,173,133,155,154,153,145,144,163,7],
-  [362,398,384,385,386,387,388,466,263,249,390,373,374,380,381,382]
-];
-const W=428,H=926,COUNT=468,clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const W=428,H=926,TEXTURE_SIZE=1024,clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const mix=(a,b,t)=>a+(b-a)*t;
 const ease=t=>t*t*(3-2*t);
 const VERT=String.raw`
@@ -43,12 +34,8 @@ void main(){
   vec3 cloth=vec3(0.965,0.685,0.610)*light*(0.83+0.25*src.a);
   vec3 printed=vec3(0.917,0.238,0.039);
   vec3 color=mix(cloth,printed,ink);
-  // Airy transparent organza. One thin layer, NO opaque facial paint.
-  // Printed letters remain strong while the face remains fully visible.
-  float weave=0.085+src.a*0.58;
-  float alpha=mix(weave,min(0.91,src.a*1.08),ink);
-  // The free 3D fringe fades to transparent at the outside boundary.
-  alpha*=1.0-vFringe;
+  float alpha=mix(0.018+src.a*0.56,min(0.91,src.a*1.08),ink);
+  alpha*=1.0-smoothstep(0.65,1.0,vFringe);
   gl_FragColor=vec4(color,alpha*opacity);
 }`;
 function shader(gl,type,code){
@@ -63,25 +50,23 @@ async function getHeight(){
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 function paintedFabric(height,phrase,index){
-  const c=document.createElement('canvas');c.width=640;c.height=800;
+  const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
   const ctx=c.getContext('2d');
-  // A fine, almost transparent organdy weave derived from the supplied
-  // height map; crucially there is no opaque orange oval backing.
-  const tile=document.createElement('canvas');tile.width=12;tile.height=12;
-  const tctx=tile.getContext('2d'),p=tctx.createImageData(12,12);
-  for(let y=0;y<12;y++)for(let x=0;x<12;x++){
-    const i=(y*12+x)*4;
-    const h=height?height[Math.min(63,Math.floor(y*64/12))*64+
-      Math.min(63,Math.floor(x*64/12))]:95;
-    const thread=(Math.abs((x-y+12)%12)<=1||Math.abs((x+y)%12-6)<=1);
+  // Use the full supplied height map to vary the woven threads. Keep the
+  // fiber scale independent of the printed artwork.
+  const tile=document.createElement('canvas');tile.width=tile.height=64;
+  const tctx=tile.getContext('2d'),p=tctx.createImageData(64,64);
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+    const i=(y*64+x)*4;
+    const fiber=height?.[y*64+x]??((x%16===0||y%16===0)?85:0);
     p.data[i]=245;p.data[i+1]=188;p.data[i+2]=175;
-    p.data[i+3]=thread?clamp(114+h*.40,110,188):22;
+    p.data[i+3]=4+Math.min(1,fiber/143)*127;
   }
   tctx.putImageData(p,0,0);
-  ctx.fillStyle='rgba(246,175,158,0.025)';ctx.fillRect(0,0,640,800);
-  ctx.fillStyle=ctx.createPattern(tile,'repeat');ctx.fillRect(0,0,640,800);
-  // Written directly into each sheet's UV material: follows facial
-  // rotation, nose projection, and fabric motion as one physical surface.
+  const weave=ctx.createPattern(tile,'repeat');
+  weave.setTransform(new DOMMatrix().scale(.5));
+  ctx.fillStyle=weave;ctx.fillRect(0,0,c.width,c.height);
+  ctx.scale(c.width/640,c.height/800);
   const spots=[
     {x:445,y:185,r:-22},
     {x:204,y:302,r:16},
@@ -105,20 +90,10 @@ function paintedFabric(height,phrase,index){
   ctx.restore();
   return c;
 }
-function topology(triConnections,ovalConnections){
-  const triangles=[],neighbors=Array.from({length:COUNT},()=>new Set());
-  if(!triConnections?.length||!ovalConnections?.length)return null;
-  const edge=(a,b)=>{if(a>=COUNT||b>=COUNT)return;neighbors[a].add(b);neighbors[b].add(a);};
-  // MediaPipe publishes three directed edges per triangular face.
-  for(let i=0;i+2<triConnections.length;i+=3){
-    const a=triConnections[i],b=triConnections[i+1],c=triConnections[i+2];
-    if(a.end!==b.start||b.end!==c.start||c.end!==a.start)continue;
-    if(a.start>=COUNT||a.end>=COUNT||b.end>=COUNT)continue;
-    triangles.push(a.start,a.end,b.end);
-    edge(a.start,a.end);edge(a.end,b.end);edge(b.end,a.start);
-  }
+function faceOutline(connections){
+  if(!connections?.length)return [];
   const around=new Map();
-  for(const {start,end} of ovalConnections){
+  for(const {start,end} of connections){
     if(!around.has(start))around.set(start,new Set());
     if(!around.has(end))around.set(end,new Set());
     around.get(start).add(end);around.get(end).add(start);
@@ -130,8 +105,7 @@ function topology(triConnections,ovalConnections){
     if(next===undefined||next===start)break;
     previous=current;current=next;
   }
-  if(triangles.length<300||oval.length<25)return null;
-  return {triangles,neighbors:neighbors.map(n=>[...n]),oval};
+  return oval;
 }
 function create(root){
   if(!root)return null;
@@ -139,7 +113,7 @@ function create(root){
   canvas.className='ar-tulle-webgl';canvas.width=W;canvas.height=H;root.prepend(canvas);
   let gl,program;
   try{
-    gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,premultipliedAlpha:false});
+    gl=canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:true});
     if(!gl)throw Error('WebGL not supported');
     program=gl.createProgram();
     gl.attachShader(program,shader(gl,gl.VERTEX_SHADER,VERT));
@@ -154,61 +128,43 @@ function create(root){
   const uvAttr=gl.getAttribLocation(program,'uv'),lightAttr=gl.getAttribLocation(program,'lighting');
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
-  let geo=null,vertices=null,indices=null,uvs=null,base=null,shades=null,initialUV=null,faceCenter=null;
+  const rings=[.30,.60,.82,1];
+  let outline=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let live=true,frameId=0,lastRendered=0;
-  const textures={},layers=[],trace=[];
-  function setConnections(tri,oval){
-    const next=topology(tri,oval);
-    if(!next)return false;
-    geo=next;
-    // Add a surface vertex at each eyelid center. Triangle fans
-    // seal the gaps with the SAME cloth texture and UV deformation.
-    geo.capStart=COUNT+geo.oval.length;
-    // One uninterrupted underlay spans the entire tracked face contour,
-    // including the eye sockets and mouth. Render this UV-continuous
-    // fabric beneath the detailed face tessellation to seal all holes.
-    geo.underlayCenter=geo.capStart+COVERED_HOLES.length;
-    const vertexCount=geo.underlayCenter+1;
-    vertices=new Float32Array(vertexCount*stride);
-    base=new Float32Array(vertexCount*3);
-    shades=new Float32Array(vertexCount);
-    uvs=new Float32Array(vertexCount*2);
-    geo.underlayIndices=new Uint16Array(
-      geo.oval.flatMap((v,i)=>[geo.underlayCenter,v,geo.oval[(i+1)%geo.oval.length]])
-    );
-    // A single contour-following cloth surface. Reusing the 468 facial
-    // triangles makes lips/nose/eyes visible as embossed shapes and stacking
-    // it over a full-face underlay doubles opacity at the lower face.
-    // Render ONLY the face-oval fan and the feathered exterior rim.
-    indices=new Uint16Array(
-      geo.oval.flatMap((v,i)=>{
-        const w=geo.oval[(i+1)%geo.oval.length];
-        const A=COUNT+i,B=COUNT+((i+1)%geo.oval.length);
-        return [v,w,B,v,B,A];
-      })
-    );
-    // Upload the two triangle ranges ONCE. The index buffer is static:
-    // per-frame bufferData reallocations previously happened for every
-    // sheet, twice, even though the topology never changes.
-    geo.underlayIndexCount=geo.underlayIndices.length;
-    geo.surfaceIndexCount=indices.length;
-    const combined=new Uint16Array(geo.underlayIndexCount+geo.surfaceIndexCount);
-    combined.set(geo.underlayIndices,0);
-    combined.set(indices,geo.underlayIndexCount);
+  const textures={},layers=[];
+  function setConnections(connections){
+    outline=faceOutline(connections);
+    if(outline.length<25)return false;
+    const size=outline.length;
+    const indices=[];
+    for(let i=0;i<size;i++){
+      const j=(i+1)%size;
+      indices.push(0,1+i,1+j);
+      for(let ring=1;ring<rings.length;ring++){
+        const a=1+(ring-1)*size+i,b=1+(ring-1)*size+j;
+        const c=1+ring*size+i,d=1+ring*size+j;
+        indices.push(a,c,d,a,d,b);
+      }
+    }
+    indexCount=indices.length;
+    const count=1+rings.length*size;
+    mesh=new Float32Array(count*stride);
+    vertices=new Float32Array(mesh.length);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,combined,gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
     gl.bufferData(gl.ARRAY_BUFFER,vertices.byteLength,gl.DYNAMIC_DRAW);
     return true;
   }
   function makeTexture(source){
     const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);
-    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);
+    gl.generateMipmap(gl.TEXTURE_2D);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
     return tex;
   }
@@ -224,132 +180,60 @@ function create(root){
       }
     }catch(error){console.warn('[DCD] Cloth texture preparation:',error);}
   })();
-  function update(raw,video){
-    if(!geo||!raw||raw.length<COUNT)return;
-    const vw=video?.videoWidth||W,vh=video?.videoHeight||H;
-    const scale=Math.max(W/vw,H/vh),offsetX=(W-vw*scale)/2,offsetY=(H-vh*scale)/2;
-    const coords=new Float32Array(COUNT*3);
-    let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;
-    for(let i=0;i<COUNT;i++){
-      const p=raw[i],x=offsetX+(1-p.x)*vw*scale,y=offsetY+p.y*vh*scale;
-      coords[i*3]=x;coords[i*3+1]=y;
-      coords[i*3+2]=p.z*vw*scale;
-      if(x<left)left=x;if(x>right)right=x;if(y<top)top=y;if(y>bottom)bottom=y;
+  function update(points,width,height){
+    if(!mesh||!points?.length||!width||!height){faceCenter=null;return;}
+    const scale=Math.max(W/width,H/height),dw=width*scale,dh=height*scale;
+    const offsetX=(W-dw)/2,offsetY=(H-dh)/2;
+    const oval=outline.map(i=>({
+      x:offsetX+(1-points[i].x)*dw,y:offsetY+points[i].y*dh
+    }));
+    const center=oval.reduce((sum,p)=>({x:sum.x+p.x/oval.length,y:sum.y+p.y/oval.length}),{x:0,y:0});
+    // Unroll the face to assign one continuous UV field. The geometry uses
+    // only the outer contour, so expressions cannot emboss eyes or lips.
+    const left=points[263],right=points[33];
+    const dx=(left.x-right.x)*dw,dy=(right.y-left.y)*dh;
+    const length=Math.hypot(dx,dy)||1,cos=dx/length,sin=dy/length;
+    const local=oval.map(p=>{
+      const x=p.x-center.x,y=p.y-center.y;
+      return {x:x*cos+y*sin,y:y*cos-x*sin};
+    });
+    const rx=Math.max(...local.map(p=>Math.abs(p.x)))*1.20;
+    const ry=Math.max(...local.map(p=>Math.abs(p.y)))*1.20;
+    if(!Number.isFinite(rx)||rx<18||ry<25){faceCenter=null;return;}
+    faceCenter=center;
+    mesh.set([center.x,center.y,0,.5,.5,1,0],0);
+    for(let ring=0;ring<rings.length;ring++){
+      const r=rings[ring];
+      local.forEach((p,i)=>{
+        const x=p.x*1.18*r,y=p.y*(p.y<0?1.25:1.15)*r;
+        const at=(1+ring*local.length+i)*stride;
+        mesh[at]=center.x+x*cos-y*sin;
+        mesh[at+1]=center.y+x*sin+y*cos;
+        mesh[at+2]=0;
+        mesh[at+3]=.5+.45*x/rx;
+        mesh[at+4]=.5-.45*y/ry;
+        mesh[at+5]=.99-.11*r*r+.045*(x/rx-y/ry);
+        mesh[at+6]=r;
+      });
     }
-    const cx=(left+right)/2,cy=(top+bottom)/2,fw=right-left,fh=bottom-top;
-    if(!Number.isFinite(fw)||fw<30||fh<50)return;
-    const c={x:cx,y:cy,w:fw,h:fh};
-    if(!faceCenter)faceCenter=c;
-    else for(const k of ['x','y','w','h'])faceCenter[k]=mix(faceCenter[k],c[k],.26);
-    // Face surface is non-planar. Smooth only part of the landmark depth
-    // field so it bridges the nose while maintaining cheek/forehead relief.
-    for(let i=0;i<COUNT;i++){
-      const p=i*3,near=geo.neighbors[i];
-      let avgZ=coords[p+2];
-      if(near.length){avgZ=0;for(const j of near)avgZ+=coords[j*3+2];avgZ/=near.length;}
-      const z=coords[p+2]*.76+avgZ*.24;
-      base[p]=coords[p]+(coords[p]-cx)*.034;
-      base[p+1]=coords[p+1]+(coords[p+1]-cy)*.025;
-      base[p+2]=z-7;
-    }
-    // The boundary isn't glued to skin: an independent, lightly floating,
-    // alpha-feathered fabric rim is stitched to MediaPipe's real face oval.
-    for(let i=0;i<geo.oval.length;i++){
-      const k=geo.oval[i]*3,j=(COUNT+i)*3;
-      const px=base[k],py=base[k+1];
-      const upper=(py-cy)<0;
-      base[j]=px+(px-cx)*.14;
-      base[j+1]=py+(py-cy)*(upper?.22:.11)+(upper?-5:4);
-      base[j+2]=base[k+2]-8;
-    }
-    // Set a smoothly-following center for the continuous veil underlay.
-    // UV is the average of nose + cheeks rather than a fixed screen ellipse.
-    {
-      const mid=geo.underlayCenter*3;
-      const anchors=[1,4,168,6,195,197];
-      let x=0,y=0,z=0;
-      for(const v of anchors){x+=base[v*3];y+=base[v*3+1];z+=base[v*3+2];}
-      base[mid]=x/anchors.length;
-      base[mid+1]=y/anchors.length;
-      base[mid+2]=z/anchors.length+4;
-    }
-    // Fill the two eye sockets only. The mouth is NOT its own surface layer.
-    // A continuous veil underlay keeps the mouth area covered.
-    for(let n=0;n<COVERED_HOLES.length;n++){
-      const rim=COVERED_HOLES[n],dst=(geo.capStart+n)*3;
-      let x=0,y=0,z=0;
-      for(const j of rim){x+=base[j*3];y+=base[j*3+1];z+=base[j*3+2];}
-      base[dst]=x/rim.length;
-      base[dst+1]=y/rim.length;
-      base[dst+2]=z/rim.length-6;
-    }
-    if(!initialUV){
-      initialUV=new Float32Array(COUNT*2);
-      for(let i=0;i<COUNT;i++){
-        const j=i*3,k=i*2;
-        initialUV[k]=clamp(.10+.80*(base[j]-left)/fw,0,1);
-        initialUV[k+1]=clamp(.055+.89*(base[j+1]-top)/fh,0,1);
-      }
-    }
-    for(let i=0;i<COUNT;i++){uvs[i*2]=initialUV[i*2];uvs[i*2+1]=initialUV[i*2+1];}
-    for(let i=0;i<geo.oval.length;i++){
-      const src=geo.oval[i],dst=COUNT+i;
-      uvs[dst*2]=clamp((uvs[src*2]-.5)*1.095+.5,0,1);
-      uvs[dst*2+1]=clamp((uvs[src*2+1]-.5)*1.095+.5,0,1);
-    }
-    {
-      const anchors=[1,4,168,6,195,197],i=geo.underlayCenter*2;
-      let u=0,v=0;
-      for(const j of anchors){u+=uvs[j*2];v+=uvs[j*2+1];}
-      uvs[i]=u/anchors.length;uvs[i+1]=v/anchors.length;
-    }
-    // Extend the fabric's face-locked UV field across the repaired holes.
-    // Text remains continuous across both eyelids.
-    for(let n=0;n<COVERED_HOLES.length;n++){
-      const rim=COVERED_HOLES[n],dst=(geo.capStart+n)*2;
-      let u=0,v=0;
-      for(const j of rim){u+=uvs[j*2];v+=uvs[j*2+1];}
-      uvs[dst]=u/rim.length;
-      uvs[dst+1]=v/rim.length;
-    }
-    // Estimate a surface normal from real triangles for fabric shading.
-    const normal=new Float32Array((COUNT+geo.oval.length)*3);
-    for(let i=0;i<geo.triangles.length;i+=3){
-      const a=geo.triangles[i],b=geo.triangles[i+1],c=geo.triangles[i+2];
-      const ax=base[a*3],ay=base[a*3+1],az=base[a*3+2];
-      const ux=base[b*3]-ax,uy=base[b*3+1]-ay,uz=base[b*3+2]-az;
-      const vx=base[c*3]-ax,vy=base[c*3+1]-ay,vz=base[c*3+2]-az;
-      const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
-      for(const j of [a,b,c]){
-        normal[j*3]+=nx;normal[j*3+1]+=ny;normal[j*3+2]+=nz;
-      }
-    }
-    for(let i=0;i<COUNT;i++){
-      const x=normal[i*3],y=normal[i*3+1],z=normal[i*3+2];
-      const length=Math.hypot(x,y,z)||1;
-      shades[i]=clamp(.95+(-.28*x-.23*y+.60*Math.abs(z))/length*.25,.74,1.18);
-    }
-    for(let i=0;i<geo.oval.length;i++)shades[COUNT+i]=shades[geo.oval[i]];
-    for(let n=0;n<COVERED_HOLES.length;n++){
-      const rim=COVERED_HOLES[n];let light=0;
-      for(const j of rim)light+=shades[j];
-      shades[geo.capStart+n]=light/rim.length;
-    }
-    shades[geo.underlayCenter]=.98;
-    root.classList.add('ar-tulle-ready');
   }
   function arrival(t){
     // 65% of the flight: float nearer only a little; final 35%:
-    // accelerate rapidly into the live 3D face mesh.
+    // accelerate rapidly toward the tracked face.
     return t<.65 ? .19*ease(t/.65) : .19+.81*Math.pow((t-.65)/.35,2);
   }
   function render(now){
     if(!live)return;
     gl.viewport(0,0,W,H);gl.clearColor(0,0,0,0);
-    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-    if(!geo||!base||!textures.first||!layers.length)return;
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    for(let i=layers.length-1;i>=0;i--){
+      if(layers[i].removing&&now-layers[i].exit>1200)layers.splice(i,1);
+    }
+    const ready=Boolean(faceCenter&&textures.first&&layers.length);
+    root.classList.toggle('ar-tulle-ready',ready);
+    if(!ready)return;
     gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);
-    gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
     gl.useProgram(program);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
     gl.enableVertexAttribArray(positionAttr);
@@ -376,37 +260,20 @@ function create(root){
       const offsetY=-115*fly;
       const settle=progress>=.90?Math.sin((progress-.9)*Math.PI*20)*
         Math.exp(-(progress-.9)*23)*1.8:0;
-      const size=1+.19*fly,center=faceCenter||{x:W/2,y:H/2};
-      for(let i=0;i<base.length/3;i++){
-        const k=i*3,v=i*stride,px=base[k],py=base[k+1];
-        // Only the outer drape fades; the face-wide backing remains opaque enough
-        // to cover the mouth without a separate lip mesh.
-        const fringe=i>=COUNT&&i<geo.capStart;
-        const edge=fringe?1:0;
-        const inertia=fringe?
-          Math.sin(now*.0024+i*1.77+layer.index*.8)*1.8:0;
-        const releaseX=layer.removing?(i%3===0?1:-1)*45*ease(leave):0;
-        const releaseY=layer.removing?-165*ease(leave):0;
-        vertices[v]=((center.x+(px-center.x)*size+offsetX+releaseX+
-          inertia+settle)/W)*2-1;
-        vertices[v+1]=1-((center.y+(py-center.y)*size+offsetY+
-          releaseY)/H)*2;
-        vertices[v+2]=clamp((base[k+2]-layer.index*2-42*fly)/850,-.65,.65);
-        vertices[v+3]=uvs[i*2];vertices[v+4]=1-uvs[i*2+1];
-        vertices[v+5]=shades[i];vertices[v+6]=edge*.995;
+      const size=1+.19*fly,center=faceCenter;
+      for(let at=0;at<mesh.length;at+=stride){
+        const x=mesh[at]-center.x,y=mesh[at+1]-center.y;
+        const sway=mesh[at+6]**2*Math.sin(now*.0024+y*.055+layer.index*.8)*1.25;
+        const lift=ease(leave);
+        vertices[at]=(center.x+x*size+offsetX+settle+sway+lift*(38-y*.23))/W*2-1;
+        vertices[at+1]=1-(center.y+y*size+offsetY+lift*(-165+x*.23))/H*2;
+        vertices[at+2]=0;
+        for(let i=3;i<stride;i++)vertices[at+i]=mesh[at+i];
       }
       gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
       gl.bindTexture(gl.TEXTURE_2D,tex);
-      // Draw center face fan ONCE; no facial tessellation on top.
-      // Exterior rim gets a lighter alpha to avoid a bright second edge.
       gl.uniform1f(opacityUniform,opacity);
-      gl.drawElements(gl.TRIANGLES,geo.underlayIndexCount,gl.UNSIGNED_SHORT,0);
-      gl.uniform1f(opacityUniform,opacity*.48);
-      gl.drawElements(gl.TRIANGLES,geo.surfaceIndexCount,gl.UNSIGNED_SHORT,
-        geo.underlayIndexCount*Uint16Array.BYTES_PER_ELEMENT);
-    }
-    for(let i=layers.length-1;i>=0;i--){
-      if(layers[i].removing&&now-layers[i].exit>1200)layers.splice(i,1);
+      gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
     }
   }
   function loop(now){

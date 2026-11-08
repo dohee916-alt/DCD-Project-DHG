@@ -727,6 +727,7 @@ canvas.figure{object-fit:contain!important}
  background:radial-gradient(ellipse at 54% 44%,rgba(230,79,29,.84),rgba(201,40,9,.88) 46%,rgba(255,180,143,.83) 74%,rgba(255,219,202,.92))}
 .ar-final-mode .ar-final-color{animation:arColorWash 1.8s ease-out both}
 @keyframes arColorWash{from{opacity:0;transform:scale(1.1)}to{opacity:.95;transform:scale(1)}}
+.ar-final-mode .ar-portrait-camera,
 .ar-final-mode .ar-person-segment{filter:blur(23px) grayscale(.8) sepia(.7) saturate(2.4) brightness(.62)}
 .ar-final-mode .ar-copy{top:395px;color:white;font:700 29px/1.18 'Source Sans 3',Arial,sans-serif}
 .ar-immersive[data-ar-frame=AR10] .ar-copy{font-size:35px;line-height:1.05}

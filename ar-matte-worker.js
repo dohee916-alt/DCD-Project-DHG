@@ -1,86 +1,71 @@
-/* DCD single-frame portrait matting worker.
-   Longpipe's temporal person matting on WebGPU, with MediaPipe worker fallback.
-   Input/output always represent the SAME video frame. Never queue frames. */
-let processor=null,segmenter=null,engine='',alive=true,failed=0;
-const postError=(message)=>self.postMessage({type:'error',message:String(message)});
-async function init(){
- try{
-  if(self.navigator?.gpu&&typeof OffscreenCanvas!=='undefined'){
-   const {BackgroundRemover}=await import('https://cdn.jsdelivr.net/npm/@katana-video/web-bg-removal@0.1.1/+esm');
-   processor=await BackgroundRemover.load('longpipe-large',{backend:'webgpu',temporal:true});
-   engine='longpipe';
-   self.postMessage({type:'ready',engine});return;
-  }
- }catch(error){self.postMessage({type:'notice',message:'WebGPU Longpipe unavailable: '+String(error)})}
- try{
-  const m=await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm');
-  const wasm=await m.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');
-  const path='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
-  segmenter=await m.ImageSegmenter.createFromOptions(wasm,{baseOptions:{modelAssetPath:path,delegate:'CPU'},runningMode:'VIDEO',outputConfidenceMasks:true});
-  engine='mediapipe-worker';self.postMessage({type:'ready',engine});
- }catch(e){postError('No supported worker matting engine: '+String(e))}
+/* Classic worker: MediaPipe 0.10.21 initializes WASM via importScripts. */
+const KATANA='https://cdn.jsdelivr.net/npm/@katana-video/web-bg-removal@0.1.1/+esm';
+const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21';
+const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
+let processor,segmenter,engine,portrait,portraitCtx,matte,matteCtx,pixels;
+async function init(mode){
+ if(mode==='mediapipe'){
+  const {ImageSegmenter,FilesetResolver}=await import(SDK+'/+esm');
+  const vision=await FilesetResolver.forVisionTasks(SDK+'/wasm');
+  segmenter=await ImageSegmenter.createFromOptions(vision,{
+   baseOptions:{modelAssetPath:SELFIE,delegate:'CPU'},runningMode:'VIDEO',
+   canvas:new OffscreenCanvas(1,1),outputCategoryMask:false,outputConfidenceMasks:true
+  });
+  portrait=new OffscreenCanvas(1,1);portraitCtx=portrait.getContext('2d');
+  matte=new OffscreenCanvas(1,1);matteCtx=matte.getContext('2d');
+  engine='mediapipe-worker';
+ }else{
+  const {BackgroundRemover}=await import(KATANA);
+  processor=await BackgroundRemover.load('longpipe-'+mode,{backend:'auto',temporal:true});
+  engine='longpipe-'+mode+'-'+processor.backend;
+ }
+ postMessage({type:'ready',engine});
 }
-function fallbackMask(bitmap,time){
- const w=bitmap.width,h=bitmap.height;
- const result=segmenter.segmentForVideo(bitmap,time);
- try{
-  const mask=result.confidenceMasks?.[1]||result.confidenceMasks?.[0];
-  if(!mask)throw Error('No person confidence mask');
-  const mw=mask.width,mh=mask.height,values=mask.getAsFloat32Array();
-  const off=new OffscreenCanvas(w,h),c=off.getContext('2d',{alpha:true});
-  const matte=new OffscreenCanvas(mw,mh),m=matte.getContext('2d',{willReadFrequently:true});
-  const rgba=m.createImageData(mw,mh);
-  for(let k=0;k<values.length;k++){
-   const p=k*4,v=Math.max(0,Math.min(1,values[k]));
-   const alpha=v*v*(3-2*v);
-   rgba.data[p]=rgba.data[p+1]=rgba.data[p+2]=255;
-   rgba.data[p+3]=Math.round(alpha*255);
+function segment(source,timestamp){
+ const width=source.displayWidth||source.width,height=source.displayHeight||source.height;
+ if(portrait.width!==width||portrait.height!==height){portrait.width=width;portrait.height=height;}
+ // The SDK's ImageSource supports ImageBitmap/canvas. Use a reusable canvas
+ // here because VideoFrame dimensions are exposed as displayWidth/Height.
+ portraitCtx.globalCompositeOperation='copy';
+ portraitCtx.drawImage(source,0,0,width,height);
+ segmenter.segmentForVideo(portrait,timestamp/1000,result=>{
+  // The pinned SelfieSegmenter model metadata contains one label, "selfie".
+  const mask=result.confidenceMasks?.[0];
+  if(!mask)throw Error('Missing foreground confidence mask');
+  if(!pixels||matte.width!==mask.width||matte.height!==mask.height){
+   matte.width=mask.width;matte.height=mask.height;
+   pixels=matteCtx.createImageData(mask.width,mask.height);
   }
-  m.putImageData(rgba,0,0);
-  c.drawImage(bitmap,0,0,w,h);
-  c.globalCompositeOperation='destination-in';
-  c.imageSmoothingEnabled=true;
-  c.drawImage(matte,0,0,w,h);
-  return off.transferToImageBitmap();
- }finally{result.confidenceMasks?.forEach(x=>x.close?.())}
+  const values=mask.getAsFloat32Array();
+  for(let i=0;i<values.length;i++){
+   const a=values[i];pixels.data[i*4+3]=Math.round(255*a*a*(3-2*a));
+  }
+  matteCtx.putImageData(pixels,0,0);
+ });
+ portraitCtx.globalCompositeOperation='destination-in';
+ portraitCtx.drawImage(matte,0,0,width,height);
+ return portrait.transferToImageBitmap();
+}
+async function processFrame(source,timestamp){
+ let cutout,frame;
+ try{
+  if(!processor)cutout=segment(source,timestamp);
+  else if(typeof VideoFrame==='function'){
+   frame=source instanceof VideoFrame?source:new VideoFrame(source,{timestamp});
+   cutout=await processor.process(frame);
+  }else cutout=await processor.removeBackground(source);
+  postMessage({type:'frame',source,cutout,engine},[source,cutout]);
+  cutout=null;
+ }catch(error){
+  source.close();throw error;
+ }finally{
+  if(frame&&frame!==source)frame.close();
+  cutout?.close();
+ }
 }
 self.onmessage=async({data})=>{
- if(data?.type==='stop'){alive=false;processor?.reset?.();segmenter?.close?.();self.close();return}
- if(data?.type==='init'){await init();return}
- if(data?.type!=='frame'||!data.bitmap)return;
- const {bitmap,time,seq,sentAt}=data;
- if(!alive){bitmap.close();return}
- const start=performance.now();
  try{
-  let cutout;
-  if(engine==='longpipe'){
-   // VideoFrame preserves temporal model state and exact capture timestamp.
-   if(typeof VideoFrame!=='undefined'&&typeof processor.process==='function'){
-    const vf=new VideoFrame(bitmap,{timestamp:Math.round(time*1000)});
-    try{
-     const out=await processor.process(vf);
-     try{cutout=await createImageBitmap(out)}finally{out.close?.()}
-    }finally{vf.close()}
-   }else{cutout=await processor.removeBackground(bitmap)}
-  }else if(engine==='mediapipe-worker'){cutout=fallbackMask(bitmap,time)}
-  else throw Error('Matting engine not ready');
-  failed=0;
-  const latency=performance.now()-start;
-  self.postMessage({type:'frame',seq,time,sentAt,latency,engine,bitmap:cutout},[cutout]);
- }catch(e){
-  failed++;
-  self.postMessage({type:'frame-error',seq,message:String(e),failed});
-  if(engine==='longpipe'&&failed>=2){
-   processor?.reset?.();processor=null;engine='';
-   await initFallback();
-  }
- }finally{bitmap.close()}
+  if(data.type==='init')await init(data.mode);
+  else if(data.type==='frame')await processFrame(data.source,data.timestamp);
+ }catch(error){postMessage({type:'error',message:String(error)});}
 };
-async function initFallback(){
- try{
-  const m=await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm');
-  const wasm=await m.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');
-  segmenter=await m.ImageSegmenter.createFromOptions(wasm,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite',delegate:'CPU'},runningMode:'VIDEO',outputConfidenceMasks:true});
-  engine='mediapipe-worker';failed=0;self.postMessage({type:'ready',engine});
- }catch(e){postError(e)}
-}
