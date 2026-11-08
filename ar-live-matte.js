@@ -234,17 +234,6 @@ function create(root,video,canvas,onFrame,getFaceBounds){
   personCtx.restore();
   personCtx.globalCompositeOperation='destination-in';
   personCtx.drawImage(aligned,0,0);
-  // The experience overlays fabric on the face. Remove the torso/clothes
-  // below the head with a soft fade rather than a rectangular cut.
-  const bottom=Math.min(h,face.b+Math.max(15,face.h*.28));
-  const fade=Math.max(14,Math.min(38,face.h*.16));
-  const cut=personCtx.createLinearGradient(0,bottom-fade,0,bottom+fade);
-  cut.addColorStop(0,'rgba(255,255,255,1)');
-  cut.addColorStop(1,'rgba(255,255,255,0)');
-  personCtx.globalCompositeOperation='destination-in';
-  personCtx.fillStyle=cut;
-  personCtx.fillRect(0,0,w,Math.min(h,bottom+fade));
-  personCtx.clearRect(0,Math.min(h,Math.ceil(bottom+fade)),w,h);
   personCtx.globalCompositeOperation='source-over';
   ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
   ctx.drawImage(person,0,0);
