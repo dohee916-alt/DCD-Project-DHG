@@ -12,10 +12,61 @@ function create(root,video,canvas,onFrame){
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true,validFrames=0;
  let fallback=null,fallbackStarting=false;
+ let medium=null,mediumStarting=false;
  // The user requires large-quality hair matte; NEVER silently downshift
  // to small or MediaPipe. One retry handles transient GPU initialization.
- const modes=['large','large'];
+ const modes=['large'];
  let activeEngine='initializing';
+ // Official Longpipe SDK supports a real Medium preset which is absent
+ // from the Katana wrapper. This stream-based backup never uses Small.
+ async function startMedium(reason){
+  if(!live||medium||mediumStarting)return;
+  mediumStarting=true;closeWorker();
+  root.dataset.arMatte='loading-longpipe-medium';
+  console.warn('[DCD AR] Trying original Longpipe Medium:',reason);
+  let pipeline=null,output=null;
+  try{
+   const stream=video.srcObject;
+   if(!(stream instanceof MediaStream))throw Error('Camera MediaStream unavailable');
+   const {EffectsPipeline}=await import('https://cdn.jsdelivr.net/npm/longpipe@0.0.14/+esm');
+   if(!live)return;
+   pipeline=new EffectsPipeline(stream,{
+    background:{color:'#e5edf6'},preset:'medium',adaptive:false
+   });
+   output=document.createElement('video');
+   output.autoplay=true;output.muted=true;output.playsInline=true;
+   output.srcObject=pipeline.stream;
+   await Promise.all([pipeline.ready,output.play()]);
+   if(!live)return;
+   medium={pipeline,output};
+   pipeline=null;output=null;
+   root.dataset.arMatte='longpipe-medium-stream';
+   console.info('[DCD AR] Actual portrait engine: longpipe-medium-stream');
+  }catch(error){
+   root.dataset.arMatte='longpipe-unavailable';
+   console.error('[DCD AR] Medium stream failed; Small remains disabled:',error);
+  }finally{
+   if(pipeline)try{pipeline.destroy()}catch{}
+   if(output)output.srcObject=null;
+   mediumStarting=false;
+  }
+ }
+ function drawMedium(now){
+  const output=medium?.output;
+  if(!output||output.readyState<2||!output.videoWidth)return;
+  const w=canvas.width,h=canvas.height;
+  const sw=output.videoWidth,sh=output.videoHeight;
+  const factor=Math.max(w/sw,h/sh),dw=sw*factor,dh=sh*factor;
+  ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
+  ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
+  ctx.drawImage(output,(w-dw)/2,(h-dh)/2,dw,dh);
+  ctx.restore();
+  lastCapture=now;visible=true;
+  canvas.style.visibility='visible';canvas.style.opacity='1';
+  root.dataset.arMatte='longpipe-medium-stream';
+  try{onFrame?.(video,video.videoWidth,video.videoHeight)}
+  catch(error){console.warn('[DCD AR] Medium tracking:',error)}
+ }
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
  }
@@ -90,6 +141,7 @@ function create(root,video,canvas,onFrame){
   live=false;closeWorker();clearInterval(timer);
   if(frameHandle)video.cancelVideoFrameCallback?.(frameHandle);
   fallback?.segmenter.close();fallback=null;
+  if(medium){try{medium.pipeline.destroy()}catch{}medium.output.srcObject=null;medium=null;}
   hide();
  }
  function next(reason){
@@ -98,9 +150,9 @@ function create(root,video,canvas,onFrame){
   // Preserve the most recent valid image during model transitions.
   const mode=modes.shift();
   if(!mode||typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'){
-   activeEngine='large-unavailable';
-   root.dataset.arMatte='large-unavailable';
-   console.error('[DCD AR] Longpipe Large unavailable; Small is disabled:',reason);
+   // A native Medium stream is preferable to dead-ending with raw camera.
+   // This uses a different, officially supported SDK and preserves quality.
+   startMedium(reason||'Large GPU worker unavailable');
    return;
   }
   let current;
@@ -156,6 +208,8 @@ function create(root,video,canvas,onFrame){
  }
  async function submit(now,metadata){
   if(!live)return;
+  if(medium){drawMedium(now);return;}
+  if(mediumStarting)return;
   if(fallback){drawFallback(now);return;}
   if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE&&ready){next('Portrait frame stalled');return;}
   if(pending&&performance.now()-pending.started>(firstFrame?9000:5500)){next('Frame processing timed out');return;}
