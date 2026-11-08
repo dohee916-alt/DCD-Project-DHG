@@ -2,7 +2,7 @@
 (()=>{'use strict';
 const RAW='eNpjYAABRr0KeQYkQCqfQb1BmRI+o2YLZXzTLjlK+KJZOaas5POFYzzEnU3YyOULhTtzMPC7m7ORxxcMsmcHUgI+1uzk8AV8YeKBEHHS+PweFuwwd4WB3EUSn1MEJVyi0cKJID8gw5QNOV4yc0njp/ZTlG4YNXooS7cK7RTlGwb5KlT36JeTxlfLEEXhO+WSxjdPFkTh++aQxnfIFELh+xWQxneoE0PhuzWQxjer9WRH4vN5VpHGd5VNcEQI8DmbkMi3YhSNsoWlSH4PYJYmjQ80SyTUCiIAzZik8hmE/c3YEMUC6XwGIS9jVkihRB6fQdDVQDLGHc4lmc8g4FXmz8lAPp/RtUmcgRK+X6EQRXxS8w06n9R8i84ntdxA44/W/6P1/2j9P1r/j9b/o/X/aP0/APW/S44IeXwA8coG+g==';
 const WORDS={first:["THAT’S CHEATING.","YOU DIDN’T EARN THAT BODY.","IS THAT EVEN THE REAL YOU?","DID YOU REALLY NEED MEDICATION?","YOU’LL JUST GAIN IT ALL BACK."],replacement:["WHY DON’T YOU JUST TAKE GLP-1?","WHAT’S YOUR EXCUSE NOW?","EVERYONE ELSE IS LOSING WEIGHT EXCEPT YOU.","DON’T YOU CARE ABOUT YOUR HEALTH?","YOU’RE NOT EVEN TRYING."]};
-const FIGMA_MASK_TEXT={first:[{"text":"THAT’S\nCHEATING.","x":92.9706116,"y":380.9452515,"w":86,"r":2.56086785,"fs":[18,18],"lh":[20,20]},{"text":"YOU DIDN’T\nEARN\nTHAT BODY.","x":152.9406738,"y":322.0475159,"w":93,"r":8.83248771,"fs":[18,22,18],"lh":[20,22,20]},{"text":"IS THAT EVEN\nTHE REAL YOU?","x":224.5595703,"y":422,"w":122,"r":-5.48380546,"fs":[18,18],"lh":[20,20]},{"text":"DID YOU\nREALLY NEED\nMEDICATION?","x":119.9868164,"y":481.8559875,"w":128,"r":3.78941459,"fs":[18,22,18],"lh":[20,22,20]},{"text":"YOU’LL\nJUST GAIN IT\nALL BACK.","x":171.458252,"y":566.708313,"w":103,"r":-6.77999273,"fs":[18,18,18],"lh":[20,20,20]}],replacement:[{"text":"WHY DON’T YOU\nJUST TAKE GLP-1?","x":142,"y":316,"w":144,"r":0,"fs":[18,18],"lh":[20,20]},{"text":"WHAT’S YOUR\nEXCUSE NOW?","x":211.7207794,"y":505.0860901,"w":113,"r":-7.26322978,"fs":[18,18],"lh":[20,20]},{"text":"EVERYONE ELSE\nIS LOSING WEIGHT\nEXCEPT YOU.","x":143.9927979,"y":561.5820313,"w":146,"r":2.43377355,"fs":[18,18,18],"lh":[20,20,20]},{"text":"DON’T YOU\nCARE ABOUT\nYOUR HEALTH?","x":88.2729492,"y":444.2741699,"w":124,"r":-3.93080351,"fs":[18,22,18],"lh":[20,22,20]},{"text":"YOU’RE\nNOT EVEN\nTRYING.","x":221.9506836,"y":398.5280762,"w":80,"r":9.00960469,"fs":[18,18,18],"lh":[20,20,20]}]};
+const FIGMA_MASK_TEXT={first:[{"text":"THAT’S\nCHEATING.","x":92.9706116,"y":380.9452515,"w":86,"r":2.56086785,"fs":[18,18],"lh":[20,20]},{"text":"YOU DIDN’T\nEARN\nTHAT BODY.","x":152.9406738,"y":322.0475159,"w":93,"r":8.83248771,"fs":[18,18,18],"lh":[20,20,20]},{"text":"IS THAT EVEN\nTHE REAL YOU?","x":224.5595703,"y":422,"w":122,"r":-5.48380546,"fs":[18,18],"lh":[20,20]},{"text":"DID YOU\nREALLY NEED\nMEDICATION?","x":119.9868164,"y":481.8559875,"w":128,"r":3.78941459,"fs":[18,18,18],"lh":[20,20,20]},{"text":"YOU’LL\nJUST GAIN IT\nALL BACK.","x":171.458252,"y":566.708313,"w":103,"r":-6.77999273,"fs":[18,18,18],"lh":[20,20,20]}],replacement:[{"text":"WHY DON’T YOU\nJUST TAKE GLP-1?","x":142,"y":316,"w":144,"r":0,"fs":[18,18],"lh":[20,20]},{"text":"WHAT’S YOUR\nEXCUSE NOW?","x":211.7207794,"y":505.0860901,"w":113,"r":-7.26322978,"fs":[18,18],"lh":[20,20]},{"text":"EVERYONE ELSE\nIS LOSING WEIGHT\nEXCEPT YOU.","x":143.9927979,"y":561.5820313,"w":146,"r":2.43377355,"fs":[18,18,18],"lh":[20,20,20]},{"text":"DON’T YOU\nCARE ABOUT\nYOUR HEALTH?","x":88.2729492,"y":444.2741699,"w":124,"r":-3.93080351,"fs":[18,18,18],"lh":[20,20,20]},{"text":"YOU’RE\nNOT EVEN\nTRYING.","x":221.9506836,"y":398.5280762,"w":80,"r":9.00960469,"fs":[18,18,18],"lh":[20,20,20]}]};
 
 const W=428,H=926,TEXTURE_SIZE=1024,clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const mix=(a,b,t)=>a+(b-a)*t;
@@ -30,27 +30,31 @@ void main(){
   vec4 src=texture2D(fabric,vUV);
   // Preserve Figma's glyph silhouettes, but shade them as raised
   // embroidery threads instead of a flat orange paint fill.
-  float ink=smoothstep(0.23,0.39,src.r-src.g);
+  // The actual supplied height-map controls where individual fibers lie.
+  // Open holes stay clear even when five separate cloth layers accumulate.
   float fiber=src.a;
-  vec2 px=vec2(1.0/1024.0,1.0/1024.0);
-  float hx=texture2D(fabric,vUV+vec2(px.x,0.0)).a
-          -texture2D(fabric,vUV-vec2(px.x,0.0)).a;
-  float hy=texture2D(fabric,vUV+vec2(0.0,px.y)).a
-          -texture2D(fabric,vUV-vec2(0.0,px.y)).a;
-  float relief=clamp(0.5+(hx-hy)*1.45,0.0,1.0);
-  float sheen=0.83+0.35*relief;
-  vec3 cloth=vec3(0.967,0.761,0.711)*sheen*(0.92+0.19*fiber);
-  // Only INSIDE lettering: diagonal satin-stitch fibers and raised
-  // thread highlights. Do not overlay any grid on the sheer fabric.
-  float stitch=sin((vUV.x*0.72+vUV.y*0.69)*2800.0);
-  float stitchSheen=0.83+0.17*stitch;
-  float raisedEdge=clamp(1.0-abs(hx-hy)*3.0,0.76,1.0);
-  vec3 embroidery=vec3(0.925,0.228,0.038)*stitchSheen*raisedEdge;
+  vec2 texel=vec2(1.0/1024.0);
+  float leftFiber=texture2D(fabric,vUV-vec2(texel.x,0.0)).a;
+  float rightFiber=texture2D(fabric,vUV+vec2(texel.x,0.0)).a;
+  float upFiber=texture2D(fabric,vUV-vec2(0.0,texel.y)).a;
+  float downFiber=texture2D(fabric,vUV+vec2(0.0,texel.y)).a;
+  vec2 slope=vec2(rightFiber-leftFiber,downFiber-upFiber);
+  float lit=clamp(0.90+0.29*(-slope.x+slope.y),0.72,1.22);
+  float strand=pow(clamp(fiber,0.0,1.0),0.72);
+  vec3 cloth=vec3(0.951,0.778,0.748)*lit*(0.82+0.23*strand);
+  // Red ink in the texture is the Figma glyph silhouette only.
+  float ink=smoothstep(0.27,0.48,src.r-src.g);
+  // Raised satin-style embroidery: tiny alternating thread highlights
+  // and shadow on glyph edges. Never applied to the mesh holes.
+  float stitches=sin((vUV.x*0.86+vUV.y*0.51)*4100.0);
+  float threadLight=clamp(0.89+0.12*stitches,0.77,1.01);
+  float glyphEdge=texture2D(fabric,vUV+vec2(texel.x,texel.y)).r
+                 -texture2D(fabric,vUV+vec2(texel.x,texel.y)).g;
+  float stitchRim=clamp(0.96+0.16*(ink-glyphEdge),0.86,1.05);
+  vec3 embroidery=vec3(0.88,0.236,0.076)*threadLight*stitchRim;
   vec3 color=mix(cloth,embroidery,ink);
-  // The open carrier remains sheer; actual raised fibers provide the
-  // visual detail, and physical layers still accumulate through blending.
-  float gauze=0.105+0.94*pow(fiber,0.82);
-  float alpha=mix(gauze,0.95,ink);
+  float gauze=0.018+0.90*strand;
+  float alpha=mix(gauze,0.97,ink);
   // Lightly frayed/feathered outer hem without cutting the face.
   alpha*=1.0-smoothstep(0.79,1.0,vFringe);
   gl_FragColor=vec4(color,clamp(alpha*opacity,0.0,1.0));
@@ -111,7 +115,7 @@ function paintedFabric(height,phrase,index){
    ctx.fillStyle='#e83d0a';
    let yy=0;
    for(const [line,li] of config.text.split('\n').map((str,i)=>[str,i])){
-    ctx.font='700 '+config.fs[li]+'px "Source Sans 3",Arial,sans-serif';
+    ctx.font='700 '+config.fs[li]+'px "Turret Road",sans-serif';
     ctx.fillText(line,config.w/2,yy);
     yy+=config.lh[li];
    }
@@ -201,7 +205,7 @@ function create(root){
     try{
       const [height]=await Promise.all([
         getHeight(),
-        document.fonts?.load('700 40px "Source Sans 3"').catch(()=>{})||Promise.resolve()
+        document.fonts?.load('700 18px "Turret Road"').catch(()=>{})||Promise.resolve()
       ]);
       if(!live)return;
       for(const variant of ['first','replacement']){
