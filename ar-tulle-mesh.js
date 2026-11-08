@@ -28,34 +28,36 @@ varying vec2 vUV;
 varying float vLight;
 varying float vFringe;
 void main(){
-  vec4 clothSample=texture2D(fabric,vUV);
-  float fiber=clothSample.a;
+  vec4 cloth=texture2D(fabric,vUV);
   vec2 pixel=vec2(1.0/1024.0);
-  float dx=texture2D(fabric,vUV+vec2(pixel.x,0.0)).a-texture2D(fabric,vUV-vec2(pixel.x,0.0)).a;
-  float dy=texture2D(fabric,vUV+vec2(0.0,pixel.y)).a-texture2D(fabric,vUV-vec2(0.0,pixel.y)).a;
-  // The actual archived cloth relief controls lighting and opacity; the
-  // holes remain transparent. No flat red overlay or procedural grid.
-  float raised=smoothstep(0.07,0.75,fiber);
-  float clothLight=clamp(vLight+0.23*(-dx+dy),0.66,1.24);
-  vec3 orange=vec3(1.0,0.37,0.065)*clothLight;
-  float clothAlpha=0.012+0.52*raised;
-  // Black lettering is a separate alpha texture. Its opacity is never
-  // inferred from the orange fibers' RGB, preventing false dark stripes.
-  float stitched=texture2D(embroideryMask,vUV).a;
-  float edgeX=texture2D(embroideryMask,vUV+vec2(pixel.x,0.0)).a-
-    texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
-  float edgeY=texture2D(embroideryMask,vUV+vec2(0.0,pixel.y)).a-
-    texture2D(embroideryMask,vUV-vec2(0.0,pixel.y)).a;
-  // Reuse the existing cloth's physical fiber height as micro-relief
-  // instead of inventing a separate simulated stitch pattern.
-  float threadShine=clamp(0.85+0.12*fiber+0.11*(-edgeX+edgeY)+0.08*(vLight-0.9),0.67,1.05);
-  vec3 blackThread=vec3(0.045,0.046,0.049)*threadShine;
-  float alpha=mix(clothAlpha,0.985,stitched);
-  alpha*=1.0-0.92*smoothstep(0.90,1.0,vFringe);
-  vec3 color=mix(orange,blackThread,stitched);
+  float fiber=cloth.a;
+  float left=texture2D(fabric,vUV-vec2(pixel.x,0.0)).a;
+  float right=texture2D(fabric,vUV+vec2(pixel.x,0.0)).a;
+  float up=texture2D(fabric,vUV+vec2(0.0,pixel.y)).a;
+  float down=texture2D(fabric,vUV-vec2(0.0,pixel.y)).a;
+  float strand=smoothstep(0.06,0.67,fiber);
+  float fiberLight=clamp(vLight+0.15*(left-right+up-down),0.76,1.17);
+  // Nearly white woven filament; the openings retain camera transparency.
+  vec3 whiteNet=vec3(0.985,0.972,0.954)*fiberLight;
+  float netAlpha=0.006+strand*0.65;
+  // A separate embroidery coverage map prevents fibers from turning black.
+  float stitch=texture2D(embroideryMask,vUV).a;
+  float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
+  float eRight=texture2D(embroideryMask,vUV+vec2(pixel.x,0.0)).a;
+  float eUp=texture2D(embroideryMask,vUV-vec2(0.0,pixel.y)).a;
+  float eDown=texture2D(embroideryMask,vUV+vec2(0.0,pixel.y)).a;
+  // Raised thread edge: light on one side and a narrow contact shadow
+  // on the other. No generated plaid/grid/false black stitch pattern.
+  float rim=clamp((eLeft-eRight+eUp-eDown)*0.24,-0.20,0.20);
+  float surface=clamp(0.82+0.12*fiber+0.13*(vLight-0.85)+rim,0.60,1.10);
+  vec3 orangeThread=vec3(0.99,0.315,0.035)*surface;
+  float contact=clamp(max(max(eLeft,eRight),max(eUp,eDown))-stitch,0.0,1.0);
+  float shade=contact*0.13;
+  vec3 color=mix(whiteNet*(1.0-shade),orangeThread,stitch);
+  float alpha=mix(netAlpha,0.99,stitch);
+  alpha*=1.0-0.85*smoothstep(0.94,1.0,vFringe);
   gl_FragColor=vec4(color,clamp(alpha*opacity,0.0,1.0));
 }`;
-
 function shader(gl,type,code){
   const s=gl.createShader(type);gl.shaderSource(s,code);gl.compileShader(s);
   if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));
@@ -75,7 +77,7 @@ function paintedFabric(height,index){
   const tctx=tile.getContext('2d'),pixels=tctx.createImageData(64,64);
   for(let i=0;i<4096;i++){
     const fiber=height?.[i]??0,k=i*4;
-    pixels.data[k]=245;pixels.data[k+1]=116;pixels.data[k+2]=35;
+    pixels.data[k]=251;pixels.data[k+1]=249;pixels.data[k+2]=245;
     pixels.data[k+3]=Math.round(Math.max(0,Math.min(255,fiber*255/143)));
   }
   tctx.putImageData(pixels,0,0);
@@ -144,45 +146,33 @@ function create(root){
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
   const stitchUniform=gl.getUniformLocation(program,'embroideryMask');
-  let outline=[],edges=[],neighborsByVertex=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
+  let outline=[],neighborsByVertex=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let vertexCount=0,neutralUV=null;
   let live=true,frameId=0,lastRendered=0;
   const textures={},layers=[];
-  function setConnections(tessellation,ovalConnections){
-    outline=faceOutline(ovalConnections);
-    if(outline.length<25||!tessellation?.length)return false;
-    // MediaPipe triangle connectivity spans the cheeks, nose, lips and eyes.
-    // Reconstruct each triangular face from the undirected edge graph.
-    const neighbors=new Map(),edgeSet=new Set();
-    const pair=(a,b)=>a<b?a+','+b:b+','+a;
-    vertexCount=0;
-    for(const {start,end} of tessellation){
-      if(start===end)continue;
-      vertexCount=Math.max(vertexCount,start+1,end+1);
-      if(!neighbors.has(start))neighbors.set(start,new Set());
-      if(!neighbors.has(end))neighbors.set(end,new Set());
-      neighbors.get(start).add(end);neighbors.get(end).add(start);
-      edgeSet.add(pair(start,end));
-    }
-    edges=[...edgeSet].map(s=>s.split(',').map(Number));
-    neighborsByVertex=Array.from({length:vertexCount},(_,i)=>[...(neighbors.get(i)||[])]);
-    const unique=new Set(),indices=[];
-    for(const [a,b] of edges){
-      for(const c of neighbors.get(a)){
-        if(c===b||!neighbors.get(b)?.has(c))continue;
-        const tri=[a,b,c].sort((x,y)=>x-y);
-        const key=tri.join(',');
-        if(unique.has(key))continue;
-        unique.add(key);indices.push(...tri);
-      }
-    }
-    if(indices.length<900)return false;
-    indexCount=indices.length;
+  function setConnections(){
+    const canonical=window.DCD_FACE_CANONICAL;
+    if(!canonical||canonical.uv.length!==468||canonical.triangles.length<2000)return false;
+    vertexCount=canonical.uv.length;
+    indexCount=canonical.triangles.length;
     mesh=new Float32Array(vertexCount*stride);
     vertices=new Float32Array(mesh.length);
-    neutralUV=null;
+    neutralUV=new Float32Array(vertexCount*2);
+    neighborsByVertex=Array.from({length:vertexCount},()=>new Set());
+    for(let i=0;i<vertexCount;i++){
+      neutralUV[i*2]=canonical.uv[i][0];
+      neutralUV[i*2+1]=canonical.uv[i][1];
+    }
+    for(let k=0;k<indexCount;k+=3){
+      const [a,b,c]=canonical.triangles.slice(k,k+3);
+      neighborsByVertex[a].add(b);neighborsByVertex[a].add(c);
+      neighborsByVertex[b].add(a);neighborsByVertex[b].add(c);
+      neighborsByVertex[c].add(a);neighborsByVertex[c].add(b);
+    }
+    neighborsByVertex=neighborsByVertex.map(x=>[...x]);
+    outline=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(canonical.triangles),gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
     gl.bufferData(gl.ARRAY_BUFFER,vertices.byteLength,gl.DYNAMIC_DRAW);
     return true;
@@ -219,48 +209,38 @@ function create(root){
     if(!mesh||!points?.length||points.length<vertexCount||!width||!height){
       faceCenter=null;return;
     }
+    // Landmark coordinates and the mirrored live camera use one consistent
+    // screen-space projection. Official UVs stay attached to each landmark.
     const fit=Math.max(W/width,H/height),dw=width*fit,dh=height*fit;
     const offsetX=(W-dw)/2,offsetY=(H-dh)/2;
-    const project=p=>({x:offsetX+(1-p.x)*dw,y:offsetY+p.y*dh,z:p.z||0});
-    const oval=outline.map(i=>project(points[i]));
-    const center=oval.reduce((sum,p)=>({x:sum.x+p.x/oval.length,y:sum.y+p.y/oval.length}),{x:0,y:0});
-    const left=project(points[263]),right=project(points[33]);
-    const dx=left.x-right.x,dy=right.y-left.y;
-    const length=Math.hypot(dx,dy)||1,cos=dx/length,sin=dy/length;
-    const local=oval.map(p=>{const x=p.x-center.x,y=p.y-center.y;return{x:x*cos+y*sin,y:y*cos-x*sin};});
-    const rx=Math.max(...local.map(p=>Math.abs(p.x)))*1.20;
-    const ry=Math.max(...local.map(p=>Math.abs(p.y)))*1.20;
-    if(!Number.isFinite(rx)||rx<18||ry<25){faceCenter=null;return;}
-    faceCenter=center;
-    // Capture stable UV registration per landmark, rather than projecting
-    // every letter onto a rigid oval that ignores nose, mouth and cheeks.
-    if(!neutralUV)neutralUV=new Float32Array(vertexCount*2);
-    const pos=Array.from({length:vertexCount},(_,i)=>project(points[i]));
+    const pos=Array.from({length:vertexCount},(_,i)=>{
+      const p=points[i];
+      return {x:offsetX+(1-p.x)*dw,y:offsetY+p.y*dh,z:p.z*dw};
+    });
+    const c=pos[1],top=pos[10],bottom=pos[152];
+    const faceHeight=Math.max(50,Math.hypot(top.x-bottom.x,top.y-bottom.y));
+    faceCenter={x:c.x,y:c.y};
     for(let i=0;i<vertexCount;i++){
-      const p=pos[i],x=p.x-center.x,y=p.y-center.y;
-      const lx=x*cos+y*sin,ly=y*cos-x*sin;
-      const off=i*stride;
+      const p=pos[i],off=i*stride;
       mesh[off]=p.x;mesh[off+1]=p.y;mesh[off+2]=p.z;
-      if(!neutralUV[i*2]&&!neutralUV[i*2+1]){
-        neutralUV[i*2]=.5+.45*lx/rx;
-        neutralUV[i*2+1]=.5-.45*ly/ry;
-      }
       mesh[off+3]=neutralUV[i*2];
       mesh[off+4]=neutralUV[i*2+1];
-      // Derived from the actual tracked 3D vertex depth changes, not
-      // artificially painted nose or cheek shapes.
-      let gradX=0,gradY=0,total=0;
-      // Nearest connected landmarks determine the local surface tilt.
-      for(const nIndex of neighborsByVertex[i]){
-        const n=pos[nIndex],ddx=n.x-p.x,ddy=n.y-p.y;
-        const dz=(n.z-p.z)*dw;
-        const d2=ddx*ddx+ddy*ddy+1;
-        gradX+=dz*ddx/d2;gradY+=dz*ddy/d2;total++;
+      // Local surface tilt from real face depth, not painted shadow.
+      let xx=0,yy=0,weight=0;
+      for(const j of neighborsByVertex[i]){
+        const q=pos[j],dx=q.x-p.x,dy=q.y-p.y;
+        const length2=dx*dx+dy*dy+3;
+        const influence=Math.min(1,55/Math.sqrt(length2));
+        xx+=(q.z-p.z)*dx/length2*influence;
+        yy+=(q.z-p.z)*dy/length2*influence;
+        weight+=influence;
       }
-      mesh[off+5]=clamp(0.94-0.24*gradX+0.23*gradY,0.67,1.19);
-      // Fade only the physical cloth edge, not the interior eyes or mouth.
-      const norm=Math.hypot(lx/rx,ly/ry);
-      mesh[off+6]=clamp((norm-.65)/.37,0,1);
+      mesh[off+5]=clamp(0.99+0.23*(-xx+yy)/Math.max(0.2,weight/5),0.71,1.21);
+      // Canonical UV distance fades only the cloth perimeter, not facial
+      // features. The real triangulation contains nose, cheek and lip bends.
+      const u=neutralUV[i*2],v=neutralUV[i*2+1];
+      const radial=Math.hypot((u-.5)*1.64,(v-.49)*1.46);
+      mesh[off+6]=clamp((radial-.76)/.25,0,1);
     }
   }
   function arrival(t){
