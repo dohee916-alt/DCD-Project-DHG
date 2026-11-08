@@ -14,6 +14,7 @@ function create(root,video,canvas,onFrame){
  let fallback=null,fallbackStarting=false;
  let medium=null,mediumStarting=false;
  let mediumFrameTime=-1,mediumUpdatedAt=0,mediumRenderedAt=-1;
+ let contiguousMatteFrames=0,previousMatteDraw=0;
  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||
   (navigator.maxTouchPoints>1&&/Macintosh/i.test(navigator.userAgent));
  // The user requires large-quality hair matte; NEVER silently downshift
@@ -43,6 +44,7 @@ function create(root,video,canvas,onFrame){
    if(!live)return;
    medium={pipeline,output};
    mediumFrameTime=-1;mediumUpdatedAt=0;mediumRenderedAt=-1;
+   contiguousMatteFrames=0;previousMatteDraw=0;
    pipeline=null;output=null;
    root.dataset.arMatte='longpipe-medium-stream';
    console.info('[DCD AR] Actual portrait engine: longpipe-medium-stream');
@@ -67,6 +69,7 @@ function create(root,video,canvas,onFrame){
     visible=false;canvas.style.visibility='hidden';
     root.dataset.arMatte='medium-video-stalled';
    }
+   contiguousMatteFrames=0;previousMatteDraw=0;
    return;
   }
   if(time===mediumRenderedAt)return;
@@ -78,6 +81,9 @@ function create(root,video,canvas,onFrame){
   ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
   ctx.drawImage(output,(w-dw)/2,(h-dh)/2,dw,dh);
   ctx.restore();
+  if(previousMatteDraw&&now-previousMatteDraw<950)contiguousMatteFrames++;
+  else contiguousMatteFrames=1;
+  previousMatteDraw=now;
   lastCapture=now;visible=true;
   canvas.style.visibility='visible';canvas.style.opacity='1';
   root.dataset.arMatte='longpipe-medium-stream';
@@ -209,7 +215,11 @@ function create(root,video,canvas,onFrame){
     ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
     ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
     ctx.restore();
-    lastCapture=performance.now();visible=true;validFrames++;
+    const rendered=performance.now();
+    if(previousMatteDraw&&rendered-previousMatteDraw<1550)contiguousMatteFrames++;
+    else contiguousMatteFrames=1;
+    previousMatteDraw=rendered;
+    lastCapture=rendered;visible=true;validFrames++;
     canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
     if(validFrames===1)console.info('[DCD AR] First displayed portrait frame:',data.engine);
@@ -269,6 +279,7 @@ function create(root,video,canvas,onFrame){
   if(medium){drawMedium(now);return;}
   if(visible&&now-lastCapture>1200){
    canvas.style.visibility='hidden';visible=false;
+   contiguousMatteFrames=0;previousMatteDraw=0;
    root.dataset.arMatte='frame-stalled';
   }
   if(typeof video.requestVideoFrameCallback!=='function')submit(now);
@@ -276,7 +287,9 @@ function create(root,video,canvas,onFrame){
  if(live&&typeof video.requestVideoFrameCallback==='function')
   frameHandle=video.requestVideoFrameCallback(pump);
  return {
-  get visible(){return visible},
+  get visible(){return visible&&performance.now()-lastCapture<1000},
+  // Gate only after several actual, recent processed output frames.
+  get readyForExperience(){return live&&visible&&contiguousMatteFrames>=3&&performance.now()-lastCapture<1000},
   get engine(){return root.dataset.arMatte},
   stop
  };

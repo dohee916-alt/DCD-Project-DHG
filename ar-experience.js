@@ -144,7 +144,10 @@ function observeFace(points,now){
  const aligned=x>.28&&x<.72&&y>.30&&y<.68&&width>.18;
  if(!aligned){state.guideSince=0;return;}
  if(!state.guideSince)state.guideSince=now;
- if(now-state.guideSince>1350)enter('AR4');
+ // Do not start the physical veil sequence until the actual cutout has
+ // rendered several RECENT frames. Face tracking still runs on raw video
+ // independently, so initialization does not freeze the camera or tracker.
+ if(now-state.guideSince>1350&&state.matte?.readyForExperience)enter('AR4');
 }
 function observeHands(hands,now){
  if(!['AR6','AR7'].includes(state.frame))return;
