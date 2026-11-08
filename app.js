@@ -700,8 +700,13 @@ async function beginAr(){
   const nativeTransform=stage.style.transform;
   const mobile=phoneDevice();
   const sw=Math.min(view.clientWidth/874,view.clientHeight/428);
+  // AR pack/dolls must already be at their FINAL portrait size before the
+  // screen rotates. The flying WEB clone grows to this same target size.
+  // Only rotate the screen afterwards; never scale it a second time.
+  const portraitScale=scale;
+  const sidewaysPortraitTransform='translate(-50%,-50%) rotate(-90deg) scale('+portraitScale+')';
   if(!mobile){
-    stage.style.transform='translate(-50%,-50%) rotate(-90deg) scale('+sw+')';
+    stage.style.transform=sidewaysPortraitTransform;
   }
   stage.style.opacity='0';
   stage.classList.add('dcd-ar-handoff-stage');
@@ -773,7 +778,7 @@ async function beginAr(){
       // retained PRESCRIBED heading share the exact same 800ms clock.
       const rotationTiming={duration:800,easing:'cubic-bezier(.25,.7,.25,1)',fill:'forwards'};
       const screenTurn=stage.animate([
-        {transform:'translate(-50%,-50%) rotate(-90deg) scale('+sw+')'},
+        {transform:sidewaysPortraitTransform},
         {transform:nativeTransform}
       ],rotationTiming);
       const headingTurn=heldHeading.animate([
