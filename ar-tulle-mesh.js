@@ -20,7 +20,7 @@ void main(){
   gl_Position=vec4(position.xy,clamp(position.z,-0.8,0.8),1.0);
 }`;
 const FRAG=`
-precision mediump float;
+precision highp float;
 uniform sampler2D fabric;
 uniform float opacity;
 varying vec2 vUV;
@@ -28,39 +28,37 @@ varying float vLight;
 varying float vFringe;
 void main(){
   vec4 src=texture2D(fabric,vUV);
-  // Preserve Figma's glyph silhouettes, but shade them as raised
-  // embroidery threads instead of a flat orange paint fill.
-  // The actual supplied height-map controls where individual fibers lie.
-  // Open holes stay clear even when five separate cloth layers accumulate.
-  float fiber=src.a;
-  vec2 texel=vec2(1.0/1024.0);
-  float leftFiber=texture2D(fabric,vUV-vec2(texel.x,0.0)).a;
-  float rightFiber=texture2D(fabric,vUV+vec2(texel.x,0.0)).a;
-  float upFiber=texture2D(fabric,vUV-vec2(0.0,texel.y)).a;
-  float downFiber=texture2D(fabric,vUV+vec2(0.0,texel.y)).a;
-  vec2 slope=vec2(rightFiber-leftFiber,downFiber-upFiber);
-  float lit=clamp(0.90+0.29*(-slope.x+slope.y),0.72,1.22);
-  float strand=pow(clamp(fiber,0.0,1.0),0.72);
-  vec3 cloth=vec3(0.925,0.690,0.663)*lit*(0.80+0.35*strand);
-  // Red ink in the texture is the Figma glyph silhouette only.
-  float ink=smoothstep(0.27,0.48,src.r-src.g);
-  // Raised satin-style embroidery: tiny alternating thread highlights
-  // and shadow on glyph edges. Never applied to the mesh holes.
-  float stitches=sin((vUV.x*0.86+vUV.y*0.51)*4100.0);
-  float threadLight=clamp(0.89+0.12*stitches,0.77,1.01);
-  float glyphEdge=texture2D(fabric,vUV+vec2(texel.x,texel.y)).r
-                 -texture2D(fabric,vUV+vec2(texel.x,texel.y)).g;
-  float stitchRim=clamp(0.96+0.16*(ink-glyphEdge),0.86,1.05);
-  vec3 embroidery=vec3(0.88,0.236,0.076)*threadLight*stitchRim;
-  vec3 color=mix(cloth,embroidery,ink);
-  // A single translucent carrier contributes real opacity. Five sheets
-  // accumulate to ~83% coverage even at an open hole (1 - .7^5).
-  // Raised threads are much denser than the open carrier.
-  float gauze=0.30+0.69*strand;
-  float alpha=mix(gauze,0.97,ink);
-  // Lightly frayed/feathered outer hem without cutting the face.
-  // Preserve a visible soft rim for each newly stacked veil.
-  alpha*=1.0-0.84*smoothstep(0.88,1.0,vFringe);
+  vec2 px=vec2(1.0/1024.0);
+  // The uploaded weave height is stored as transparency. Holes stay open,
+  // including when all five veils overlap; no colored gauze underlay.
+  float raw=src.a;
+  float warp=texture2D(fabric,vUV+vec2(px.x,0.0)).a
+             -texture2D(fabric,vUV-vec2(px.x,0.0)).a;
+  float weft=texture2D(fabric,vUV+vec2(0.0,px.y)).a
+             -texture2D(fabric,vUV-vec2(0.0,px.y)).a;
+  float strand=smoothstep(0.08,0.52,raw);
+  float relief=clamp(0.97+0.22*(-warp+weft)+0.09*(vLight-0.9),0.78,1.18);
+  // Clean, saturated orange filament with individual light-catching ridges.
+  vec3 orange=vec3(1.0,0.38,0.075);
+  vec3 cloth=orange*relief;
+  // The glyph is encoded only as a color key in the texture. Render it as
+  // charcoal-black raised thread, never orange ink or red translucent film.
+  float keyed=src.r-src.g;
+  float ink=smoothstep(0.31,0.54,keyed);
+  float neighboring=texture2D(fabric,vUV+px).r-texture2D(fabric,vUV+px).g;
+  float edge=clamp((keyed-neighboring)*1.5,-0.12,0.12);
+  // Diagonal satin stitch highlights follow the embroidery across the glyph.
+  // A lower-frequency crossing strand gives the lettering thread relief.
+  float satin=sin((vUV.x*0.87+vUV.y*0.49)*1700.0);
+  float fiberDetail=sin((vUV.x*0.21-vUV.y*0.98)*710.0);
+  float sheen=clamp(0.84+0.10*satin+0.035*fiberDetail+edge,0.68,1.05);
+  vec3 thread=vec3(0.052,0.056,0.058)*sheen;
+  vec3 color=mix(cloth,thread,ink);
+  // Open spaces have zero opacity. Fibers remain visible, but the five
+  // independent sheets never create a solid orange coating over skin.
+  float clothAlpha=strand*0.62;
+  float alpha=mix(clothAlpha,0.985,ink);
+  alpha*=1.0-0.88*smoothstep(0.87,1.0,vFringe);
   gl_FragColor=vec4(color,clamp(alpha*opacity,0.0,1.0));
 }`;
 function shader(gl,type,code){
@@ -83,7 +81,7 @@ function paintedFabric(height,phrase,index){
   const tctx=tile.getContext('2d'),pixels=tctx.createImageData(64,64);
   for(let i=0;i<4096;i++){
     const fiber=height?.[i]??0,k=i*4;
-    pixels.data[k]=245;pixels.data[k+1]=188;pixels.data[k+2]=175;
+    pixels.data[k]=255;pixels.data[k+1]=104;pixels.data[k+2]=28;
     // Original height amplitude is the only source of texture relief.
     // Archived height values top out at 143, not 255.
     // Preserve zero as open mesh while using the full alpha range for fibers.
@@ -118,7 +116,7 @@ function paintedFabric(height,phrase,index){
    // angle here because of canvas coordinate conventions.
    ctx.rotate(-config.r*Math.PI/180);
    ctx.textAlign='center';ctx.textBaseline='top';
-   ctx.fillStyle='#e83d0a';
+   // Mask key only: shader turns this silhouette into black satin thread.\n    ctx.fillStyle='#f22a08';
    let yy=0;
    for(const [line,li] of config.text.split('\n').map((str,i)=>[str,i])){
     ctx.font='700 '+config.fs[li]+'px "Turret Road",sans-serif';
