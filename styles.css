@@ -1103,3 +1103,6 @@ canvas.figure{object-fit:contain!important}
 
 /* Keep WEB12 checklist invisible in the flight preview; reveal it once typing starts on actual WEB12. */
 .pack-flight-next .new-flow-content{display:none!important}
+
+/* If tracked WebGL cloth is unavailable, keep the lettering black instead of the obsolete red paint. */
+.ar-immersive .ar-organza-stack:not(.ar-tulle-ready) .ar-organza-printed-copy{color:#111315!important}
