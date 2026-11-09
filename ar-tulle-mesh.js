@@ -193,7 +193,7 @@ function canvasCloth(root){
     const cw=clamp(fw*1.32,fw+24,350);
     const ch=clamp(fh*1.29,fh+38,540);
     const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2;
-    const angle=Math.atan2(eyeR.y-eyeL.y,eyeR.x-eyeL.x);
+    const angle=Math.atan2(eyeL.y-eyeR.y,eyeL.x-eyeR.x);
     for(const layer of layers){
       const age=(now-layer.start)/1000;
       const progress=clamp(age/1.25,0,1);
@@ -387,7 +387,7 @@ function create(root){
     const noseRelief=clamp((rawCheek-rawNose)*1.8,.015,.18);
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
-    const angle=Math.atan2(eyeB.y-eyeA.y,eyeB.x-eyeA.x),co=Math.cos(angle),si=Math.sin(angle);
+    const angle=Math.atan2(eyeA.y-eyeB.y,eyeA.x-eyeB.x),co=Math.cos(angle),si=Math.sin(angle);
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2;
     faceCenter={x:cx,y:cy};
     const cw=clamp(fw*1.32,fw+24,350),ch=clamp(fh*1.29,fh+38,540);
