@@ -1345,15 +1345,19 @@ canvas.figure{object-fit:contain!important}
   position:absolute;inset:0;width:100%;height:100%;
   z-index:6;display:none;pointer-events:none;
 }
-.ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-dark-silhouette{
+.ar-immersive.ar-matting-active.ar-depth-ready:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-dark-silhouette{
   display:block;
   filter:blur(4px) drop-shadow(0 0 9px rgba(163,48,23,.31));
   -webkit-filter:blur(4px) drop-shadow(0 0 9px rgba(163,48,23,.31));
   opacity:1;
   mix-blend-mode:normal;
 }
-.ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
+.ar-immersive.ar-matting-active.ar-depth-ready:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
   opacity:0!important;visibility:hidden!important;
+}
+.ar-immersive.ar-matting-active:not(.ar-depth-ready):is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
+  visibility:visible!important;opacity:1!important;
+  filter:blur(13px) sepia(.65) saturate(1.5) brightness(.85)!important;
 }
 
 /* AR9 / AR10 typography: Figma has three distinct text layers.
