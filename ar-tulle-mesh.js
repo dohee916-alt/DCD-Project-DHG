@@ -40,6 +40,24 @@ uniform float embroideryPass;
 varying vec2 vUV;
 varying float vLight;
 varying float vFringe;
+float smoothVeilSilhouette(vec2 uv){
+  // Head-covering sculpted veil. Unlike the old screen-size rectangular
+  // mesh, this has a domed crown, soft side falloff and rounded lower hem.
+  float v=uv.y;
+  float x=abs(uv.x-.5)*2.0;
+  float upper=1.0-smoothstep(0.0,0.21,v);
+  float lower=smoothstep(0.74,1.0,v);
+  float crown=pow(clamp((.22-v)/.22,0.0,1.0),1.55);
+  float hem=pow(clamp((v-.78)/.22,0.0,1.0),1.65);
+  float width=1.0-.31*crown-.20*hem;
+  // The crown is arched: each side starts lower than the center.
+  float topCurve=.085*pow(x,1.7);
+  float bottomCurve=.038*pow(x,1.55);
+  float sideMask=1.0-smoothstep(width-.075,width+.012,x);
+  float topMask=smoothstep(topCurve-.018,topCurve+.035,v);
+  float bottomMask=1.0-smoothstep(1.0-bottomCurve-.045,1.0-bottomCurve+.005,v);
+  return sideMask*topMask*bottomMask;
+}
 void main(){
   vec4 cloth=texture2D(fabric,vUV);
   vec2 pixel=vec2(1.0/1024.0);
@@ -76,11 +94,13 @@ void main(){
   // last fabric layer must not erase the letters from earlier layers.
   // The fabric is real and semi-transparent through the center. The hems
   // fade fully away instead of retaining 15% alpha as square border rails.
-  float edgeFade=1.0-smoothstep(0.18,0.99,vFringe);
+  float silhouette=smoothVeilSilhouette(vUV);
+  float edgeFade=1.0-smoothstep(0.60,0.99,vFringe);
   if(embroideryPass>0.5){
-    gl_FragColor=vec4(orangeThread,clamp(stitch*opacity,0.0,1.0));
+    gl_FragColor=vec4(orangeThread,0.0);
   }else{
-    gl_FragColor=vec4(whiteNet*(1.0-shade),clamp(netAlpha*opacity*edgeFade,0.0,1.0));
+    gl_FragColor=vec4(whiteNet*(1.0-shade),
+      clamp(netAlpha*opacity*edgeFade*silhouette,0.0,1.0));
   }
 }`;
 function shader(gl,type,code){
@@ -580,21 +600,21 @@ function create(root){
       // not a sinusoidal crease across the forehead.
       const sideFold=clamp((Math.abs(nx)-.72)/.28,0,1);
       const upperCorner=clamp((.12-v)/.12,0,1)*clamp((Math.abs(nx)-.84)/.16,0,1);
-      const curl=tuck*(.015+.012*edgeX)+sideFold*.055+upperCorner*.015;
+      const curl=tuck*(.035+.025*edgeX)+sideFold*.09+upperCorner*.025;
       // Round the forehead and contour the cheeks instead of retaining the
       // rectangular grid's top corners and perfectly vertical side rails.
       const topRegion=clamp((.29-v)/.29,0,1);
       const jawRegion=clamp((v-.61)/.39,0,1);
-      const faceContour=1-.035*topRegion*topRegion-.045*jawRegion*jawRegion;
+      const faceContour=1-.17*topRegion*topRegion-.12*jawRegion*jawRegion;
       const px=nx*cw*.5*(1-curl)*faceContour;
       const rolledEdge=Math.max(0,(v-.87)/.13);
       const curve=Math.pow(Math.abs(nx),1.5);
       // A curved forehead edge dips toward the temples. At the chin, pull
       // the outer corners up around the jaw to avoid a flat rectangular hem.
-      const foreheadRound=topRegion*topRegion*fh*.025*Math.pow(Math.abs(nx),2.3);
-      const jawRound=jawRegion*jawRegion*fh*.016*Math.pow(Math.abs(nx),1.6);
-      const hemLift=tuck*fh*.006;
-      const hemScoop=tuck*fh*.005*(1-curve);
+      const foreheadRound=topRegion*topRegion*fh*.16*Math.pow(Math.abs(nx),2.3);
+      const jawRound=jawRegion*jawRegion*fh*.07*Math.pow(Math.abs(nx),1.6);
+      const hemLift=tuck*fh*.026;
+      const hemScoop=tuck*fh*.025*(1-curve);
       const py=(v-.50)*ch+foreheadRound-jawRound-
         hemLift+hemScoop-rolledEdge*rolledEdge*fh*.012;
       const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
@@ -632,7 +652,10 @@ function create(root){
       // lower edge behind the face created a sharp exposed chin-shaped hole.
       // Only the extreme outer side edges may wrap subtly behind the cheeks.
       const behind=.035*sideFold*sideFold;
-      mesh[at+2]=clamp(trackedSurface-.045+behind+foldDepth*.08,-.79,.79);
+      // Follow the face, but give the outer cloth a subtle 3D volume
+      // so it reads as draped over hair, rather than printed on camera.
+      const crownVolume=Math.exp(-((nx/.82)**2+((v-.23)/.24)**2))*.014;
+      mesh[at+2]=clamp(trackedSurface-.065+behind+foldDepth*.08-crownVolume,-.79,.79);
       mesh[at+3]=u;mesh[at+4]=v;
       const foldShade=tuck*(.055*edgeX+.012*curve);
       mesh[at+5]=clamp(.94+.10*bump+.035*cheek-foldShade-rolledEdge*.13,.68,1.10);
