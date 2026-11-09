@@ -1085,7 +1085,7 @@ canvas.figure{object-fit:contain!important}
  width:164px!important;height:185px!important;
  object-fit:cover!important;object-position:center!important;transform-origin:0 0!important;
  mix-blend-mode:normal!important;pointer-events:none!important;
- z-index:6!important;opacity:.7!important;
+ z-index:6!important;
  animation:figmaTryWebguideHands 2.8s ease-in-out infinite!important;
 }
 #stage.page-01.phase-guide .gesture-upper{
@@ -1097,8 +1097,12 @@ canvas.figure{object-fit:contain!important}
  --gx:101px;--gy:112px;
 }
 @keyframes figmaTryWebguideHands{
- 0%,10%,100%{translate:0 0}
- 50%,60%{translate:var(--gx) var(--gy)}
+ /* Start -> outward pull -> disappear at destination -> instant reset.
+    No backwards return movement appears between animation cycles. */
+ 0%,10%{translate:0 0;opacity:.7}
+ 50%,60%{translate:var(--gx) var(--gy);opacity:.7}
+ 66%,99.9%{translate:var(--gx) var(--gy);opacity:0}
+ 100%{translate:0 0;opacity:0}
 }
 
 /* Keep WEB12 checklist invisible in the flight preview; reveal it once typing starts on actual WEB12. */
