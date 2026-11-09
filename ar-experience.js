@@ -179,7 +179,12 @@ function trackingStatus(message='',allowRetry=false){
    const retry=document.createElement('button');
    retry.type='button';retry.className='ar-face-retry';
    retry.textContent='RETRY FACE TRACKING';
-   retry.addEventListener('click',()=>initModels(state.session));
+   retry.addEventListener('click',()=>{
+     if(state.modelState==='loading')return;
+     state.modelState='loading';state.analysisError=false;state.lastVideoTime=-1;
+     trackingStatus('PREPARING FACE TRACKING');
+     initModels(state.session);
+   });
    status.appendChild(retry);
  }
 }
@@ -266,6 +271,9 @@ function observeHands(hands,now){
  }
 }
 async function initModels(session){
+ if(session!==state.session)return;
+ state.modelState='loading';
+ trackingStatus('PREPARING FACE TRACKING');
  try{
    const m=await import(SDK);
    if(session!==state.session)return;
@@ -354,9 +362,8 @@ function start(video){
  const canvas=state.root.querySelector('.ar-person-segment');
  // The landmark API reads dimensions from HTML video/canvas and ImageBitmap,
  // so stage VideoFrame inputs on a reused canvas before tracking.
- const input=document.createElement('canvas'),ctx=input.getContext('2d',{alpha:false});
- // Portrait segmentation runs separately. Use one independent video-frame
- // tracker for the mask, so a late cutout cannot stop the AR overlay.
+ // Portrait segmentation runs separately. Face tracking always reads the
+ // live <video>, so a late segmentation result cannot block face alignment.
  state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas)||null;
  state.modelState='loading';trackingStatus('PREPARING FACE TRACKING');
  state.requestId=requestAnimationFrame(tick);
