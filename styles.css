@@ -1425,8 +1425,17 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
   top:61px!important;
 }
-#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"]) .ar-copy{
+/* Keep the previously requested raised captions for AR4, AR5 and
+   AR5-2. AR5-1 is a separate Figma scene: its text is at y=144,
+   not 64. Never move every top caption with one shared selector. */
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-2"]) .ar-copy{
   top:64px!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{
+  left:61px!important;top:144px!important;
+  width:306px!important;height:64px!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+  text-align:center!important;color:#fff!important;
 }
 
 /* Figma Group 3 (AR5-1 861:298, AR9 862:304, AR10 862:310).
