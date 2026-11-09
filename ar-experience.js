@@ -196,7 +196,10 @@ function observeFace(points,now){
  const appropriateSize=face.w>.22&&face.w<.76&&face.h>.23&&face.h<.70;
  if(!centered||!appropriateSize){state.guideSince=0;return;}
  if(!state.guideSince)state.guideSince=now;
- if(now-state.guideSince>=1350)enter('AR4');
+ // Begin the portrait engine only after face tracking has locked, but never
+ // advance to the masked scene before a genuine processed frame is visible.
+ ensurePortraitMatte();
+ if(now-state.guideSince>=1350&&state.matte?.visible)enter('AR4');
 }
 function observeHands(hands,now){
  if(!['AR6','AR7'].includes(state.frame))return;
@@ -369,6 +372,12 @@ function start(video){
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }
+function ensurePortraitMatte(){
+ if(!state.playing||!state.root||state.matte)return;
+ try{state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,
+   state.root.querySelector('.ar-person-segment'))||null;}
+ catch(error){console.warn('[DCD AR] Portrait matte init:',error);}
+}
 function startArVisuals(){
  if(!state.playing||!state.root)return;
  // This work was wrongly executed before the first face detection.
@@ -382,11 +391,7 @@ function startArVisuals(){
      state.handGuide?.setFrame(state.frame);
    }catch(error){console.warn('[DCD AR] Gesture guide init:',error);}
  }
- if(!state.matte){
-   try{state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,
-     state.root.querySelector('.ar-person-segment'))||null;}
-   catch(error){console.warn('[DCD AR] Portrait matte init:',error);}
- }
+ ensurePortraitMatte();
 }
 function stop(){
  state.session++;
