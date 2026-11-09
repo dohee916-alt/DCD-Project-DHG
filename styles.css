@@ -336,7 +336,7 @@
 .new-ui-button{z-index:9;padding:0;border:0;background:transparent;pointer-events:auto}
 .new-ui-button img{display:block;width:100%;height:100%;object-fit:fill}
 .new-ui-button.disabled{filter:grayscale(1);opacity:.55;cursor:default}
-.new-signature-sample{z-index:5;opacity:.4}
+.new-signature-sample{z-index:5;opacity:.82;pointer-events:none}
 .new-signature-canvas,.new-signature-ink{z-index:8;touch-action:none;pointer-events:auto}
 .new-signature-guide{z-index:7;font-size:16px;line-height:25px;text-align:center}
 .new-orange-tint{z-index:4;background:#d83a00;mix-blend-mode:color;pointer-events:none}
@@ -630,7 +630,7 @@ canvas.figure{object-fit:contain!important}
 /* WEB13 → WEB14: side-effect list and dose finish moving before
    the signature is mounted. Reveal the signature only on the arrival screen. */
 @keyframes dcdSignatureArrival{from{opacity:0}to{opacity:1}}
-@keyframes dcdSignatureSampleArrival{from{opacity:0}to{opacity:.4}}
+@keyframes dcdSignatureSampleArrival{from{opacity:0}to{opacity:.82}}
 .page-14 .new-signature-canvas,
 .page-14 .new-signature-ink,
 .page-14 .new-signature-trace,
