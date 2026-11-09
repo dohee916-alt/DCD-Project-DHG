@@ -47,7 +47,7 @@ void main(){
   // Give the photographic thread visible scattering while leaving the
   // spaces between woven fibers transparent. A faint organza body connects
   // the fabric even when individual thread pixels shrink at camera scale.
-  float netAlpha=0.095+0.79*strand+0.08*detail;
+  float netAlpha=0.065+0.68*strand+0.06*detail;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -100,56 +100,34 @@ function paintedFabric(height,index){
 // Reference layout from the approved Figma 428×926 portrait frame.
  // Bind word centers to the canonical face UV atlas, not guessed upper/lower
  // slots. The local face guide is x=69.5..358.5, y=267..643.
-function embroiderySlot(config){
-  const lines=config.text.split('\n');
-  const totalHeight=lines.reduce((sum,_,i)=>sum+(config.lh[i]||20),0);
-  const centerX=config.x+config.w/2;
-  const centerY=config.y+totalHeight/2;
-  return {
-    u:clamp((centerX-69.5)/289,.1,.9),
-    v:clamp(1-(centerY-267)/376,.1,.9),
-    max:clamp(config.w/289,.15,.50)
-  };
+// Figma label coordinates relative to a larger rectangular cloth.
+const CLOTH_REF={left:76,right:352,top:297,bottom:693};
+function embroiderySlot(c){
+ const h=c.text.split('\n').reduce((a,_,i)=>a+(c.lh[i]||20),0);
+ return {u:clamp((c.x+c.w/2-CLOTH_REF.left)/276,.13,.87),
+ v:clamp(1-(c.y+h/2-CLOTH_REF.top)/396,.13,.87),
+ max:clamp(c.w/276,.13,.48)};
 }
 function embroideredLetters(variant,index){
-  const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
-  const ctx=c.getContext('2d');
-  const config=FIGMA_MASK_TEXT[variant]?.[index];
-  if(!config)return c;
-  const slot=embroiderySlot(config);
-  // Canonical UVs have a bottom-left origin. Canvas pixels are top-left.
-  // The camera mesh is mirrored; inverse the atlas once, not each letter.
-  ctx.save();
-  ctx.translate(TEXTURE_SIZE,0);
-  ctx.scale(-1,1);
-  ctx.translate(slot.u*TEXTURE_SIZE,(1-slot.v)*TEXTURE_SIZE);
-  ctx.rotate(-config.r*Math.PI/180);
-  ctx.fillStyle='#fff';
-  ctx.textAlign='center';
-  ctx.textBaseline='top';
-  const lines=config.text.split('\n');
-  const sizes=lines.map((_,i)=>config.fs[i]||18);
-  const leading=lines.map((_,i)=>config.lh[i]||20);
-  const totalHeight=leading.reduce((a,b)=>a+b,0);
-  let widest=0;
-  lines.forEach((line,i)=>{
-    ctx.font='700 '+sizes[i]+'px "Turret Road",sans-serif';
-    widest=Math.max(widest,ctx.measureText(line).width);
-  });
-  // Limit the ink's atlas footprint so one phrase cannot sprawl across
-  // both eyes or be folded through the sharp nose ridge.
-  const fit=Math.min(2.65,slot.max*TEXTURE_SIZE/Math.max(widest,1));
-  ctx.scale(fit,fit);
-  let y=-totalHeight/2;
-  lines.forEach((line,i)=>{
-    ctx.font='700 '+sizes[i]+'px "Turret Road",sans-serif';
-    ctx.fillText(line,0,y);
-    y+=leading[i];
-  });
-  ctx.restore();
-  return c;
+ const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
+ const ctx=c.getContext('2d'),config=FIGMA_MASK_TEXT[variant]?.[index];
+ if(!config)return c;
+ const slot=embroiderySlot(config),lines=config.text.split('\n');
+ ctx.save();
+ // No horizontal mirror: the camera position is mirrored once in update().
+ ctx.translate(slot.u*TEXTURE_SIZE,(1-slot.v)*TEXTURE_SIZE);
+ ctx.rotate(config.r*Math.PI/180);
+ ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='top';
+ const fs=lines.map((_,i)=>config.fs[i]||18),lh=lines.map((_,i)=>config.lh[i]||20);
+ const total=lh.reduce((a,b)=>a+b,0);
+ let widest=1;
+ lines.forEach((line,i)=>{ctx.font='700 '+fs[i]+'px "Turret Road",sans-serif';widest=Math.max(widest,ctx.measureText(line).width)});
+ ctx.scale(Math.min(2.1,slot.max*TEXTURE_SIZE*.86/widest),Math.min(2.1,slot.max*TEXTURE_SIZE*.86/widest));
+ let y=-total/2;
+ lines.forEach((line,i)=>{ctx.font='700 '+fs[i]+'px "Turret Road",sans-serif';ctx.fillText(line,0,y);y+=lh[i]});
+ ctx.restore();
+ return c;
 }
-
 function faceOutline(connections){
   if(!connections?.length)return [];
   const around=new Map();
@@ -287,7 +265,6 @@ function create(root){
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
   const stitchUniform=gl.getUniformLocation(program,'embroideryMask');
-  const rings=[.30,.60,.82,1];
   let outline=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let live=true,frameId=0,lastRendered=0,renderErrorReported=false;
   let setupStatus='pending',lastDiagnostic='',lastDiagnosticAt=0,lastFaceSeenAt=0;
@@ -306,30 +283,21 @@ function create(root){
   }
   const textures={},layers=[];
   const canvasBackup=canvasCloth(root);
+  const columns=28,rows=34;
   function setConnections(){
-    outline=FACE_RIM.slice();
-    if(outline.length<25)return false;
-    const size=outline.length;
     const indices=[];
-    for(let i=0;i<size;i++){
-      const j=(i+1)%size;
-      indices.push(0,1+i,1+j);
-      for(let ring=1;ring<rings.length;ring++){
-        const a=1+(ring-1)*size+i,b=1+(ring-1)*size+j;
-        const c=1+ring*size+i,d=1+ring*size+j;
-        indices.push(a,c,d,a,d,b);
-      }
+    for(let y=0;y<rows;y++)for(let x=0;x<columns;x++){
+      const a=y*(columns+1)+x,b=a+1,c=a+columns+1,d=c+1;
+      indices.push(a,c,b,b,c,d);
     }
     indexCount=indices.length;
-    const count=1+rings.length*size;
-    mesh=new Float32Array(count*stride);
+    mesh=new Float32Array((columns+1)*(rows+1)*stride);
     vertices=new Float32Array(mesh.length);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
     gl.bufferData(gl.ARRAY_BUFFER,vertices.byteLength,gl.DYNAMIC_DRAW);
-    setupStatus='ready';
-    root.dataset.tulleSetup='ready';
+    setupStatus='ready';root.dataset.tulleSetup='ready';
     return true;
   }
   function makeTexture(source){
@@ -376,46 +344,38 @@ function create(root){
     }catch(error){root.dataset.tulleTexture='error';console.error('[DCD] Cloth texture preparation:',error);}
   })();
   function update(points,width,height){
-    if(!mesh||!points?.length||!width||!height){
+    if(!mesh||!points?.length||points.length<468||!width||!height){
       if(performance.now()-lastFaceSeenAt>1600)faceCenter=null;
-      canvasBackup.update(null,width,height);
-      return;
+      canvasBackup.update(null,width,height);return;
     }
-    lastFaceSeenAt=performance.now();
-    canvasBackup.update(points,width,height);
-    const scale=Math.max(W/width,H/height),dw=width*scale,dh=height*scale;
-    const offsetX=(W-dw)/2,offsetY=(H-dh)/2;
-    const oval=outline.map(i=>({
-      x:offsetX+(1-points[i].x)*dw,y:offsetY+points[i].y*dh
-    }));
-    const center=oval.reduce((sum,p)=>({x:sum.x+p.x/oval.length,y:sum.y+p.y/oval.length}),{x:0,y:0});
-    // Unroll the face to assign one continuous UV field. The geometry uses
-    // only the outer contour, so expressions cannot emboss eyes or lips.
-    const left=points[263],right=points[33];
-    const dx=(left.x-right.x)*dw,dy=(right.y-left.y)*dh;
-    const length=Math.hypot(dx,dy)||1,cos=dx/length,sin=dy/length;
-    const local=oval.map(p=>{
-      const x=p.x-center.x,y=p.y-center.y;
-      return {x:x*cos+y*sin,y:y*cos-x*sin};
-    });
-    const rx=Math.max(...local.map(p=>Math.abs(p.x)))*1.20;
-    const ry=Math.max(...local.map(p=>Math.abs(p.y)))*1.20;
-    if(!Number.isFinite(rx)||rx<18||ry<25){faceCenter=null;return;}
-    faceCenter=center;
-    mesh.set([center.x,center.y,0,.5,.5,1,0],0);
-    for(let ring=0;ring<rings.length;ring++){
-      const r=rings[ring];
-      local.forEach((p,i)=>{
-        const x=p.x*1.18*r,y=p.y*(p.y<0?1.25:1.15)*r;
-        const at=(1+ring*local.length+i)*stride;
-        mesh[at]=center.x+x*cos-y*sin;
-        mesh[at+1]=center.y+x*sin+y*cos;
-        mesh[at+2]=0;
-        mesh[at+3]=.5+.45*x/rx;
-        mesh[at+4]=.5-.45*y/ry;
-        mesh[at+5]=.99-.11*r*r+.045*(x/rx-y/ry);
-        mesh[at+6]=r;
-      });
+    lastFaceSeenAt=performance.now();canvasBackup.update(points,width,height);
+    const factor=Math.max(W/width,H/height),dw=width*factor,dh=height*factor;
+    const ox=(W-dw)/2,oy=(H-dh)/2;
+    const p=i=>({x:ox+(1-points[i].x)*dw,y:oy+points[i].y*dh});
+    const forehead=p(10),chin=p(152),left=p(234),right=p(454),eyeA=p(33),eyeB=p(263);
+    const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
+    const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
+    const angle=Math.atan2(eyeB.y-eyeA.y,eyeB.x-eyeA.x),co=Math.cos(angle),si=Math.sin(angle);
+    const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2;
+    faceCenter={x:cx,y:cy};
+    const cw=fw*1.57,ch=fh*1.65;
+    for(let y=0;y<=rows;y++)for(let x=0;x<=columns;x++){
+      const u=x/columns,v=y/rows,nx=u*2-1;
+      const edgeX=Math.max(0,(Math.abs(nx)-.68)/.32);
+      const lower=Math.max(0,(v-.69)/.31);
+      const curl=lower*lower*(.12+.28*edgeX);
+      const px=nx*cw*.5*(1-curl);
+      const py=(v-.47)*ch+lower*lower*fh*.075;
+      const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
+      const cheek=Math.exp(-(((Math.abs(nx)-.51)/.27)**2+((v-.51)/.31)**2));
+      const at=(y*(columns+1)+x)*stride;
+      mesh[at]=cx+px*co-py*si;
+      mesh[at+1]=cy+px*si+py*co;
+      mesh[at+2]=.02+bump*.055+cheek*.025-curl*.10;
+      mesh[at+3]=u;mesh[at+4]=1-v;
+      mesh[at+5]=clamp(.91+.12*bump+.04*cheek-.16*curl,.70,1.10);
+      const border=Math.min(u,1-u,v,1-v);
+      mesh[at+6]=clamp((.075-border)/.075,0,1);
     }
   }
   function arrival(t){
