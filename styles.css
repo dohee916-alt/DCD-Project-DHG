@@ -1193,3 +1193,50 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive.ar-matting-active .ar-portrait-camera{
   opacity:0!important;
 }
+
+
+/* Latest Figma 04_AR 636:456 / 636:672:
+   AR5 = clear camera + both choices; AR5-1 = blurred camera AND
+   all organza/embroidered words, then four tinted gradient passes,
+   then sharp pack, copy and one centered NO button. */
+.ar-immersive[data-ar-frame="AR5"] .ar-organza-stack,
+.ar-immersive[data-ar-frame="AR5"] .ar-person-segment{
+  filter:none!important;-webkit-filter:none!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-organza-stack{
+  filter:blur(24px)!important;-webkit-filter:blur(24px)!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-person-segment{
+  filter:blur(24px) saturate(.86)!important;
+  -webkit-filter:blur(24px) saturate(.86)!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient{
+  display:block!important;position:absolute!important;inset:0!important;
+  z-index:5!important;opacity:1!important;
+  background:none!important;mix-blend-mode:normal!important;
+  pointer-events:none!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient::before{
+  content:"";position:absolute;inset:0;
+  background:rgba(216,58,0,.64);
+  mix-blend-mode:hard-light;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient::after{
+  content:"";position:absolute;inset:0;
+  background:
+    linear-gradient(103deg,rgba(255,255,255,0) 25%,rgba(157,42,0,.62) 100%),
+    linear-gradient(166deg,rgba(255,255,255,0) 27%,rgba(207,73,0,.64) 100%),
+    linear-gradient(193deg,rgba(255,255,255,0) 29%,rgba(194,81,0,.57) 100%),
+    linear-gradient(103deg,rgba(255,255,255,.38) 0%,rgba(255,255,255,0) 37%);
+  background-blend-mode:multiply,multiply,multiply,lighten;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-pack{
+  z-index:7!important;filter:none!important;-webkit-filter:none!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-flow-choices{
+  left:140px!important;top:761px!important;width:134px!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice.no{
+  left:0!important;top:0!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice.yes{display:none!important}
