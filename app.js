@@ -850,7 +850,7 @@ function openArPack(){
   setPage('arOpen','opening');
   morphArBlister();
 }
-function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'));else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
+function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;if(['00','01','02'].includes(s.page)&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');
 if(packHand){
   // The workbench re-renders after injections; keep the animation clock
@@ -1153,16 +1153,26 @@ function declineConsent(){
   root.querySelectorAll('.consent-button').forEach(n=>n.remove());
   later(()=>{if(s.page!=='16')return;if(copy){copy.innerHTML='Thank you<br>for Prescribing!';copy.style.opacity='1';}root.insertAdjacentHTML('beforeend',glassButton('TEST IT',669,241,134,'ar'));},720);
 }
-// WEB03 is a timed instruction, never a sensor-gated screen.
-// Three 1-second ROTATE YOUR PHONE blinks, then the syringe hand tutorial
-// appears on WEB04 whether or not the browser reports orientation changes.
+// WEB03's instruction blinks exactly three times. A browser with a
+// portrait-locked viewport cannot display the original landscape workspace
+// without letterboxing or altering its layout. Never force that transition.
+function workbenchViewportReady(){
+ const viewport=document.querySelector('#viewport');
+ return (viewport?.clientWidth||window.innerWidth)>(viewport?.clientHeight||window.innerHeight);
+}
+function finishRotateGuide(){
+ if(s.page==='03'&&rotateGuideFinished&&workbenchViewportReady())
+   setPage('workbench');
+}
 function startRotateGuide(){
  rotateGuideFinished=false;
  setPage('03');
  later(()=>{
    if(s.page!=='03')return;
    rotateGuideFinished=true;
-   setPage('workbench');
+   s.phase='waiting';
+   render();
+   finishRotateGuide();
  },M.rotateGuideMs);
 }
 async function advanceNewPrescription(){
@@ -1279,7 +1289,7 @@ stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){
 function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};}
 // Actual device rotation changes the viewport's layout only. It never
 // blocks the timed WEB03 -> WEB04 tutorial transition.
-function onViewportChange(){fit();}
+function onViewportChange(){fit();finishRotateGuide();}
 window.addEventListener('resize',onViewportChange);
 window.addEventListener('orientationchange',onViewportChange);
 if(s.page==='00'&&s.phase==='intro')runIntro('00');else if(s.page==='01'&&s.phase==='intro')runIntro('01');else if(s.page==='03')startRotateGuide();else render();
