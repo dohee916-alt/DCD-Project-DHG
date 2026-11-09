@@ -14,17 +14,49 @@ const state={root:null,video:null,stage:null,frame:'AR3',maskCount:0,variant:'fi
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+/* Figma 04_AR / AR5-1 / Group 3 (861:298).
+   Group is PASS_THROUGH: each layer is a direct sibling so its multiply /
+   lighten blend sees the live blurred portrait below, not an isolated div. */
+const FIGMA_AR5_GRADIENTS=[
+ {name:'five',x:0,y:8,w:510,h:942,blend:'multiply',
+  matrix:[[-.261646211147,.979446947575,.093781098723],[-.979446947575,-.533300399780,1.307422280312]],
+  last:'#c25100',lastPos:.995192289352},
+ {name:'four',x:7,y:6,w:510,h:942,blend:'multiply',
+  matrix:[[-1.223036766052,.210096642375,.913036763668],[-.554390549660,-3.781685113907,1.335150957108]],
+  last:'#cf4900',lastPos:.995192289352},
+ {name:'three',x:14,y:0,w:510,h:942,blend:'multiply',
+  matrix:[[-1.122400164604,.128929197788,.844849586487],[-.449927955866,-3.489359378815,1.223451256752]],
+  last:'#9e4f00',lastPos:.995192289352},
+ {name:'six',x:0,y:8,w:510,h:942,blend:'lighten',
+  matrix:[[-.261646211147,.979446947575,.093781098723],[-.979446947575,-.533300399780,1.307422280312]],
+  last:'#9e2a00',lastPos:.995192289352,light:true}
+];
+function figmaAR5GradientMarkup(){
+ let result='<div class="ar5-figma-tint" aria-hidden="true"></div>';
+ for(const g of FIGMA_AR5_GRADIENTS){
+  const m=g.matrix;
+  // Figma's gradientTransform is normalized to the 510x942 layer bounds.
+  const x1=m[0][2]*g.w,y1=m[1][2]*g.h;
+  const x2=(m[0][2]+m[0][0])*g.w,y2=(m[1][2]+m[1][0])*g.h;
+  const id='ar5-gradient-'+g.name;
+  result+='<svg class="ar5-figma-gradient ar5-figma-'+g.name+'" '+
+   'style="left:'+g.x+'px;top:'+g.y+'px;mix-blend-mode:'+g.blend+'" '+
+   'width="'+g.w+'" height="'+g.h+'" viewBox="0 0 '+g.w+' '+g.h+'" aria-hidden="true">'+
+   '<defs><linearGradient id="'+id+'" gradientUnits="userSpaceOnUse" '+
+   'x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'">'+
+   '<stop offset="0" stop-color="#ffffff" stop-opacity="'+(g.light?.8:1)+'"/>'+
+   '<stop offset=".293269217014" stop-color="#ffffff" stop-opacity="0"/>'+
+   '<stop offset="'+g.lastPos+'" stop-color="'+g.last+'" stop-opacity="'+(g.light?0:1)+'"/>'+
+   '</linearGradient></defs><rect width="'+g.w+'" height="'+g.h+'" fill="url(#'+id+')"/></svg>';
+ }
+ return result;
+}
 function markup(){
  return '<div class="ar-immersive" data-ar-frame="AR3">'+
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
  '<canvas class="ar-person-segment" width="428" height="926" aria-hidden="true"></canvas>'+
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
- '<div class="ar-choice-gradient" aria-hidden="true">'+
-    '<div class="ar5-1-source-tint"></div>'+
-    '<div class="poster-gradient poster-gradient-a"></div>'+
-    '<div class="poster-gradient poster-gradient-b"></div>'+
-    '<div class="poster-gradient poster-gradient-c"></div>'+
-    '<div class="poster-gradient poster-gradient-d"></div></div>'+
+ '<div class="ar-choice-gradient" aria-hidden="true"></div>'+figmaAR5GradientMarkup()+
  '<div class="ar-choice-pack" aria-hidden="true"></div>'+
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
