@@ -158,7 +158,7 @@ return h;}
 function resultMarkup(){const root='assets/figma-current/hd/';return img(A.posterResult,0,0,428,926,'poster-art poster-result-art')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+figmaGlassText('easiest',64.5,90.5,299,17,root+'poster-tagline-base.svg',root+'poster-tagline.svg')+text('CLICK THE PACK TO START',26,808,376,96,'doto guide-blink poster-click-guide')+'<button class="full-hit" data-action="start" aria-label="Start"></button>';}
 function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.workbenchPack,0,0,337,224,'pack pack-image pack-clear-back workbench-native-export');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack',packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,88,141,110,85,'bottle');if(!s.used.purple&&s.loaded!=='purple')h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label bottle-label-purple');if(!s.used.orange&&s.loaded!=='orange')h+=text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label bottle-label-orange');
 if(!f.packed)h+=canvasFigure(s.active,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h,'active-figure');h+=syringeMarkup();
-if(showTutorial&&!s.handGuideDismissed&&!s.firstFill&&s.phase==='ready')h+=handGuide();
+if(showTutorial&&!s.handGuideDismissed&&!s.firstFill&&(s.phase==='ready'||(s.page==='03'&&s.phase==='waiting')))h+=handGuide();
 if(showTutorial&&s.loaded&&!s.firstInject&&s.phase==='ready')h+=injectionHandGuide();
 if(showTutorial&&s.firstInject&&!s.packGuideDone&&!s.figures.some(v=>v.packed)&&s.phase==='ready')h+=packHandGuide();
 if(f.value===0)h+=text('MINIMIZE',282,392,292,44,'doto guide-blink workbench-guide');if(f.value===100)h+=text('MAXIMIZE',282,389,292,44,'doto guide-blink workbench-guide');
@@ -838,7 +838,7 @@ function openArPack(){
   setPage('arOpen','opening');
   morphArBlister();
 }
-function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
+function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(s.phase==='waiting').replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;if(['00','01','02'].includes(s.page)&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');
 if(packHand){
   // The workbench re-renders after injections; keep the animation clock
@@ -1146,8 +1146,16 @@ function declineConsent(){
 // to motion sensors. Desktop retains its original orientation interaction.
 let physicalLandscape=false;
 function finishRotationIfReady(){
- if(s.page!=='03'||!rotateGuideFinished||phoneDevice())return;
- if(window.innerWidth>window.innerHeight||physicalLandscape)setPage('workbench');
+ if(s.page!=='03'||!rotateGuideFinished)return;
+ // On a phone with rotation lock, the browser stays portrait: leave WEB03
+ // in place instead of squeezing a landscape WEB04 into a portrait viewport.
+ const v=document.querySelector('#viewport');
+ const landscape=(v?.clientWidth||window.innerWidth)>(v?.clientHeight||window.innerHeight);
+ if(phoneDevice()){
+   if(landscape)setPage('workbench');
+   return;
+ }
+ if(landscape||physicalLandscape)setPage('workbench');
 }
 function startRotateGuide(){
  rotateGuideFinished=false;
@@ -1155,10 +1163,6 @@ function startRotateGuide(){
  later(()=>{
    if(s.page!=='03')return;
    rotateGuideFinished=true;
-   if(phoneDevice()){
-     setPage('workbench');
-     return;
-   }
    s.phase='waiting';
    render();
    finishRotationIfReady();
