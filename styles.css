@@ -1083,20 +1083,19 @@ canvas.figure{object-fit:contain!important}
    rgba(247,212,202,.13),rgba(235,176,160,.08) 72%,transparent)!important;
 }
 
-/* Figma 04_AR places labels in 428x926 phone MOCKUPS.
-   The top 80px of mock-only OS chrome is not part of the live AR stage.
-   Subtract that area from every Figma label Y without changing font,
-   text width, horizontal alignment, or gesture/fabric geometry. */
+/* Figma frame positions use the complete 428x926 artboard.
+   Mock status chrome is drawn OVER the artwork, not an 80px content inset.
+   Keep frame-local coordinates identical to Figma; never subtract 80px. */
 .ar-immersive[data-ar-frame="AR3"] .ar-copy,
 .ar-immersive[data-ar-frame="AR6"] .ar-copy,
-.ar-immersive[data-ar-frame="AR7"] .ar-copy{top:61px!important}
+.ar-immersive[data-ar-frame="AR7"] .ar-copy{top:141px!important}
 .ar-immersive[data-ar-frame="AR4"] .ar-copy,
 .ar-immersive[data-ar-frame="AR5"] .ar-copy,
 .ar-immersive[data-ar-frame="AR5-1"] .ar-copy,
 .ar-immersive[data-ar-frame="AR5-2"] .ar-copy,
-.ar-immersive[data-ar-frame="AR8"] .ar-copy{top:64px!important}
+.ar-immersive[data-ar-frame="AR8"] .ar-copy{top:144px!important}
 .ar-immersive[data-ar-frame="AR9"] .ar-copy{top:430px!important}
-.ar-immersive[data-ar-frame="AR10"] .ar-copy{top:382px!important}
+.ar-immersive[data-ar-frame="AR10"] .ar-copy{top:0!important}
 
 /* WEB 01 user-approved try-webguide 607:336, not legacy WEB 01.
    Figma target shapes (30%) are reference points ONLY; no ghost rendering.
@@ -1355,4 +1354,51 @@ canvas.figure{object-fit:contain!important}
 }
 .ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
   opacity:0!important;visibility:hidden!important;
+}
+
+/* AR9 / AR10 typography: Figma has three distinct text layers.
+   AR10 NOT and its supporting copy must not share a flowing text box. */
+.ar-immersive[data-ar-frame="AR9"] .ar-copy{
+  position:absolute!important;left:61px!important;right:auto!important;
+  top:430px!important;width:306px!important;height:64px!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+  letter-spacing:0!important;text-align:center!important;
+  color:#f9f6f2!important;white-space:pre-line!important;
+}
+.ar-immersive[data-ar-frame="AR10"] .ar-copy{
+  position:absolute!important;left:0!important;right:0!important;
+  top:0!important;width:428px!important;height:926px!important;
+  font-family:"Source Sans 3",Arial,sans-serif!important;
+  color:#f9f6f2!important;pointer-events:none!important;
+  white-space:normal!important;text-align:center!important;
+}
+.ar-immersive[data-ar-frame="AR10"] .ar-final-not{
+  display:block!important;position:absolute!important;
+  top:382px!important;left:61px!important;width:306px!important;
+  height:70px!important;margin:0!important;padding:0!important;
+  font:700 64px/70px "Source Sans 3",Arial,sans-serif!important;
+  letter-spacing:0!important;text-align:center!important;
+}
+.ar-immersive[data-ar-frame="AR10"] .ar-final-rest{
+  display:block!important;position:absolute!important;
+  top:454px!important;left:61px!important;width:306px!important;
+  height:96px!important;margin:0!important;padding:0!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+  letter-spacing:0!important;text-align:center!important;
+  white-space:pre-line!important;
+}
+/* One explicit Doto blinking class synchronized with AR frame state. */
+@keyframes arDotoGuideBlink{
+  0%,49.999%{opacity:1}
+  50%,99.999%{opacity:0}
+  100%{opacity:1}
+}
+.ar-immersive.ar-doto-blink .ar-copy{
+  font-family:Doto,Arial,sans-serif!important;
+  animation:arDotoGuideBlink 1s steps(1,end) infinite!important;
+}
+@media (prefers-reduced-motion:reduce){
+  .ar-immersive.ar-doto-blink .ar-copy{
+    animation:none!important;opacity:1!important;
+  }
 }
