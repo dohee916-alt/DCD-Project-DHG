@@ -14,51 +14,14 @@ const state={root:null,video:null,stage:null,frame:'AR3',maskCount:0,variant:'fi
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-/* Figma 04_AR / AR5-1 / Group 3 (861:298).
-   Group is PASS_THROUGH: each layer is a direct sibling so its multiply /
-   lighten blend sees the live blurred portrait below, not an isolated div. */
-const FIGMA_AR5_GRADIENTS=[
- {name:'five',x:0,y:8,w:510,h:942,blend:'multiply',
-  matrix:[[-.261646211147,.979446947575,.093781098723],[-.979446947575,-.533300399780,1.307422280312]],
-  last:'#c25100',lastPos:.995192289352},
- {name:'four',x:7,y:6,w:510,h:942,blend:'multiply',
-  matrix:[[-1.223036766052,.210096642375,.913036763668],[-.554390549660,-3.781685113907,1.335150957108]],
-  last:'#cf4900',lastPos:.995192289352},
- {name:'three',x:14,y:0,w:510,h:942,blend:'multiply',
-  matrix:[[-1.122400164604,.128929197788,.844849586487],[-.449927955866,-3.489359378815,1.223451256752]],
-  last:'#9e4f00',lastPos:.995192289352},
- {name:'six',x:0,y:8,w:510,h:942,blend:'lighten',
-  matrix:[[-.261646211147,.979446947575,.093781098723],[-.979446947575,-.533300399780,1.307422280312]],
-  last:'#9e2a00',lastPos:.995192289352,light:true}
-];
-function figmaAR5GradientMarkup(){
- let result='<div class="ar5-figma-tint" aria-hidden="true"></div>';
- for(const g of FIGMA_AR5_GRADIENTS){
-  const m=g.matrix;
-  // Figma's gradientTransform is normalized to the 510x942 layer bounds.
-  const x1=m[0][2]*g.w,y1=m[1][2]*g.h;
-  const x2=(m[0][2]+m[0][0])*g.w,y2=(m[1][2]+m[1][0])*g.h;
-  const id='ar5-gradient-'+g.name;
-  result+='<svg class="ar5-figma-gradient ar5-figma-'+g.name+'" '+
-   'style="left:'+g.x+'px;top:'+g.y+'px;mix-blend-mode:'+g.blend+'" '+
-   'width="'+g.w+'" height="'+g.h+'" viewBox="0 0 '+g.w+' '+g.h+'" aria-hidden="true">'+
-   '<defs><linearGradient id="'+id+'" gradientUnits="userSpaceOnUse" '+
-   'x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'">'+
-   '<stop offset="0" stop-color="#ffffff" stop-opacity="'+(g.light?.8:1)+'"/>'+
-   '<stop offset=".293269217014" stop-color="#ffffff" stop-opacity="0"/>'+
-   '<stop offset="'+g.lastPos+'" stop-color="'+g.last+'" stop-opacity="'+(g.light?0:1)+'"/>'+
-   '</linearGradient></defs><rect width="'+g.w+'" height="'+g.h+'" fill="url(#'+id+')"/></svg>';
- }
- return result;
-}
+const FIGMA_AR_GROUP_SVG="<svg class=\"ar-group3-figma\" width=\"428\" height=\"912\" viewBox=\"0 0 428 912\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<g style=\"mix-blend-mode:color\"><rect x=\"-16.0001\" y=\"895\" width=\"883\" height=\"459\" transform=\"rotate(-90 -16.0001 895)\" fill=\"#D83A00\" style=\"fill:#D83A00;fill:color(display-p3 0.8461 0.2256 0.0000);fill-opacity:1;mix-blend-mode:hard-light\"/></g>\n<rect x=\"476\" y=\"942\" width=\"510\" height=\"942\" transform=\"rotate(-180 476 942)\" fill=\"url(#paint0_linear_861_298)\" style=\"mix-blend-mode:multiply\"/>\n<rect x=\"469\" y=\"944\" width=\"510\" height=\"942\" transform=\"rotate(-180 469 944)\" fill=\"url(#paint1_linear_861_298)\" style=\"mix-blend-mode:multiply\"/>\n<rect x=\"462\" y=\"950\" width=\"510\" height=\"942\" transform=\"rotate(-180 462 950)\" fill=\"url(#paint2_linear_861_298)\" style=\"mix-blend-mode:multiply\"/>\n<path d=\"M476 942L-34.0001 942L-34 1.22392e-06L476 4.58095e-05L476 942Z\" fill=\"url(#paint3_linear_861_298)\" style=\"mix-blend-mode:lighten\"/>\n<defs>\n<linearGradient id=\"paint0_linear_861_298\" x1=\"866.251\" y1=\"1044.36\" x2=\"484.613\" y2=\"1817.82\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"white\" style=\"stop-color:white;stop-opacity:1;\"/>\n<stop offset=\"0.293269\" stop-color=\"white\" stop-opacity=\"0\" style=\"stop-color:none;stop-opacity:0;\"/>\n<stop offset=\"0.995192\" stop-color=\"#C25100\" style=\"stop-color:#C25100;stop-color:color(display-p3 0.7596 0.3165 0.0000);stop-opacity:1;\"/>\n</linearGradient>\n<linearGradient id=\"paint1_linear_861_298\" x1=\"859.251\" y1=\"1046.36\" x2=\"445.833\" y2=\"1084.81\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"white\" style=\"stop-color:white;stop-opacity:1;\"/>\n<stop offset=\"0.293269\" stop-color=\"white\" stop-opacity=\"0\" style=\"stop-color:none;stop-opacity:0;\"/>\n<stop offset=\"0.995192\" stop-color=\"#CF4900\" style=\"stop-color:#CF4900;stop-color:color(display-p3 0.8125 0.2844 0.0000);stop-opacity:1;\"/>\n</linearGradient>\n<linearGradient id=\"paint2_linear_861_298\" x1=\"852.251\" y1=\"1052.36\" x2=\"399.619\" y2=\"1080.51\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"white\" style=\"stop-color:white;stop-opacity:1;\"/>\n<stop offset=\"0.293269\" stop-color=\"white\" stop-opacity=\"0\" style=\"stop-color:none;stop-opacity:0;\"/>\n<stop offset=\"0.995192\" stop-color=\"#9E4F00\" style=\"stop-color:#9E4F00;stop-color:color(display-p3 0.6196 0.3098 0.0000);stop-opacity:1;\"/>\n</linearGradient>\n<linearGradient id=\"paint3_linear_861_298\" x1=\"85.7484\" y1=\"839.639\" x2=\"467.387\" y2=\"66.1786\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"white\" stop-opacity=\"0.8\" style=\"stop-color:white;stop-opacity:0.8;\"/>\n<stop offset=\"0.293269\" stop-color=\"white\" stop-opacity=\"0\" style=\"stop-color:none;stop-opacity:0;\"/>\n<stop offset=\"0.995192\" stop-color=\"#9E2A00\" stop-opacity=\"0\" style=\"stop-color:none;stop-opacity:0;\"/>\n</linearGradient>\n</defs>\n</svg>\n";
 function markup(){
  return '<div class="ar-immersive" data-ar-frame="AR3">'+
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
  '<canvas class="ar-person-segment" width="428" height="926" aria-hidden="true"></canvas>'+
- '<img class="ar-figma-person-union" src="assets/figma-current/hd/ar5-1-union-blurred-figma.png" alt="" aria-hidden="true">'+
 
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
- '<div class="ar-choice-gradient" aria-hidden="true"></div>'+figmaAR5GradientMarkup()+
+ '<div class="ar-choice-gradient" aria-hidden="true"></div>'+FIGMA_AR_GROUP_SVG+
  '<div class="ar-choice-pack" aria-hidden="true"></div>'+
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
