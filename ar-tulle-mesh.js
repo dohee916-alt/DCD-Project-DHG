@@ -215,8 +215,8 @@ function canvasCloth(root){
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
     // Keep generous margins around the face, but never let the cloth grow
     // into the heading or extend an entire face-height beyond the chin.
-    const cw=clamp(fw*1.18,fw+18,340);
-    const ch=clamp(fh*1.18,fh+25,495);
+    const cw=clamp(fw*1.32,fw+24,382);
+    const ch=clamp(fh*1.30,fh+35,540);
     const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
@@ -473,7 +473,7 @@ function create(root){
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
     const angle=uprightFaceAngle(eyeA,eyeB),co=Math.cos(angle),si=Math.sin(angle);
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2;
-    const cw=clamp(fw*1.18,fw+18,340),ch=clamp(fh*1.18,fh+25,495);
+    const cw=clamp(fw*1.32,fw+24,382),ch=clamp(fh*1.30,fh+35,540);
     faceCenter={x:cx,y:cy,cw,ch,co,si,fw,fh};
     // Build the real tracked face surface in the same mirrored screen space.
     facePixels=new Float32Array(468*2);
