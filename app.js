@@ -348,7 +348,17 @@ function bindNewSignature(){
   const c=stage.querySelector('#new-signature');if(!c)return;
   const ctx=c.getContext('2d');ctx.strokeStyle='#171717';ctx.lineWidth=6;ctx.lineCap='round';ctx.lineJoin='round';
   let activePointer=null,strokeMoved=false,hasInk=!!s.signed;
-  function point(e){const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}
+  function point(e){
+    // The mobile scene is rotated +90deg. A canvas bounding rectangle is an
+    // axis-aligned box, so using its left/top offsets shifts ink away from
+    // the finger. Convert through the same inverse stage+scene transform as
+    // all WEB04–WEB16 touch interactions, then to the canvas bitmap units.
+    const scene=localPoint(e);
+    return {
+      x:(scene.x-c.offsetLeft)*c.width/c.offsetWidth,
+      y:(scene.y-c.offsetTop)*c.height/c.offsetHeight
+    };
+  }
   c.onpointerdown=e=>{
     e.stopPropagation();e.preventDefault();
     if(activePointer!==null)return;
@@ -741,11 +751,11 @@ async function beginAr(){
   // The outgoing prescription fades away with its screen.
   // Keep the incoming title inside the AR stage, not in a separate layer.
   wrapper.appendChild(oldLayer);
-  const flying=oldPack.cloneNode(true);
-  // Preserve the original class list: it contains the Figma canvas crop
-  // rules for each figure. Only add the handoff-specific positioning class.
+  // Transfer the EXACT visible blister node, including the four already
+  // rendered canvases. No duplicate object may enter from another position.
+  // The outgoing scene is a separate snapshot without this original pack.
+  const flying=oldPack;
   flying.classList.add('dcd-ar-flying-pack');
-  copyRenderedCanvases(oldPack,flying);
   flying.style.left=originalRect.left+'px';
   flying.style.top=originalRect.top+'px';
   wrapper.appendChild(flying);
@@ -874,6 +884,9 @@ async function beginAr(){
     if(incomingGradient)incomingGradient.style.opacity='1';
     if(incomingHeading)incomingHeading.style.opacity='1';
     stage.style.transform=nativeTransform;stage.style.opacity='1';
+    // The finished pack is already at its destination. Do not replay the
+    // AR's standalone "arrive from above" animation after handoff completes.
+    stage.classList.add('dcd-ar-arrived');
     stage.classList.remove('dcd-ar-handoff-stage');
     wrapper.remove();
     view.classList.remove('dcd-ar-warm-bridge');
