@@ -267,7 +267,10 @@ function tick(){
  if(!state.playing)return;
  state.requestId=requestAnimationFrame(tick);
  const video=state.video;
- if(state.matte?.visible||video.readyState<2||video.currentTime===state.lastVideoTime)return;
+ // Facial landmarks must continue updating whether the portrait matte is
+ // loading, visible, stalled or switching engines. The matte affects only
+ // the camera background, never the mask's face tracking.
+ if(video.readyState<2||video.currentTime===state.lastVideoTime)return;
  state.lastVideoTime=video.currentTime;
  track(video,video.videoWidth,video.videoHeight);
 }
@@ -292,15 +295,9 @@ function start(video){
  // The landmark API reads dimensions from HTML video/canvas and ImageBitmap,
  // so stage VideoFrame inputs on a reused canvas before tracking.
  const input=document.createElement('canvas'),ctx=input.getContext('2d',{alpha:false});
- state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas,(frame,w,h)=>{
-   const now=performance.now();
-   if(!(state.face&&now-state.lastFace>=42)&&!handsDue(now))return;
-   const scale=Math.min(1,640/Math.max(w,h));
-   const width=Math.round(w*scale),height=Math.round(h*scale);
-   if(input.width!==width||input.height!==height){input.width=width;input.height=height;}
-   ctx.drawImage(frame,0,0,width,height);
-   track(input,w,h,now);
- })||null;
+ // Portrait segmentation runs separately. Use one independent video-frame
+ // tracker for the mask, so a late cutout cannot stop the AR overlay.
+ state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas)||null;
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }
