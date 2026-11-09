@@ -377,8 +377,10 @@ function startArVisuals(){
    catch(error){console.warn('[DCD AR] Organza init:',error);}
  }
  if(!state.handGuide){
-   try{state.handGuide=window.DCD_AR_HAND_GUIDE?.create(state.root)||null;}
-   catch(error){console.warn('[DCD AR] Gesture guide init:',error);}
+   try{
+     state.handGuide=window.DCD_AR_HAND_GUIDE?.create(state.root)||null;
+     state.handGuide?.setFrame(state.frame);
+   }catch(error){console.warn('[DCD AR] Gesture guide init:',error);}
  }
  if(!state.matte){
    try{state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,
