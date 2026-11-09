@@ -1162,7 +1162,10 @@ function finishRotationIfReady(){
  // On mobile, wait for the BROWSER VIEWPORT to physically become landscape.
  // Device tilt alone does not mean the CSS viewport rotated (auto-rotate may
  // be disabled); entering workbench then would recreate the tiny-strip bug.
- const rotated=phoneDevice()?viewportLandscape():(viewportLandscape()||physicalLandscape);
+ // Device rotation is sufficient to advance even if the browser viewport
+ // stays portrait due to an OS/browser orientation lock. Do NOT change
+ // mobile layout or auto-rotate the stage here.
+ const rotated=viewportLandscape()||physicalLandscape;
  if(s.page==='03'&&rotateGuideFinished&&rotated)setPage('workbench');
 }
 function startRotateGuide(){
