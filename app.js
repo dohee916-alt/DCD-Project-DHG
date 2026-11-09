@@ -1153,19 +1153,23 @@ function declineConsent(){
   root.querySelectorAll('.consent-button').forEach(n=>n.remove());
   later(()=>{if(s.page!=='16')return;if(copy){copy.innerHTML='Thank you<br>for Prescribing!';copy.style.opacity='1';}root.insertAdjacentHTML('beforeend',glassButton('TEST IT',669,241,134,'ar'));},720);
 }
-// WEB03's instruction blinks exactly three times. A browser with a
-// portrait-locked viewport cannot display the original landscape workspace
-// without letterboxing or altering its layout. Never force that transition.
-function workbenchViewportReady(){
- const viewport=document.querySelector('#viewport');
- return (viewport?.clientWidth||window.innerWidth)>(viewport?.clientHeight||window.innerHeight);
+// WEB03: blink ROTATE YOUR PHONE three times, and WAIT. Never move into
+// the landscape workbench merely because three seconds elapsed. On phones,
+// accept a real physical turn even if browser auto-rotation is locked.
+let rotateTurnDetected=false,rotateLastPortrait=false,rotateSensorAt=0;
+function landscapeViewport(){
+ const v=document.querySelector('#viewport');
+ return (v?.clientWidth||window.innerWidth)>(v?.clientHeight||window.innerHeight);
 }
 function finishRotateGuide(){
- if(s.page==='03'&&rotateGuideFinished&&workbenchViewportReady())
-   setPage('workbench');
+ if(s.page!=='03'||!rotateGuideFinished)return;
+ if(rotateTurnDetected||landscapeViewport())setPage('workbench');
 }
 function startRotateGuide(){
  rotateGuideFinished=false;
+ rotateTurnDetected=false;
+ rotateLastPortrait=false;
+ rotateSensorAt=0;
  setPage('03');
  later(()=>{
    if(s.page!=='03')return;
@@ -1174,6 +1178,18 @@ function startRotateGuide(){
    render();
    finishRotateGuide();
  },M.rotateGuideMs);
+}
+function trackRealPhoneTurn(e){
+ if(s.page!=='03'||!phoneDevice()||!Number.isFinite(e.gamma))return;
+ const sideways=Math.abs(e.gamma)>=58;
+ if(Math.abs(e.gamma)<=37)rotateLastPortrait=true;
+ // Recognize a turn that happened during the three-blink prompt or after
+ // it. The screen orientation API is not required (works with rotation lock).
+ if(sideways&&rotateLastPortrait){
+   rotateTurnDetected=true;
+   finishRotateGuide();
+ }
+ rotateSensorAt=performance.now();
 }
 async function advanceNewPrescription(){
   if(s.phase==='transition')return;
@@ -1287,11 +1303,12 @@ stage.addEventListener('pointerup',e=>{
 });
 stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){drag=null;render();}});
 function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};}
-// Actual device rotation changes the viewport's layout only. It never
-// blocks the timed WEB03 -> WEB04 tutorial transition.
+// Resize never rotates the WEB canvas in code. It only reads the user's
+// real viewport layout. Device motion unlocks the next step under OS lock.
 function onViewportChange(){fit();finishRotateGuide();}
 window.addEventListener('resize',onViewportChange);
 window.addEventListener('orientationchange',onViewportChange);
+window.addEventListener('deviceorientation',trackRealPhoneTurn,{passive:true});
 if(s.page==='00'&&s.phase==='intro')runIntro('00');else if(s.page==='01'&&s.phase==='intro')runIntro('01');else if(s.page==='03')startRotateGuide();else render();
 window.DCD_DEBUG={state:()=>structuredClone(s),page:p=>setPage(p),finishRupture};
 })();
