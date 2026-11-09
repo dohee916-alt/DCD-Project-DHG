@@ -10,6 +10,7 @@ const MODEL='onnx-community/depth-anything-v2-small';
 function create(video,onDepth){
  let running=false,disposed=false,inference=false,pipe=null,loopTimer=0;
  let loading=null,failed=false,lastFrame=-1,first=true;
+ let validFrames=0,rejectedFrames=0,lastRange=0,lastError='',smoothed=null;
  const capture=document.createElement('canvas');
  capture.width=160;capture.height=346;
  const ctx=capture.getContext('2d',{alpha:false,willReadFrequently:true});
@@ -18,7 +19,8 @@ function create(video,onDepth){
   if(loading)return loading;
   loading=(async()=>{
    try{
-    const {pipeline}=await import(CDN);
+    const {pipeline,RawImage}=await import(CDN);
+    create.rawImage=RawImage;
     // WebGPU on capable browsers; CPU/WASM q8 as a compatibility fallback.
     // Loading is deferred until the first overlay step; never on AR3.
     if(navigator.gpu){
@@ -58,17 +60,41 @@ function create(video,onDepth){
   lastFrame=video.currentTime;
   inference=true;
   try{
-   const result=await pipe(capture);
+   const result=await pipe(create.rawImage.fromCanvas(capture));
    const d=result?.depth;
    if(d&&d.data&&d.width&&d.height&&running&&!disposed){
-    const channels=d.channels||1,depth=new Uint8Array(d.width*d.height);
-    for(let i=0;i<depth.length;i++)depth[i]=d.data[i*channels];
+    const channels=d.channels||1,n=d.width*d.height;
+    if(d.data.length<n*channels)throw Error('Invalid depth-map buffer size');
+    const depth=new Uint8Array(n),hist=new Uint32Array(256);
+    for(let i=0;i<n;i++){
+     const value=d.data[i*channels];
+     if(!Number.isFinite(value))throw Error('Nonfinite depth-map pixel');
+     const u=Math.max(0,Math.min(255,Math.round(value)));
+     depth[i]=u;hist[u]++;
+    }
+    // Reject flat/broken inference rather than painting a solid body.
+    const percentile=f=>{
+     let count=0;
+     for(let i=0;i<256;i++){count+=hist[i];if(count>=n*f)return i;}
+     return 255;
+    };
+    const p2=percentile(.02),p98=percentile(.98);
+    lastRange=p98-p2;
+    if(lastRange<17){rejectedFrames++;return;}
+    // Temporal accumulation suppresses shimmer without re-quantizing the
+    // map to the human silhouette every frame.
+    if(!smoothed||smoothed.length!==n)smoothed=Float32Array.from(depth);
+    else for(let i=0;i<n;i++)
+     smoothed[i]=smoothed[i]*.58+depth[i]*.42;
+    for(let i=0;i<n;i++)depth[i]=Math.round(smoothed[i]);
+    validFrames++;
+    if(validFrames===1)console.info('[DCD AR depth] Valid on-device depth map',d.width,d.height,'range',lastRange);
     onDepth?.({data:depth,width:d.width,height:d.height,nearIsHigh:true,
-      time:performance.now()});
+      valid:true,range:lastRange,time:performance.now()});
    }
   }catch(e){
    console.warn('[DCD AR depth] Inference failed:',e);
-   failed=true;
+   failed=true;lastError=String(e);
   }finally{inference=false;}
  }
  function schedule(){
@@ -92,7 +118,8 @@ function create(video,onDepth){
   try{pipe?.dispose?.()}catch{}
   pipe=null;
  }
- return {start,stop,destroy,get ready(){return!!pipe&&!failed},get failed(){return failed}};
+ return {start,stop,destroy,get ready(){return!!pipe&&!failed},get failed(){return failed},
+  diagnostics(){return {running,loaded:!!pipe,failed,validFrames,rejectedFrames,lastRange,lastError};}};
 }
 window.DCD_AR_DEPTH={create};
 })();
