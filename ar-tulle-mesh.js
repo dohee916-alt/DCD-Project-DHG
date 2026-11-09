@@ -402,16 +402,20 @@ function create(root){
       // Upper 70% remains smoothly stretched across the face. Drape only
       // the excess BELOW the jaw, with a curled hem instead of a straight
       // square boundary. No creases or independent upper-layer offsets.
-      const curl=tuck*(.19+.40*edgeX);
+      // A rectangle never becomes a pointed triangular hem. Let only the
+      // outer 15% of the cloth draw gently inward after the jaw line.
+      const curl=tuck*(.065+.055*edgeX);
       const px=nx*cw*.5*(1-curl);
-      const rolledEdge=Math.max(0,(v-.85)/.15);
-      const curve=Math.pow(Math.abs(nx),1.6);
-      const hemLift=tuck*fh*(.085+.19*curve);
-      const hemScoop=tuck*fh*.08*(1-curve);
-      const py=(v-.47)*ch-hemLift+hemScoop-rolledEdge*rolledEdge*fh*.028;
+      const rolledEdge=Math.max(0,(v-.87)/.13);
+      const curve=Math.pow(Math.abs(nx),1.5);
+      // Keep the lower edge broad: the center/side height difference stays
+      // below ~3% of the face height rather than the previous 27.5%.
+      const hemLift=tuck*fh*(.025+.020*curve);
+      const hemScoop=tuck*fh*.015*(1-curve);
+      const py=(v-.47)*ch-hemLift+hemScoop-rolledEdge*rolledEdge*fh*.012;
       const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
       const cheek=Math.exp(-(((Math.abs(nx)-.51)/.27)**2+((v-.51)/.31)**2));
-      const foldDepth=tuck*(.035+.11*edgeX)+rolledEdge*.055;
+      const foldDepth=tuck*(.025+.055*edgeX)+rolledEdge*.03;
       const at=(y*(columns+1)+x)*stride;
       mesh[at]=cx+px*co-py*si;
       mesh[at+1]=cy+px*si+py*co;
@@ -419,7 +423,7 @@ function create(root){
       // deliberately retained through the vertex buffer (it was discarded).
       mesh[at+2]=clamp(.12-bump*noseRelief-cheek*.025+foldDepth,-.8,.8);
       mesh[at+3]=u;mesh[at+4]=v;
-      const foldShade=tuck*(.12*edgeX+.025*curve);
+      const foldShade=tuck*(.055*edgeX+.012*curve);
       mesh[at+5]=clamp(.94+.10*bump+.035*cheek-foldShade-rolledEdge*.13,.68,1.10);
       const border=Math.min(u,1-u,v,1-v);
       mesh[at+6]=clamp((.075-border)/.075,0,1);
