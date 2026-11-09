@@ -369,6 +369,65 @@ function create(root){
   }
   const textures={},layers=[];
   const canvasBackup=canvasCloth(root);
+  // Screen-space embroidery is a separate tracked layer. The cloth can
+  // drape and bend without distorting a single character of the words.
+  const printCanvas=document.createElement('canvas');
+  printCanvas.className='ar-tulle-legible-print';
+  printCanvas.width=W;printCanvas.height=H;
+  printCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:none';
+  root.appendChild(printCanvas);
+  const printCtx=printCanvas.getContext('2d',{alpha:true});
+  const safePrintSlots=[
+    {u:.29,v:.20},{u:.70,v:.34},{u:.29,v:.49},
+    {u:.70,v:.63},{u:.49,v:.81}
+  ];
+  function drawPrints(now){
+    if(!printCtx)return;
+    printCtx.clearRect(0,0,W,H);
+    if(!faceCenter)return;
+    const c=faceCenter,co=c.co,si=c.si;
+    for(const layer of layers){
+      if(layer.removing&&(now-layer.exit)>1150)continue;
+      const config=FIGMA_MASK_TEXT[layer.variant]?.[layer.index];
+      if(!config)continue;
+      const age=(now-layer.start)/1000;
+      const progress=ease(clamp(age/1.05,0,1));
+      const fly=1-progress;
+      const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
+      const alpha=(layer.removing?1-ease(leave):clamp(age/.14,0,1));
+      if(alpha<=0)continue;
+      const slot=safePrintSlots[layer.index]||safePrintSlots[4];
+      const dx=(slot.u-.5)*c.cw,dy=(slot.v-.50)*c.ch;
+      const shiftX=(layer.index%2?-1:1)*245*fly;
+      const shiftY=-165*fly;
+      const scale=1-.46*fly;
+      const px=c.x+(dx*co-dy*si)*scale+shiftX;
+      const py=c.y+(dx*si+dy*co)*scale+shiftY;
+      printCtx.save();
+      printCtx.globalAlpha=alpha;
+      printCtx.translate(px,py);
+      printCtx.rotate(Math.atan2(si,co));
+      printCtx.scale(scale,scale);
+      const lines=config.text.split('\n');
+      const lineHeight=20;
+      let fs=18;
+      const maxWidth=Math.min(170,c.cw*.42);
+      printCtx.font='700 '+fs+'px "Turret Road",sans-serif';
+      const maxMeasured=Math.max(1,...lines.map(t=>printCtx.measureText(t).width));
+      if(maxMeasured>maxWidth)fs=Math.max(14,fs*maxWidth/maxMeasured);
+      printCtx.font='700 '+fs+'px "Turret Road",sans-serif';
+      printCtx.textAlign='center';printCtx.textBaseline='middle';
+      printCtx.lineJoin='round';printCtx.lineWidth=1.35;
+      printCtx.strokeStyle='rgba(62,28,23,.74)';
+      printCtx.fillStyle='#ff6b23';
+      for(let j=0;j<lines.length;j++){
+        const yy=(j-(lines.length-1)/2)*lineHeight;
+        printCtx.strokeText(lines[j],0,yy);
+        printCtx.fillText(lines[j],0,yy);
+      }
+      printCtx.restore();
+    }
+  }
   const columns=28,rows=34;
   // Face and tulle share the same 428x926 screen projection and relative
   // MediaPipe depth. An occluder cannot work if they use different spaces.
@@ -600,6 +659,7 @@ function create(root){
       reportState(gl.isContextLost()?'context-lost':(!faceCenter?'no-face':(!textures.first?'no-texture':'not-ready')),now);
       root.classList.remove('ar-tulle-ready');
       canvasBackup.draw(layers,now);
+      printCtx?.clearRect(0,0,W,H);
       return;
     }
     try{
@@ -694,12 +754,14 @@ function create(root){
       if(err!==gl.NO_ERROR)throw new Error('WebGL cloth/face draw error '+err);
       root.classList.add('ar-tulle-ready');
       canvasBackup.draw([],now);
+      drawPrints(now);
       reportState('rendering',now);
       renderErrorReported=false;
     }catch(error){
       gl.colorMask(true,true,true,true);gl.depthMask(true);
       root.classList.remove('ar-tulle-ready');
       canvasBackup.draw(layers,now);
+      printCtx?.clearRect(0,0,W,H);
       reportState('draw-error',now);
       if(!renderErrorReported){
         console.error('[DCD AR] face/cloth pipeline:',error);
@@ -729,7 +791,7 @@ function create(root){
     for(const texArray of Object.values(textures))for(const pair of texArray){
       for(const t of [pair.fabric,pair.thread])if(!seen.has(t)){gl.deleteTexture(t);seen.add(t);}
     }
-    canvasBackup.destroy();
+    canvasBackup.destroy();printCanvas.remove();
     if(occBuffer)gl.deleteBuffer(occBuffer);
     if(occIndex)gl.deleteBuffer(occIndex);
     if(occProgram)gl.deleteProgram(occProgram);
