@@ -97,6 +97,9 @@ function create(root){
     }));
    };
    initialThumbIndex=poseSnap(.045);
+   // Same GLB animation used before the regression: natural thumb pinch
+   // at 1.95s, with no forced base rotation or pose mixing for the thumb.
+   const naturalPinch=poseSnap(Math.min(1.95,openClip.duration*.49));
    openAction.stop();
    action.reset();
    action.enabled=true;
@@ -104,6 +107,11 @@ function create(root){
    action.clampWhenFinished=true;
    action.play();
    foldedThumbIndex=poseSnap(sourceEnd);
+   for(let n=0;n<foldedThumbIndex.length;n++){
+    if(foldedThumbIndex[n].node.name.startsWith('thumb_')){
+     foldedThumbIndex[n]=naturalPinch[n];
+    }
+   }
    mixer.setTime(sourceEnd);
    // Restore the GLB's unmodified thumb from the early native pose.
    // Never rotate thumb_trapez by a guessed axis or maximize distance.
@@ -210,9 +218,9 @@ function create(root){
   for(let n=0;n<initialThumbIndex.length;n++){
    const a=initialThumbIndex[n],b=foldedThumbIndex[n];
    const bone=a.node;
-   // Keep all four thumb joints in their original natural position;
-   // animate only the index finger for the pinch demonstration.
-   const amount=bone.name.startsWith('thumb_')?0:pinch;
+   // Use the same authored Pose_OKHand open/closed thumb joints.
+   // Restore actual thumb flexion, without the old deformed optimizer.
+   const amount=pinch;
    bone.position.copy(a.position).lerp(b.position,amount);
    bone.quaternion.copy(a.rotation).slerp(b.rotation,amount);
    bone.scale.copy(a.scale).lerp(b.scale,amount);
