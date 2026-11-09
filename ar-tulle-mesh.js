@@ -376,19 +376,28 @@ function create(root){
       const u=x/columns,v=y/rows,nx=u*2-1;
       const edgeX=Math.max(0,(Math.abs(nx)-.68)/.32);
       const lower=Math.max(0,(v-.69)/.31);
-      const curl=lower*lower*(.12+.28*edgeX);
-      const px=nx*cw*.5*(1-curl);
-      const py=(v-.47)*ch+lower*lower*fh*.035;
+      // Lower fabric is not a flat screen-facing rectangle. Below the jaw
+      // the cloth falls forward, folds under the chin and tucks around the
+      // left/right sides of the neck. Keep its boundary irregular and soft.
+      const tuck=lower*lower*(3-2*lower);
+      const curl=tuck*(.14+.31*edgeX);
+      const pleat=Math.sin(nx*8.4+v*3.1)*Math.sin(nx*13.7-v*2.3);
+      const px=nx*cw*.5*(1-curl)+tuck*pleat*fw*.014;
+      // The bottom corners rise toward the jaw, while the central loose
+      // edge folds up slightly instead of ending on one horizontal line.
+      const hemLift=tuck*(fh*(.055+.10*edgeX)+Math.sin(nx*8.5)*fh*.014);
+      const rolledEdge=Math.max(0,(v-.90)/.10);
+      const py=(v-.47)*ch-hemLift-rolledEdge*rolledEdge*fh*.035;
       const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
       const cheek=Math.exp(-(((Math.abs(nx)-.51)/.27)**2+((v-.51)/.31)**2));
+      const foldDepth=tuck*(.028+.09*edgeX)+rolledEdge*.055;
       const at=(y*(columns+1)+x)*stride;
       mesh[at]=cx+px*co-py*si;
       mesh[at+1]=cy+px*si+py*co;
-      mesh[at+2]=.02+bump*.055+cheek*.025-curl*.10;
-      // The uploaded canvas texture is already Y-flipped at upload. A second
-      // inversion here turned every embroidered phrase upside down.
+      mesh[at+2]=.02+bump*.055+cheek*.025-foldDepth;
       mesh[at+3]=u;mesh[at+4]=v;
-      mesh[at+5]=clamp(.91+.12*bump+.04*cheek-.16*curl,.70,1.10);
+      const foldShade=tuck*(.10*edgeX+.055*Math.sin(nx*15.1+v*3.2));
+      mesh[at+5]=clamp(.94+.10*bump+.035*cheek-foldShade-rolledEdge*.13,.68,1.10);
       const border=Math.min(u,1-u,v,1-v);
       mesh[at+6]=clamp((.075-border)/.075,0,1);
     }
