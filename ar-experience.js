@@ -71,7 +71,25 @@ function fabric(){
    layer.dataset.variant=state.variant;
    const copy=document.createElement('span');
    copy.className='ar-organza-printed-copy';
-   copy.textContent=ORGANZA_TEXT[state.variant][i];
+   const design=window.DCD_TULLE?.layout(state.variant,i);
+   copy.textContent=design?.text||ORGANZA_TEXT[state.variant][i];
+   if(design){
+     // The static fallback uses the SAME Figma authoring coordinates and
+     // Turret Road type as the camera-tracked cloth. No legacy centered text.
+     const sheetX=428*.09,sheetY=926*.19,sheetW=428*.82,sheetH=926*.65;
+     copy.style.setProperty('left',((design.x-sheetX)/sheetW*100)+'%','important');
+     copy.style.setProperty('top',((design.y-sheetY)/sheetH*100)+'%','important');
+     copy.style.setProperty('width',(design.w/sheetW*100)+'%','important');
+     copy.style.setProperty('right','auto','important');
+     copy.style.setProperty('font-family','"Turret Road",sans-serif','important');
+     copy.style.setProperty('font-size','18px','important');
+     copy.style.setProperty('line-height','20px','important');
+     copy.style.setProperty('font-weight','700','important');
+     copy.style.setProperty('text-align','left','important');
+     copy.style.setProperty('white-space','pre-line','important');
+     copy.style.setProperty('transform','rotate('+design.r+'deg)','important');
+     copy.style.setProperty('transform-origin','top left','important');
+   }
    layer.appendChild(copy);root.appendChild(layer);
    const surface=state.tulle?.add(state.variant,i)||null;
    state.sheets.push({layer,surface});
