@@ -185,7 +185,20 @@ function create(root){
   let outline=[],neighborsByVertex=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let vertexCount=0,neutralUV=null;
   let live=true,frameId=0,lastRendered=0,renderErrorReported=false;
-  let setupStatus='pending';
+  let setupStatus='pending',lastDiagnostic='',lastDiagnosticAt=0;
+  function reportState(state,now=performance.now()){
+    root.dataset.tulleState=state;
+    if(state!==lastDiagnostic&&now-lastDiagnosticAt>500){
+      console.info('[DCD AR] Organza state:',state,{
+        faceTracked:!!faceCenter,
+        geometry:setupStatus,
+        meshIndices:indexCount,
+        fabricReady:!!textures.first,
+        layers:layers.length
+      });
+      lastDiagnostic=state;lastDiagnosticAt=now;
+    }
+  }
   const textures={},layers=[];
   function setConnections(){
     const canonical=window.DCD_FACE_CANONICAL;
@@ -364,7 +377,7 @@ function create(root){
     }
     const ready=Boolean(faceCenter&&setupStatus==='ready'&&indexCount&&textures.first&&layers.length);
     if(!ready||gl.isContextLost()){
-      root.dataset.tulleState=gl.isContextLost()?'context-lost':(!faceCenter?'no-face':(!textures.first?'no-texture':'not-ready'));
+      reportState(gl.isContextLost()?'context-lost':(!faceCenter?'no-face':(!textures.first?'no-texture':'not-ready')),now);
       root.classList.remove('ar-tulle-ready');
       return;
     }
@@ -429,11 +442,11 @@ function create(root){
     const error=gl.getError();
     if(error!==gl.NO_ERROR)throw new Error('WebGL draw error '+error);
     root.classList.add('ar-tulle-ready');
-    root.dataset.tulleState='rendering';
+    reportState('rendering',now);
     renderErrorReported=false;
     }catch(error){
       root.classList.remove('ar-tulle-ready');
-      root.dataset.tulleState='draw-error';
+      reportState('draw-error',now);
       if(!renderErrorReported){console.warn('[DCD AR] Cloth render fallback:',error);renderErrorReported=true;}
     }
   }
