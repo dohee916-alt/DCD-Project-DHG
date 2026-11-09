@@ -641,14 +641,44 @@ function attachArCamera(){
  }
 }
 function finishArIfReady(){if(s.page==='arOpen'&&arDropFinished){setPage('arFace');attachArCamera();}}
+let arCameraRequest=null;
 async function askArCamera(){
   arCameraError='';
-  if(!navigator.mediaDevices?.getUserMedia){arCameraError='Camera unavailable';return;}
-  try{
-    arCameraStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'user'}}});
-    if(!['ar','arOpen','arFace'].includes(s.page)){stopArCamera();return;}
-    arCameraReady=true;attachArCamera();finishArIfReady();
-  }catch(error){if(!['ar','arOpen','arFace'].includes(s.page))return;arCameraError=error?.name||'Camera unavailable';if(s.page==='arFace')render();}
+  if(!navigator.mediaDevices?.getUserMedia){
+    arCameraError='Camera unavailable';
+    window.DCD_AR_FLOW?.cameraError?.(arCameraError);
+    return;
+  }
+  // A permission previously granted to this origin is reused by the browser.
+  // Never request a second stream if a live camera already exists; requesting
+  // again can stall a mobile browser or produce overlapping camera tracks.
+  const live=arCameraStream?.getVideoTracks().some(t=>t.readyState==='live');
+  if(live){arCameraReady=true;attachArCamera();finishArIfReady();return;}
+  if(arCameraRequest)return arCameraRequest;
+  arCameraRequest=(async()=>{
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'user'}}});
+      if(!['ar','arOpen','arFace'].includes(s.page)){
+        stream.getTracks().forEach(t=>t.stop());
+        return;
+      }
+      arCameraStream=stream;
+      arCameraReady=true;
+      stream.getVideoTracks().forEach(track=>track.addEventListener('ended',()=>{
+        if(arCameraStream!==stream)return;
+        arCameraReady=false;
+        window.DCD_AR_FLOW?.cameraError?.('CAMERA CONNECTION LOST');
+      },{once:true}));
+      attachArCamera();
+      finishArIfReady();
+    }catch(error){
+      if(!['ar','arOpen','arFace'].includes(s.page))return;
+      arCameraError=error?.name||'Camera unavailable';
+      window.DCD_AR_FLOW?.cameraError?.(arCameraError);
+      console.warn('[DCD AR] Camera access:',error);
+    }finally{arCameraRequest=null;}
+  })();
+  return arCameraRequest;
 }
 function runArDollDrop(){
   if(s.page!=='arOpen')return;
