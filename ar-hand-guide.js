@@ -66,75 +66,38 @@ function create(root){
    key.position.set(-6,10,16);scene.add(key);
    const fill=new THREE.DirectionalLight(0xffc8ad,.48);
    fill.position.set(7,2,-5);scene.add(fill);
+   // Exact pre-regression *closed* gesture from the old working
+   // 2026-11-09 Pose_OK implementation (a314b99e28a1).
+   // Snapshot ALL 21 rig bones to keep the thumb rooted to its palm
+   // rather than crossfading its local joints against an unrelated base.
    mixer=new THREE.AnimationMixer(model);
-   const action=mixer.clipAction(clip);
-   const openAction=mixer.clipAction(openClip);
-   // The original GLB has TWO distinct poses. Pose_OKHand at its
-   // start has an extended index and a separated thumb (joint gap ~10.4).
-   // Pose_OK at its end has the curled three fingers and closer thumb/index
-   // (joint gap ~5.2). Using Pose_OK's start for BOTH was the bug:
-   // it does not show a clearly OPEN initial thumb/index silhouette.
-   // Sample the OPEN pose from Pose_OKHand, while keeping the remaining
-   // three fingers curled from Pose_OK.
-   // Reset before sampling: .play() on an action that was previously
-   // advanced does not guarantee a fresh first-frame pose.
-   openAction.reset();
-   openAction.enabled=true;
-   openAction.setLoop(THREE.LoopOnce,0);
-   openAction.clampWhenFinished=true;
-   openAction.play();
-   const sourceEnd=Math.max(.045,clip.duration-.025);
-   const fingerNodes=[];
-   model.traverse(node=>{
-    if(node.isBone&&/^(thumb|index)_/.test(node.name))fingerNodes.push(node);
-   });
-   const poseSnap=time=>{
-    mixer.setTime(time);
+   const handBones=[];
+   model.traverse(node=>{if(node.isBone)handBones.push(node);});
+   const capture=()=>{
     model.updateMatrixWorld(true);
-    return fingerNodes.map(node=>({
-      node,position:node.position.clone(),rotation:node.quaternion.clone(),
-      scale:node.scale.clone()
+    return handBones.map(node=>({
+     node,position:node.position.clone(),
+     rotation:node.quaternion.clone(),scale:node.scale.clone()
     }));
    };
-   initialThumbIndex=poseSnap(.045);
-   // The previous hardcoded 1.95-second snapshot bends the thumb across
-   // the palm. Instead inspect the ACTUAL fingertip positions throughout
-   // the authored Pose_OKHand animation to find its real pinch frame.
-   // The thumb is never manually rotated: only source animation keyframes.
-   const thumbTip=model.getObjectByName('thumb_dist');
-   const indexTip=model.getObjectByName('index_dist');
-   if(!thumbTip||!indexTip)throw Error('Hand fingertip bones missing');
-   let bestTime=.05,bestGap=Infinity;
-   const thumbWorld=new THREE.Vector3(),indexWorld=new THREE.Vector3();
-   for(let step=1;step<200;step++){
-    const sampleTime=openClip.duration*step/200;
-    mixer.setTime(sampleTime);
-    model.updateMatrixWorld(true);
-    thumbTip.getWorldPosition(thumbWorld);
-    indexTip.getWorldPosition(indexWorld);
-    const gap=thumbWorld.distanceTo(indexWorld);
-    if(gap<bestGap){bestGap=gap;bestTime=sampleTime;}
-   }
-   const naturalPinch=poseSnap(bestTime);
-   console.info('[DCD AR] Native fingertip pinch candidate',
-     {time:bestTime.toFixed(3),boneGap:bestGap.toFixed(3)});
-   openAction.stop();
-   action.reset();
-   action.enabled=true;
-   action.setLoop(THREE.LoopOnce,0);
-   action.clampWhenFinished=true;
-   action.play();
-   foldedThumbIndex=poseSnap(sourceEnd);
-   // Thumb and index must come from the SAME real fingertip-contact
-   // moment, otherwise mixing clips moves the index out of alignment.
-   foldedThumbIndex=naturalPinch;
-   mixer.setTime(sourceEnd);
-   // Restore the GLB's unmodified thumb from the early native pose.
-   // Never rotate thumb_trapez by a guessed axis or maximize distance.
-   // Its four original joints stay together as a single authored chain.
-   console.info('[DCD AR] Distinct open/closed finger animation sources',
-     {open:openClip.name,closed:clip.name,
-      openBones:initialThumbIndex.length,closedBones:foldedThumbIndex.length});
+   const sample=(animation,time)=>{
+    mixer.stopAllAction();
+    const action=mixer.clipAction(animation);
+    action.reset();
+    action.setLoop(THREE.LoopOnce,0);
+    action.clampWhenFinished=true;
+    action.play();
+    mixer.setTime(time);
+    const pose=capture();
+    action.stop();
+    return pose;
+   };
+   // Open = natural authored initial fingers. Closed = ORIGINAL
+   // Pose_OK target that was used when the fingertips actually met.
+   initialThumbIndex=sample(openClip,.045);
+   foldedThumbIndex=sample(clip,Math.max(.045,clip.duration-.025));
+   console.info('[DCD AR] Restored full-rig open/closed poses',
+    {open:openClip.name,closed:clip.name,bones:handBones.length});
    const centered=new THREE.Group();
    centered.add(model);
    pivot=new THREE.Group();
@@ -226,20 +189,13 @@ function create(root){
   const fadeIn=smooth(t/.20);
   const fadeOut=1-smooth((t-2.70)/.50);
   const visibility=fadeIn*fadeOut;
-  // Open thumb/index = Pose_OKHand start; closed thumb/index = Pose_OK end.
-  // Other three curled fingers remain locked at Pose_OK end. Critically,
-  // the fully open pose is displayed at the START and again on RETURN.
-  const foldedTime=Math.max(.045,clip.duration-.025);
-  mixer.setTime(foldedTime);
+  // Entire rig moves from the original OPEN pose to the original
+  // Pose_OK CLOSE pose. No mixed thumb-only pose or arbitrary rotations.
   for(let n=0;n<initialThumbIndex.length;n++){
-   const a=initialThumbIndex[n],b=foldedThumbIndex[n];
-   const bone=a.node;
-   // Use the same authored Pose_OKHand open/closed thumb joints.
-   // Restore actual thumb flexion, without the old deformed optimizer.
-   const amount=pinch;
-   bone.position.copy(a.position).lerp(b.position,amount);
-   bone.quaternion.copy(a.rotation).slerp(b.rotation,amount);
-   bone.scale.copy(a.scale).lerp(b.scale,amount);
+   const a=initialThumbIndex[n],b=foldedThumbIndex[n],bone=a.node;
+   bone.position.copy(a.position).lerp(b.position,pinch);
+   bone.quaternion.copy(a.rotation).slerp(b.rotation,pinch);
+   bone.scale.copy(a.scale).lerp(b.scale,pinch);
   }
   // Fixed model correction + deliberate turn from palm to hand back.
   // No approach/return segment: recede, fade, and restart from the front.
