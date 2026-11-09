@@ -1153,29 +1153,16 @@ function declineConsent(){
   root.querySelectorAll('.consent-button').forEach(n=>n.remove());
   later(()=>{if(s.page!=='16')return;if(copy){copy.innerHTML='Thank you<br>for Prescribing!';copy.style.opacity='1';}root.insertAdjacentHTML('beforeend',glassButton('TEST IT',669,241,134,'ar'));},720);
 }
-let physicalLandscape=false;
-function viewportLandscape(){
- const v=document.querySelector('#viewport');
- return (v?.clientWidth||window.innerWidth)>(v?.clientHeight||window.innerHeight);
-}
-function finishRotationIfReady(){
- // On mobile, wait for the BROWSER VIEWPORT to physically become landscape.
- // Device tilt alone does not mean the CSS viewport rotated (auto-rotate may
- // be disabled); entering workbench then would recreate the tiny-strip bug.
- // Device rotation is sufficient to advance even if the browser viewport
- // stays portrait due to an OS/browser orientation lock. Do NOT change
- // mobile layout or auto-rotate the stage here.
- const rotated=viewportLandscape()||physicalLandscape;
- if(s.page==='03'&&rotateGuideFinished&&rotated)setPage('workbench');
-}
+// WEB03 is a timed instruction, never a sensor-gated screen.
+// Three 1-second ROTATE YOUR PHONE blinks, then the syringe hand tutorial
+// appears on WEB04 whether or not the browser reports orientation changes.
 function startRotateGuide(){
- // Both desktop and mobile retain WEB03 and its rotate-phone prompt.
  rotateGuideFinished=false;
  setPage('03');
  later(()=>{
    if(s.page!=='03')return;
-   rotateGuideFinished=true;s.phase='waiting';render();
-   finishRotationIfReady();
+   rotateGuideFinished=true;
+   setPage('workbench');
  },M.rotateGuideMs);
 }
 async function advanceNewPrescription(){
@@ -1290,9 +1277,11 @@ stage.addEventListener('pointerup',e=>{
 });
 stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){drag=null;render();}});
 function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};}
-function onViewportChange(){fit();finishRotationIfReady();}
-window.addEventListener('resize',onViewportChange);window.addEventListener('orientationchange',onViewportChange);
-window.addEventListener('deviceorientation',e=>{physicalLandscape=Number.isFinite(e.gamma)&&Math.abs(e.gamma)>55;if(physicalLandscape)finishRotationIfReady();});
+// Actual device rotation changes the viewport's layout only. It never
+// blocks the timed WEB03 -> WEB04 tutorial transition.
+function onViewportChange(){fit();}
+window.addEventListener('resize',onViewportChange);
+window.addEventListener('orientationchange',onViewportChange);
 if(s.page==='00'&&s.phase==='intro')runIntro('00');else if(s.page==='01'&&s.phase==='intro')runIntro('01');else if(s.page==='03')startRotateGuide();else render();
 window.DCD_DEBUG={state:()=>structuredClone(s),page:p=>setPage(p),finishRupture};
 })();
