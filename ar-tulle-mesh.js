@@ -37,11 +37,17 @@ void main(){
   float right=texture2D(fabric,vUV+vec2(pixel.x,0.0)).a;
   float up=texture2D(fabric,vUV+vec2(0.0,pixel.y)).a;
   float down=texture2D(fabric,vUV-vec2(0.0,pixel.y)).a;
-  float strand=smoothstep(0.06,0.67,fiber);
-  float fiberLight=clamp(vLight+0.15*(left-right+up-down),0.76,1.17);
-  // Nearly white woven filament; the openings retain camera transparency.
+  // The source is a sparse 64x64 photographed weave (66% holes).
+  // The former 0.06..0.67 threshold and 0.006 alpha erased its fine strands
+  // when sampled through mipmaps at phone resolution.
+  float strand=smoothstep(0.008,0.33,fiber);
+  float detail=clamp(abs(left-right)+abs(up-down),0.0,1.0);
+  float fiberLight=clamp(vLight+0.17*(left-right+up-down),0.76,1.17);
   vec3 whiteNet=vec3(0.985,0.972,0.954)*fiberLight;
-  float netAlpha=0.006+strand*0.65;
+  // Give the photographic thread visible scattering while leaving the
+  // spaces between woven fibers transparent. A faint organza body connects
+  // the fabric even when individual thread pixels shrink at camera scale.
+  float netAlpha=0.095+0.79*strand+0.08*detail;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -84,7 +90,7 @@ function paintedFabric(height,index){
   tctx.putImageData(pixels,0,0);
   const weave=ctx.createPattern(tile,'repeat');
   if(weave?.setTransform&&typeof DOMMatrix!=='undefined')
-    weave.setTransform(new DOMMatrix().translate(index*9,index*13).scale(.56));
+    weave.setTransform(new DOMMatrix().translate(index*9,index*13).scale(.92));
   ctx.imageSmoothingEnabled=true;ctx.fillStyle=weave;ctx.fillRect(0,0,c.width,c.height);
   return c;
 }
