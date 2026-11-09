@@ -727,7 +727,16 @@ async function beginAr(){
   oldLayer.style.setProperty('--dcd-old-scale',String(scale));
   const sceneCopy=oldScene.cloneNode(true);
   copyRenderedCanvases(oldScene,sceneCopy);
-  oldLayer.appendChild(sceneCopy);
+  // The outgoing WEB15/16 scene may already be displayed in a portrait
+  // phone's landscape wrapper. Clone that same visual geometry into the
+  // handoff overlay; do not snap it into the old flat landscape strip.
+  if(mobilePortraitLandscape()){
+    oldLayer.classList.add('mobile-portrait');
+    const visual=document.createElement('div');
+    visual.className='rotate-preview';
+    visual.appendChild(sceneCopy);
+    oldLayer.appendChild(visual);
+  }else oldLayer.appendChild(sceneCopy);
   sceneCopy.querySelector('.new-pack-assembly')?.remove();
   // The outgoing prescription fades away with its screen.
   // Keep the incoming title inside the AR stage, not in a separate layer.
