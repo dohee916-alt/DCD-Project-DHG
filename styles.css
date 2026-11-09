@@ -1111,8 +1111,10 @@ canvas.figure{object-fit:contain!important}
   backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
   box-shadow:none!important;
 }
-.ar-immersive .ar-organza-stack:not(.ar-tulle-ready) .ar-organza-printed-copy{
-  color:#f15a13!important;text-shadow:none!important;
+/* Never paint legacy CSS words as floating text on an uncovered face.
+   Typography is carried by the face-tracked embroidery texture only. */
+.ar-immersive .ar-organza-printed-copy{
+  display:none!important;
 }
 
 /* AR cutout owns the visible portrait. Never reveal the raw webcam behind
@@ -1122,7 +1124,9 @@ canvas.figure{object-fit:contain!important}
   opacity:1!important;visibility:visible!important
 }
 .ar-immersive.ar-matting-active .ar-portrait-camera{
-  opacity:0!important;visibility:hidden!important
+  /* Keep decoding the camera for MediaPipe face tracking even after the
+     segmented portrait replaces it visually. */
+  opacity:0!important;visibility:visible!important;pointer-events:none!important
 }
 .ar-immersive .ar-person-segment{z-index:2!important}
 .ar-immersive:not(.ar-matting-active) .ar-person-segment{
