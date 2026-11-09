@@ -247,7 +247,8 @@ function observeHands(hands,now){
    state.pinchStart.lastSeen=now;
    if(now-state.pinchStart.near>=130){
      state.pinchStart=null;state.pinchReady=true;
-     state.handGuide?.hideOnce(0);
+     // Keep the full animation looping through AR7 until a mask
+     // has actually been peeled off, not merely when the hand reaches face.
      enter('AR7');
    }
    return;
@@ -276,8 +277,12 @@ function observeHands(hands,now){
  const movedForward=hand.palmSpan>start.palmSpan*1.16;
  if(now-start.near>=135&&(movedOut||movedForward)){
    state.pinchReady=false;state.pinchStart=null;
+   const beforeRemoval=state.maskCount;
    removeFabric();
-   state.handGuide?.hideOnce(0);
+   if(state.maskCount<beforeRemoval){
+     // This is the first successful removal: permanently stop the guide.
+     state.handGuide?.hideOnce(0);
+   }
    // Do not repeat the 3D guide for every remaining mask.
    if(state.maskCount===0)delay(()=>enter('AR8'),420);
  }
