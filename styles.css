@@ -1291,3 +1291,24 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive[data-ar-frame="AR5-1"] .ar-pack-doll.ar-choice-figma-doll{
   object-fit:fill!important;
 }
+
+/* AR5-1 uses the EXISTING NewAR0–NewAR2 gradient artwork, exactly as
+   the entry sequence does (.ar-orange-background / A.arBackground).
+   Never approximate or stack another custom gradient on this page. */
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient{
+  display:block!important;
+  position:absolute!important;inset:0!important;
+  z-index:5!important;
+  opacity:1!important;
+  background-image:url("assets/figma-current/hd/ar-background-figma.png")!important;
+  background-size:100% 100%!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-color:transparent!important;
+  mix-blend-mode:normal!important;
+  pointer-events:none!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient::before,
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient::after{
+  content:none!important;display:none!important;
+}
