@@ -191,37 +191,56 @@ function create(root){
   function setConnections(){
     const canonical=window.DCD_FACE_CANONICAL;
     if(!canonical||canonical.uv.length!==468||canonical.triangles.length<2000)return false;
-    vertexCount=canonical.uv.length;
+    outline=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
+    const faceVertices=canonical.uv.length;
+    const ringLength=outline.length;
+    vertexCount=faceVertices+ringLength*2;
     // MediaPipe's canonical surface leaves eye and mouth openings. This is
     // a continuous piece of tulle, so bridge those openings using the exact
     // surrounding facial landmarks. Never cut holes around features.
+    // Only close the eye openings. Do not triangulate the lips: a large
+    // bridge over the mouth creates visible crossing seams/false lip lines.
     const patches=[
       [33,160,158,133,153,144],
-      [362,385,387,263,373,380],
-      [61,40,37,0,267,270,291,321,314,17,84,91]
+      [362,385,387,263,373,380]
     ];
     const completeTriangles=canonical.triangles.slice();
     for(const loop of patches){
       for(let i=1;i<loop.length-1;i++)
         completeTriangles.push(loop[0],loop[i],loop[i+1]);
     }
+    // Extend the textile beyond the actual face outline (loose draped veil).
+    // These extension vertices are not extra face landmarks.
+    const rim=outline;
+    for(let ring=0;ring<2;ring++){
+      const inner=ring===0?rim:null;
+      for(let i=0;i<rim.length;i++){
+        const next=(i+1)%rim.length;
+        const a=ring===0?rim[i]:faceVertices+i;
+        const b=ring===0?rim[next]:faceVertices+next;
+        const c=faceVertices+(ring+1)*rim.length+i;
+        const d=faceVertices+(ring+1)*rim.length+next;
+        completeTriangles.push(a,b,c,b,d,c);
+      }
+    }
     indexCount=completeTriangles.length;
     mesh=new Float32Array(vertexCount*stride);
     vertices=new Float32Array(mesh.length);
     neutralUV=new Float32Array(vertexCount*2);
-    neighborsByVertex=Array.from({length:vertexCount},()=>new Set());
-    for(let i=0;i<vertexCount;i++){
+    neighborsByVertex=Array.from({length:faceVertices},()=>new Set());
+    for(let i=0;i<faceVertices;i++){
       neutralUV[i*2]=canonical.uv[i][0];
       neutralUV[i*2+1]=canonical.uv[i][1];
     }
     for(let k=0;k<indexCount;k+=3){
       const [a,b,c]=completeTriangles.slice(k,k+3);
+      if(a>=faceVertices||b>=faceVertices||c>=faceVertices)continue;
       neighborsByVertex[a].add(b);neighborsByVertex[a].add(c);
       neighborsByVertex[b].add(a);neighborsByVertex[b].add(c);
       neighborsByVertex[c].add(a);neighborsByVertex[c].add(b);
     }
     neighborsByVertex=neighborsByVertex.map(x=>[...x]);
-    outline=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
+
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(completeTriangles),gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
@@ -257,21 +276,21 @@ function create(root){
     }catch(error){console.warn('[DCD] Cloth texture preparation:',error);}
   })();
   function update(points,width,height){
-    if(!mesh||!points?.length||points.length<vertexCount||!width||!height){
+    if(!mesh||!points?.length||points.length<468||!width||!height){
       faceCenter=null;return;
     }
     // Landmark coordinates and the mirrored live camera use one consistent
     // screen-space projection. Official UVs stay attached to each landmark.
     const fit=Math.max(W/width,H/height),dw=width*fit,dh=height*fit;
     const offsetX=(W-dw)/2,offsetY=(H-dh)/2;
-    const pos=Array.from({length:vertexCount},(_,i)=>{
+    const pos=Array.from({length:468},(_,i)=>{
       const p=points[i];
       return {x:offsetX+(1-p.x)*dw,y:offsetY+p.y*dh,z:p.z*dw};
     });
     const c=pos[1],top=pos[10],bottom=pos[152];
     const faceHeight=Math.max(50,Math.hypot(top.x-bottom.x,top.y-bottom.y));
     faceCenter={x:c.x,y:c.y};
-    for(let i=0;i<vertexCount;i++){
+    for(let i=0;i<468;i++){
       const p=pos[i],off=i*stride;
       mesh[off]=p.x;mesh[off+1]=p.y;mesh[off+2]=p.z;
       mesh[off+3]=neutralUV[i*2];
@@ -292,6 +311,26 @@ function create(root){
       const u=neutralUV[i*2],v=neutralUV[i*2+1];
       const radial=Math.hypot((u-.5)*1.64,(v-.49)*1.46);
       mesh[off+6]=clamp((radial-.76)/.25,0,1);
+    }
+    // A loose net is bigger than the head: expand a two-ring soft perimeter
+    // from the face contour, with gravity pulling the bottom edges down.
+    // The center of the net still follows the real tracked 468-point face.
+    const n=outline.length;
+    for(let ring=0;ring<2;ring++){
+      const grow=ring===0?1.16:1.35;
+      for(let j=0;j<n;j++){
+        const k=outline[j],p=pos[k],dx=p.x-c.x,dy=p.y-c.y;
+        const down=ring===0?7:24;
+        const off=(468+ring*n+j)*stride;
+        mesh[off]=c.x+dx*grow;
+        mesh[off+1]=c.y+dy*grow+down+Math.max(0,dy)*.065;
+        mesh[off+2]=p.z+6+ring*8;
+        const u=neutralUV[k*2],v=neutralUV[k*2+1];
+        mesh[off+3]=.5+(u-.5)*grow;
+        mesh[off+4]=.5+(v-.5)*grow;
+        mesh[off+5]=clamp(mesh[k*stride+5]*.96,0.72,1.16);
+        mesh[off+6]=ring===0?.18:.94;
+      }
     }
   }
   function arrival(t){
