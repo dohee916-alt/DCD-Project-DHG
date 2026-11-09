@@ -427,8 +427,24 @@ function create(root){
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
     const angle=Math.atan2(eyeA.y-eyeB.y,eyeA.x-eyeB.x),co=Math.cos(angle),si=Math.sin(angle);
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2;
-    faceCenter={x:cx,y:cy};
     const cw=clamp(fw*1.32,fw+24,350),ch=clamp(fh*1.29,fh+38,540);
+    faceCenter={x:cx,y:cy,cw,ch,co,si,fw,fh};
+    // Build the real tracked face surface in the same mirrored screen space.
+    facePixels=new Float32Array(468*2);
+    faceDepth=new Float32Array(468);
+    const depthVerts=new Float32Array(468*3);
+    for(let i=0;i<468;i++){
+      const pt=points[i],xx=ox+(1-pt.x)*dw,yy=oy+pt.y*dh;
+      const zz=clamp(.12+(pt.z-rawCheek)*1.8,-.7,.7);
+      facePixels[i*2]=xx;facePixels[i*2+1]=yy;faceDepth[i]=zz;
+      depthVerts[i*3]=xx/W*2-1;
+      depthVerts[i*3+1]=1-yy/H*2;
+      depthVerts[i*3+2]=zz;
+    }
+    if(occBuffer){
+      gl.bindBuffer(gl.ARRAY_BUFFER,occBuffer);
+      gl.bufferSubData(gl.ARRAY_BUFFER,0,depthVerts);
+    }
     for(let y=0;y<=rows;y++)for(let x=0;x<=columns;x++){
       const u=x/columns,v=y/rows,nx=u*2-1;
       const edgeX=Math.max(0,(Math.abs(nx)-.68)/.32);
@@ -459,7 +475,31 @@ function create(root){
       mesh[at+1]=cy+px*si+py*co;
       // Clip-space Z: smaller is nearer. This measured, bounded relief is
       // deliberately retained through the vertex buffer (it was discarded).
-      mesh[at+2]=clamp(.12-bump*noseRelief-cheek*.025+foldDepth,-.8,.8);
+      // Sample the tracked 3D facial surface from nearby landmarks, not
+      // from an invented constant-depth nose bump. Closest four landmarks
+      // are blended so no hard transitions appear at triangle boundaries.
+      const xx=mesh[at],yy=mesh[at+1];
+      const nearest=[1e12,1e12,1e12,1e12],ids=[0,0,0,0];
+      for(let k=0;k<468;k++){
+        const dx=xx-facePixels[k*2],dy=yy-facePixels[k*2+1];
+        const d=dx*dx+dy*dy;
+        if(d>=nearest[3])continue;
+        let q=3;
+        while(q>0&&d<nearest[q-1]){nearest[q]=nearest[q-1];ids[q]=ids[q-1];q--;}
+        nearest[q]=d;ids[q]=k;
+      }
+      let weightedZ=0,weightSum=0;
+      for(let k=0;k<4;k++){
+        const weight=1/(nearest[k]+160);
+        weightedZ+=faceDepth[ids[k]]*weight;weightSum+=weight;
+      }
+      const trackedSurface=weightedZ/Math.max(weightSum,1e-6);
+      const sideWrap=tuck*Math.max(0,(Math.abs(nx)-.62)/.38);
+      const jawWrap=tuck*Math.max(0,(v-.74)/.26);
+      const behind=.17*Math.max(sideWrap,jawWrap);
+      // Foreground fabric is just outside the face. Excess cloth moves
+      // behind the side/jaw surface where depth occlusion can hide it.
+      mesh[at+2]=clamp(trackedSurface-.032+behind+foldDepth*.16,-.79,.79);
       mesh[at+3]=u;mesh[at+4]=v;
       const foldShade=tuck*(.055*edgeX+.012*curve);
       mesh[at+5]=clamp(.94+.10*bump+.035*cheek-foldShade-rolledEdge*.13,.68,1.10);
