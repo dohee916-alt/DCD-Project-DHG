@@ -1347,8 +1347,8 @@ canvas.figure{object-fit:contain!important}
 }
 .ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-dark-silhouette{
   display:block;
-  filter:blur(8px) drop-shadow(0 0 11px rgba(145,48,28,.38));
-  -webkit-filter:blur(8px) drop-shadow(0 0 11px rgba(145,48,28,.38));
+  filter:blur(4px) drop-shadow(0 0 9px rgba(163,48,23,.31));
+  -webkit-filter:blur(4px) drop-shadow(0 0 9px rgba(163,48,23,.31));
   opacity:1;
   mix-blend-mode:normal;
 }
