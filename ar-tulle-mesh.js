@@ -200,7 +200,9 @@ function canvasCloth(root){
     const ch=clamp(fh*1.29,fh+38,540);
     const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2;
     const angle=Math.atan2(eyeL.y-eyeR.y,eyeL.x-eyeR.x);
-    for(const layer of layers){
+    // Render the translucent yarn in one pass, then all embroidered words
+    // in a separate final pass; later nets must not erase earlier words.
+    for(let pass=0;pass<2;pass++)for(const layer of layers){
       const age=(now-layer.start)/1000;
       const progress=clamp(age/1.25,0,1);
       const fly=Math.pow(1-progress,3);
@@ -228,6 +230,7 @@ function canvasCloth(root){
       ctx.lineTo(l,t+ch*.09);
       ctx.quadraticCurveTo(l,t,l+cw*.09,t);
       ctx.closePath();ctx.clip();
+      if(pass===0){
       ctx.fillStyle='rgba(250,248,243,.065)';
       ctx.fillRect(l,t,cw,ch+fh*.06);
       ctx.fillStyle=pattern;ctx.globalAlpha=alpha*.43;
@@ -239,20 +242,23 @@ function canvasCloth(root){
       fold.addColorStop(.65,'rgba(86,81,77,.16)');
       fold.addColorStop(1,'rgba(253,249,243,.22)');
       ctx.fillStyle=fold;ctx.fillRect(l,b-ch*.23,cw,ch*.23);
+      }
       const config=FIGMA_MASK_TEXT[layer.variant]?.[layer.index];
-      if(config){
+      if(pass===1&&config){
         const slot=embroiderySlot(config);
         const x=l+slot.u*cw,y=t+(1-slot.v)*ch;
         ctx.globalAlpha=alpha;
         ctx.translate(x,y);ctx.rotate(config.r*Math.PI/180);
         ctx.fillStyle='#fb5511';ctx.textBaseline='top';ctx.textAlign='center';
         const lines=config.text.split('\n');
-        const scale=Math.min(1.15,Math.max(.72,cw/276));
+        const scale=Math.min(1.35,Math.max(.94,cw/276));
         ctx.scale(scale,scale);
         const total=lines.reduce((z,_,i)=>z+(config.lh[i]||20),0);
         let yy=-total/2;
         for(let i=0;i<lines.length;i++){
           ctx.font='700 '+(config.fs[i]||18)+'px "Turret Road",sans-serif';
+          ctx.lineWidth=.75;ctx.strokeStyle='rgba(210,62,8,.65)';
+          ctx.strokeText(lines[i],0,yy);
           ctx.fillText(lines[i],0,yy);yy+=config.lh[i]||20;
         }
       }
