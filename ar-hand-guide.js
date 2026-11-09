@@ -73,10 +73,12 @@ function create(root){
    pivot.add(centered);
    scene.add(pivot);
    // VERIFIED: the hand's widest horizontal axis in the GLB is Z.
-   // Rotate the entire model by +90° about Y so original Z is
-   // displayed horizontally; fingers retain their upright Y axis.
+   // Rotate the entire model by -90° about Y so original Z is
+   // displayed horizontally, with the palm side visible to the viewer.
    // No gesture-driven Y rotation, ever.
-   centered.rotation.y=Math.PI/2;
+   // Source hand is broad in Z, and the camera must see its palm
+   // rather than the back of the pinching fingers.
+   centered.rotation.y=-Math.PI/2;
    centered.updateMatrixWorld(true);
    const box=new THREE.Box3().setFromObject(centered);
    const center=box.getCenter(new THREE.Vector3());
@@ -138,17 +140,21 @@ function create(root){
   last=now;
   el.style.display='block';el.style.opacity='1';
   const reach=smooth((u-.25)/1.1);
-  const pinch=smooth((u-1.15)/.55);
-  const pull=smooth((u-2.45)/.84);
-  const retreat=smooth((u-3.65)/.56);
-  const pose=pinch*(1-smooth((u-3.5)/.65));
+  const pinch=smooth((u-1.1)/.75);
+  const pull=smooth((u-2.75)/.78);
+  const retreat=smooth((u-3.85)/.50);
+  // Fully close on the actual embedded endpoint and HOLD while pulling.
+  const pose=pinch*(1-smooth((u-3.88)/.55));
   // Start below the face, touch the face with index/thumb,
   // then pull outward. All motions are screen-forward, never
   // sideways hand rotation.
   const x=lerp(-47,2,reach)+42*pull-32*retreat;
-  const y=lerp(-135,68,reach)-22*pull-70*retreat;
+  const y=lerp(-135,68,reach)-32*pull-65*retreat;
   const z=lerp(.77,1.03,reach)+.25*pull-.27*retreat;
-  const time=.045+(Math.min(clip.duration-.01,2.15)-.045)*pose;
+  // Pose_OKHand runs from t=0.0417 to t=5.0 in the supplied GLB.
+  // The former 2.15s clamp stopped before the intended OK/pinch pose.
+  const endTime=Math.max(.045,clip.duration-.025);
+  const time=.045+(endTime-.045)*pose;
   mixer.setTime(time);
   pivot.position.set(x,y,0);
   pivot.rotation.set(0,0,-.20);
