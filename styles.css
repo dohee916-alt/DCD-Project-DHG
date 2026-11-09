@@ -1348,3 +1348,48 @@ canvas.figure{object-fit:contain!important}
   opacity:1!important;mix-blend-mode:normal!important;
   pointer-events:none!important;
 }
+
+/* AR5-1 reuses the four exact AR0–2 gradient definitions, each as its own
+   blending layer, with scene-specific direction and visibility. */
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient{
+  display:block!important;position:absolute!important;inset:0!important;
+  z-index:5!important;opacity:1!important;overflow:hidden!important;
+  background:rgba(250,165,138,.18)!important;
+  mix-blend-mode:normal!important;pointer-events:none!important;
+  isolation:isolate!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient::before,
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient::after{
+  content:none!important;display:none!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar5-1-source-tint{
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:#D83A00;mix-blend-mode:color;opacity:.34;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient .poster-gradient{
+  display:block!important;position:absolute!important;
+  width:510px!important;height:942px!important;
+  z-index:1!important;pointer-events:none!important;
+  opacity:.43!important;
+  transform:scaleX(-1)!important;transform-origin:50% 50%!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient .poster-gradient-a{
+  left:-48px!important;top:0!important;
+  mix-blend-mode:multiply!important;
+  background:linear-gradient(206.26252277234065deg,#fff 13.526%,rgba(255,255,255,0) 37.155%,#c25100 93.712%)!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient .poster-gradient-b{
+  left:-41px!important;top:-2px!important;
+  mix-blend-mode:multiply!important;
+  background:linear-gradient(264.6865816573264deg,#fff 21.631%,rgba(255,255,255,0) 42.094%,#cf4900 91.073%)!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient .poster-gradient-c{
+  left:-34px!important;top:-8px!important;
+  mix-blend-mode:multiply!important;
+  background:linear-gradient(266.4413399504181deg,#fff 22.18%,rgba(255,255,255,0) 45.617%,#9e4f00 101.71%)!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient .poster-gradient-d{
+  left:-48px!important;top:0!important;
+  mix-blend-mode:lighten!important;
+  background:linear-gradient(206.26252277234065deg,rgba(255,255,255,.8) 13.526%,rgba(255,255,255,0) 37.155%,rgba(158,42,0,0) 93.712%)!important;
+}
