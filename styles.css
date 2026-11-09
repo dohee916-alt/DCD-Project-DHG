@@ -1337,3 +1337,18 @@ canvas.figure{object-fit:contain!important}
    animation:none!important;
  }
 }
+
+/* AR5-1 silhouette-only burnt-orange recolor.
+   The live cutout canvas already contains the subject alpha: recolor only
+   its nontransparent pixels. Background gradients and UI remain unchanged.
+   CSS blur precedes recoloring so the soft Figma portrait edge is preserved.
+   Do not tint the camera input, the AR stage, or any parent composite. */
+.ar-immersive.ar-matting-active[data-ar-frame="AR5-1"] .ar-person-segment{
+  filter:blur(27px) brightness(0) saturate(100%)
+    invert(29%) sepia(96%) saturate(1730%) hue-rotate(353deg)
+    brightness(.77) contrast(1.08)!important;
+  -webkit-filter:blur(27px) brightness(0) saturate(100%)
+    invert(29%) sepia(96%) saturate(1730%) hue-rotate(353deg)
+    brightness(.77) contrast(1.08)!important;
+  opacity:1!important;
+}
