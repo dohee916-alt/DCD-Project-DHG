@@ -72,11 +72,15 @@ void main(){
   float strand=smoothstep(0.008,0.33,fiber);
   float detail=clamp(abs(left-right)+abs(up-down),0.0,1.0);
   float fiberLight=clamp(vLight+0.17*(left-right+up-down),0.76,1.17);
-  vec3 whiteNet=vec3(0.985,0.972,0.954)*fiberLight;
+  // Slight pearlescent warm/cool scatter, not an opaque grid.
+  float sheen=clamp(0.5+0.5*(vLight-0.9)*3.0,0.0,1.0);
+  vec3 whiteNet=mix(vec3(.957,.966,.982),vec3(1.0,.982,.955),sheen)*fiberLight;
   // Give the photographic thread visible scattering while leaving the
   // spaces between woven fibers transparent. A faint organza body connects
   // the fabric even when individual thread pixels shrink at camera scale.
-  float netAlpha=0.070+0.52*strand+0.040*detail;
+  // Fine, thin organza filament with a faint continuous translucent body.
+  // Avoid the coarse opaque mesh effect from the earlier yarn intensity.
+  float netAlpha=0.045+0.36*strand+0.022*detail;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -125,10 +129,18 @@ function paintedFabric(height,index){
     pixels.data[k+3]=Math.round(Math.max(0,Math.min(255,fiber*255/143)));
   }
   tctx.putImageData(pixels,0,0);
-  const weave=ctx.createPattern(tile,'repeat');
-  if(weave?.setTransform&&typeof DOMMatrix!=='undefined')
-    weave.setTransform(new DOMMatrix().translate(index*9,index*13).scale(.92));
-  ctx.imageSmoothingEnabled=true;ctx.fillStyle=weave;ctx.fillRect(0,0,c.width,c.height);
+  // Render the real photographed yarn more finely rather than relying on
+  // DOMMatrix pattern transforms (unsupported in some mobile WebViews).
+  const fineTile=document.createElement('canvas');
+  fineTile.width=fineTile.height=38;
+  const ft=fineTile.getContext('2d');
+  ft.imageSmoothingEnabled=true;ft.imageSmoothingQuality='high';
+  ft.drawImage(tile,0,0,38,38);
+  const weave=ctx.createPattern(fineTile,'repeat');
+  ctx.imageSmoothingEnabled=true;
+  ctx.save();ctx.translate((index*11)%38,(index*17)%38);
+  ctx.fillStyle=weave;ctx.fillRect(-38,-38,c.width+76,c.height+76);
+  ctx.restore();
   return c;
 }
 // Keep embroidered phrases in stable cloth regions. Facial features are
@@ -214,7 +226,11 @@ function canvasCloth(root){
     im.data[k+3]=v?Math.round(80+175*Math.sqrt(v/143)):0;
   }
   t.putImageData(im,0,0);
-  const pattern=ctx.createPattern(tile,'repeat');
+  const finer=document.createElement('canvas');finer.width=finer.height=38;
+  const fineCtx=finer.getContext('2d');
+  fineCtx.imageSmoothingEnabled=true;fineCtx.imageSmoothingQuality='high';
+  fineCtx.drawImage(tile,0,0,38,38);
+  const pattern=ctx.createPattern(finer,'repeat');
   let positions=null,lastSeen=0,live=true;
   function update(points,width,height){
     if(!points?.length||points.length<468||!width||!height){
@@ -237,8 +253,8 @@ function canvasCloth(root){
     // Keep generous margins around the face, but never let the cloth grow
     // into the heading or extend an entire face-height beyond the chin.
     const cw=clamp(fw*1.72,fw+80,412);
-    const ch=clamp(fh*1.94,fh+145,690);
-    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2-fh*.24;
+    const ch=clamp(fh*1.53,fh+85,585);
+    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2-fh*.015;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
@@ -550,10 +566,10 @@ function create(root){
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
     const angle=uprightFaceAngle(eyeA,eyeB),co=Math.cos(angle),si=Math.sin(angle);
-    const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2-fh*.24;
+    const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2-fh*.015;
     // FaceLandmarker ends at the forehead skin, NOT at the hairline.
     // This is an actual head-covering veil, extended above hair and ears.
-    const cw=clamp(fw*1.72,fw+80,412),ch=clamp(fh*1.94,fh+145,690);
+    const cw=clamp(fw*1.72,fw+80,412),ch=clamp(fh*1.53,fh+85,585);
     faceCenter={x:cx,y:cy,cw,ch,co,si,fw,fh};
     // Build the real tracked face surface in the same mirrored screen space.
     facePixels=new Float32Array(468*2);
