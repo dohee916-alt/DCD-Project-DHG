@@ -36,7 +36,7 @@ function segment(source,timestamp){
  inputCtx.drawImage(source,0,0,iw,ih);
  segmenter.segmentForVideo(input,timestamp/1000,result=>{
   // The pinned SelfieSegmenter model metadata contains one label, "selfie".
-  const mask=result.confidenceMasks?.[0];
+  const mask=(result.confidenceMasks?.[1] ?? result.confidenceMasks?.[0]);
   if(!mask)throw Error('Missing foreground confidence mask');
   if(!pixels||matte.width!==mask.width||matte.height!==mask.height){
    matte.width=mask.width;matte.height=mask.height;
