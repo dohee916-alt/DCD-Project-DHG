@@ -187,6 +187,7 @@ function create(root){
   let outline=[],neighborsByVertex=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let vertexCount=0,neutralUV=null;
   let live=true,frameId=0,lastRendered=0,renderErrorReported=false;
+  let setupStatus='pending';
   const textures={},layers=[];
   function setConnections(){
     const canonical=window.DCD_FACE_CANONICAL;
@@ -245,6 +246,8 @@ function create(root){
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(completeTriangles),gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
     gl.bufferData(gl.ARRAY_BUFFER,vertices.byteLength,gl.DYNAMIC_DRAW);
+    setupStatus='ready';
+    root.dataset.tulleSetup='ready';
     return true;
   }
   function makeTexture(source){
@@ -259,6 +262,16 @@ function create(root){
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
     return tex;
   }
+  // Canonical geometry is a bundled static asset. Initialize it now, not
+  // behind the asynchronous FaceLandmarker SDK / model loading sequence.
+  // Previously a model-loader interruption left indexCount=0 permanently.
+  try{
+    if(!setConnections())throw new Error('Canonical face mesh missing or invalid');
+  }catch(error){
+    setupStatus='error';
+    root.dataset.tulleSetup='error';
+    console.error('[DCD AR] Organza mesh initialization:',error);
+  }
   (async()=>{
     try{
       const [height]=await Promise.all([
@@ -266,6 +279,7 @@ function create(root){
         document.fonts?.load('700 18px "Turret Road"').catch(()=>{})||Promise.resolve()
       ]);
       if(!live)return;
+      root.dataset.tulleTexture='ready';
       const fiberTextures=Array.from({length:5},(_,i)=>makeTexture(paintedFabric(height,i)));
       for(const variant of ['first','replacement']){
         textures[variant]=WORDS[variant].map((phrase,i)=>({
@@ -273,7 +287,7 @@ function create(root){
           thread:makeTexture(embroideredLetters(variant,i))
         }));
       }
-    }catch(error){console.warn('[DCD] Cloth texture preparation:',error);}
+    }catch(error){root.dataset.tulleTexture='error';console.error('[DCD] Cloth texture preparation:',error);}
   })();
   function update(points,width,height){
     if(!mesh||!points?.length||points.length<468||!width||!height){
@@ -346,12 +360,16 @@ function create(root){
     for(let i=layers.length-1;i>=0;i--){
       if(layers[i].removing&&now-layers[i].exit>1200)layers.splice(i,1);
     }
-    const ready=Boolean(faceCenter&&indexCount&&textures.first&&layers.length);
+    const ready=Boolean(faceCenter&&setupStatus==='ready'&&indexCount&&textures.first&&layers.length);
     if(!ready||gl.isContextLost()){
+      root.dataset.tulleState=gl.isContextLost()?'context-lost':(!faceCenter?'no-face':(!textures.first?'no-texture':'not-ready'));
       root.classList.remove('ar-tulle-ready');
       return;
     }
     try{
+    // Ignore GL errors left behind by one-time texture uploads; only a
+    // problem from the actual draw should switch to the fallback.
+    for(let i=0;i<8&&gl.getError()!==gl.NO_ERROR;i++){}
     gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
     gl.useProgram(program);
@@ -409,9 +427,11 @@ function create(root){
     const error=gl.getError();
     if(error!==gl.NO_ERROR)throw new Error('WebGL draw error '+error);
     root.classList.add('ar-tulle-ready');
+    root.dataset.tulleState='rendering';
     renderErrorReported=false;
     }catch(error){
       root.classList.remove('ar-tulle-ready');
+      root.dataset.tulleState='draw-error';
       if(!renderErrorReported){console.warn('[DCD AR] Cloth render fallback:',error);renderErrorReported=true;}
     }
   }
