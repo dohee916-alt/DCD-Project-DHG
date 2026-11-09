@@ -144,9 +144,10 @@ function embroideredLetters(variant,index){
  const total=lh.reduce((a,b)=>a+b,0);
  let widest=1;
  lines.forEach((line,i)=>{ctx.font='700 '+fs[i]+'px "Turret Road",sans-serif';widest=Math.max(widest,ctx.measureText(line).width)});
- // Keep approximately the original Figma 18px on-screen lettering.
- // The old 2.1x atlas cap collapsed the text to about 12px on a face.
- const atlasScale=Math.min(3.15,slot.max*TEXTURE_SIZE*.94/widest);
+ // The 3.15x atlas cap enlarged 18px Figma letters across the actual
+ // face mesh. Limit glyph growth and preserve the authored 18px/20px
+ // proportions and label anchors without flattening the tracked fabric.
+ const atlasScale=Math.min(2.05,slot.max*TEXTURE_SIZE*.83/widest);
  ctx.scale(atlasScale,atlasScale);
  let y=-total/2;
  lines.forEach((line,i)=>{
