@@ -797,10 +797,16 @@ async function beginAr(){
   // shifts the entire blister when the animation begins.
   const baseX=originalRect.left,baseY=originalRect.top;
   const dstX=target.left+target.width/2,dstY=target.top+target.height/2;
-  const startScale=originalRect.width/185.497;
-  // Match the actual AR target orientation. On a landscape phone the
-  // portrait design is shown sideways at its FULL fitted scale; flying
-  // pack and every doll must arrive with that same orientation and size.
+  // The source blister is already rotated +90 degrees on a portrait-locked
+  // phone by the shared WEB04–16 wrapper. Use its REAL on-screen bounds:
+  // projected width = native HEIGHT * scale, not native width * scale.
+  // Otherwise the flying copy is born at a different size and angle and
+  // looks like a second blister arriving from above.
+  const sourceSideways=mobile&&originalRect.width>originalRect.height;
+  const startAngle=sourceSideways?90:0;
+  const startScale=sourceSideways
+    ?originalRect.width/391.108
+    :originalRect.width/185.497;
   const sidewaysTarget=!mobile||stage.dataset.orientation==='rotated';
   const finishScale=sidewaysTarget?target.width/391.108:target.width/185.497;
   const finishAngle=sidewaysTarget?-90:0;
@@ -822,11 +828,14 @@ async function beginAr(){
     transform:k(
       mix(centerX,dstX,t),
       mix(centerY,dstY,t),
-      mix(0,finishAngle,t),
+      mix(startAngle,finishAngle,t),
       mix(startScale,finishScale,t)
     ),
     opacity:1
   }));
+  // Position the SAME visible pack at its exact current screen pose before
+  // animation starts. First paint is identical to the old pack (no entrance).
+  flying.style.transform=flightFrames[0].transform;
   const flight=flying.animate(flightFrames,{
     duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'
   });
