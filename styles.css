@@ -1149,3 +1149,14 @@ canvas.figure{object-fit:contain!important}
 #stage.page-02 .poster-art.poster-result-art{
   filter:sepia(.15) saturate(.88) hue-rotate(-2deg)!important;
 }
+
+/* AR organza: only the photographic tracked GPU/2D canvases render a veil.
+   Remove the deprecated flat CSS silhouette that appeared as a faint
+   undefined white patch when GPU rendering had not finished. */
+.ar-immersive .ar-organza-sheet{
+  visibility:hidden!important;
+  background:none!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
