@@ -55,6 +55,7 @@ function markup(){
  return '<div class="ar-immersive" data-ar-frame="AR3">'+
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
  '<canvas class="ar-person-segment" width="428" height="926" aria-hidden="true"></canvas>'+
+ '<canvas class="ar-dark-silhouette" width="428" height="926" aria-hidden="true"></canvas>'+
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
  '<div class="ar-choice-gradient" aria-hidden="true"></div>'+figmaAR5GradientMarkup()+
  '<div class="ar-choice-pack" aria-hidden="true"></div>'+
@@ -159,6 +160,7 @@ function enter(frame){
  if(!state.root||!frameNames.includes(frame))return;
  stopTimers();state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
+ if(['AR5-1','AR9','AR10'].includes(frame))renderDarkSilhouette();
  switch(frame){
  case 'AR3':caption('POSITION YOUR FACE HERE');break;
  case 'AR4':
@@ -414,10 +416,32 @@ function start(video){
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }
+/* Use the matte's alpha, not its RGB. Repeated alpha-over draws make
+   the body a legible, dark shape even when hair/organza edges are soft.
+   This canvas is used only on AR5-1, AR9 and AR10. */
+function renderDarkSilhouette(){
+ const root=state.root;
+ if(!root||!['AR5-1','AR9','AR10'].includes(state.frame))return;
+ const source=root.querySelector('.ar-person-segment');
+ const target=root.querySelector('.ar-dark-silhouette');
+ if(!source||!target)return;
+ const ctx=target.getContext('2d',{alpha:true});
+ if(!ctx)return;
+ const w=target.width,h=target.height;
+ ctx.globalCompositeOperation='source-over';
+ ctx.clearRect(0,0,w,h);
+ // Alpha reinforcement of the existing real-human cutout. No invented oval
+ // or shape, and no modifications to the video used for gesture tracking.
+ for(let i=0;i<5;i++)ctx.drawImage(source,0,0,w,h);
+ ctx.globalCompositeOperation='source-in';
+ ctx.fillStyle='#551b0c';
+ ctx.fillRect(0,0,w,h);
+ ctx.globalCompositeOperation='source-over';
+}
 function ensurePortraitMatte(){
  if(!state.playing||!state.root||state.matte)return;
  try{state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,
-   state.root.querySelector('.ar-person-segment'))||null;}
+   state.root.querySelector('.ar-person-segment'),renderDarkSilhouette)||null;}
  catch(error){console.warn('[DCD AR] Portrait matte init:',error);}
 }
 function startArVisuals(){
