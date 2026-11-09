@@ -9,6 +9,14 @@ const FIGMA_MASK_TEXT={first:[{"text":"THAT’S\nCHEATING.","x":92.9706116,"y":3
 const W=428,H=926,TEXTURE_SIZE=1024,clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const mix=(a,b,t)=>a+(b-a)*t;
 const ease=t=>t*t*(3-2*t);
+// MediaPipe eye landmark numbering changes left/right after the selfie
+// mirror. atan2(leftEye-rightEye) may point toward PI and rotate the entire
+// cloth and its writing 180 degrees. Keep the horizontal face axis upright.
+function uprightFaceAngle(a,b){
+ let angle=Math.atan2(a.y-b.y,a.x-b.x);
+ if(Math.cos(angle)<0)angle+=angle>0?-Math.PI:Math.PI;
+ return angle;
+}
 const VERT=String.raw`
 attribute vec3 position;
 attribute vec2 uv;
@@ -64,7 +72,9 @@ void main(){
   float shade=contact*0.13;
   // Fabric and embroidery have independent draw passes. In particular the
   // last fabric layer must not erase the letters from earlier layers.
-  float edgeFade=1.0-0.85*smoothstep(0.94,1.0,vFringe);
+  // The fabric is real and semi-transparent through the center. The hems
+  // fade fully away instead of retaining 15% alpha as square border rails.
+  float edgeFade=1.0-smoothstep(0.18,0.99,vFringe);
   if(embroideryPass>0.5){
     gl_FragColor=vec4(orangeThread,clamp(stitch*opacity,0.0,1.0));
   }else{
@@ -203,10 +213,10 @@ function canvasCloth(root){
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
     // Keep generous margins around the face, but never let the cloth grow
     // into the heading or extend an entire face-height beyond the chin.
-    const cw=clamp(fw*1.32,fw+24,350);
-    const ch=clamp(fh*1.29,fh+38,540);
+    const cw=clamp(fw*1.18,fw+18,340);
+    const ch=clamp(fh*1.18,fh+25,495);
     const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2;
-    const angle=Math.atan2(eyeL.y-eyeR.y,eyeL.x-eyeR.x);
+    const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
     for(let pass=0;pass<2;pass++)for(const layer of layers){
@@ -224,18 +234,17 @@ function canvasCloth(root){
       // One cloth with four continuous sides, softened top corners and
       // subtly tucked lower corners, rather than a face-shaped ellipse.
       ctx.beginPath();
-      ctx.moveTo(l+cw*.09,t);
-      ctx.lineTo(r-cw*.09,t);
-      ctx.quadraticCurveTo(r,t,r,t+ch*.09);
-      ctx.lineTo(r,b-ch*.18);
+      ctx.moveTo(0,t);
+      ctx.bezierCurveTo(cw*.23,t-cw*.01,r-cw*.11,t+ch*.09,r-cw*.07,t+ch*.27);
+      ctx.quadraticCurveTo(r,t+ch*.43,r-cw*.035,b-ch*.26);
       // Raise and tuck the lower corners, allow the central hem to curl.
       // Two unequal arcs prevent the sheet from ending in a straight edge.
       ctx.quadraticCurveTo(r-cw*.035,b-ch*.11,r-cw*.21,b-ch*.075);
       ctx.quadraticCurveTo(r-cw*.38,b-ch*.025,0,b-ch*.035);
       ctx.quadraticCurveTo(l+cw*.40,b+ch*.015,l+cw*.21,b-ch*.085);
       ctx.quadraticCurveTo(l+cw*.035,b-ch*.12,l,b-ch*.18);
-      ctx.lineTo(l,t+ch*.09);
-      ctx.quadraticCurveTo(l,t,l+cw*.09,t);
+      ctx.quadraticCurveTo(l+cw*.035,t+ch*.43,l+cw*.07,t+ch*.27);
+      ctx.bezierCurveTo(l+cw*.11,t+ch*.09,l+cw*.23,t-cw*.01,0,t);
       ctx.closePath();ctx.clip();
       if(pass===0){
       ctx.fillStyle='rgba(250,248,243,.065)';
@@ -290,6 +299,7 @@ function create(root){
   }catch(error){
     console.warn('[DCD] Cloth WebGL unavailable; using tracked canvas cloth:',error);
     canvas.remove();
+    root.classList.add('ar-tulle-fallback');
     const backup=canvasCloth(root),layers=[];
     let frameId=0,live=true;
     function tick(now){if(!live)return;backup.draw(layers,now);frameId=requestAnimationFrame(tick);}
@@ -459,9 +469,9 @@ function create(root){
     const noseRelief=clamp((rawCheek-rawNose)*1.8,.015,.18);
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
-    const angle=Math.atan2(eyeA.y-eyeB.y,eyeA.x-eyeB.x),co=Math.cos(angle),si=Math.sin(angle);
+    const angle=uprightFaceAngle(eyeA,eyeB),co=Math.cos(angle),si=Math.sin(angle);
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2;
-    const cw=clamp(fw*1.32,fw+24,350),ch=clamp(fh*1.29,fh+38,540);
+    const cw=clamp(fw*1.18,fw+18,340),ch=clamp(fh*1.18,fh+25,495);
     faceCenter={x:cx,y:cy,cw,ch,co,si,fw,fh};
     // Build the real tracked face surface in the same mirrored screen space.
     facePixels=new Float32Array(468*2);
@@ -509,15 +519,22 @@ function create(root){
       const sideFold=clamp((Math.abs(nx)-.72)/.28,0,1);
       const upperCorner=clamp((.19-v)/.19,0,1)*clamp((Math.abs(nx)-.64)/.36,0,1);
       const curl=tuck*(.065+.055*edgeX)+sideFold*.22+upperCorner*.09;
-      const px=nx*cw*.5*(1-curl);
+      // Round the forehead and contour the cheeks instead of retaining the
+      // rectangular grid's top corners and perfectly vertical side rails.
+      const topRegion=clamp((.29-v)/.29,0,1);
+      const jawRegion=clamp((v-.61)/.39,0,1);
+      const faceContour=1-.25*topRegion*topRegion-.15*jawRegion*jawRegion;
+      const px=nx*cw*.5*(1-curl)*faceContour;
       const rolledEdge=Math.max(0,(v-.87)/.13);
       const curve=Math.pow(Math.abs(nx),1.5);
-      // Keep the lower edge broad: the center/side height difference stays
-      // below ~3% of the face height rather than the previous 27.5%.
+      // A curved forehead edge dips toward the temples. At the chin, pull
+      // the outer corners up around the jaw to avoid a flat rectangular hem.
+      const foreheadRound=topRegion*topRegion*fh*.19*Math.pow(Math.abs(nx),2.3);
+      const jawRound=jawRegion*jawRegion*fh*.095*Math.pow(Math.abs(nx),1.6);
       const hemLift=tuck*fh*(.025+.020*curve);
       const hemScoop=tuck*fh*.015*(1-curve);
-      const py=(v-.47)*ch-hemLift+hemScoop-rolledEdge*rolledEdge*fh*.012+
-        upperCorner*fh*.065;
+      const py=(v-.47)*ch+foreheadRound-jawRound-
+        hemLift+hemScoop-rolledEdge*rolledEdge*fh*.012;
       const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
       const cheek=Math.exp(-(((Math.abs(nx)-.51)/.27)**2+((v-.51)/.31)**2));
       const foldDepth=tuck*(.025+.055*edgeX)+rolledEdge*.03;
@@ -559,7 +576,7 @@ function create(root){
       const foldShade=tuck*(.055*edgeX+.012*curve);
       mesh[at+5]=clamp(.94+.10*bump+.035*cheek-foldShade-rolledEdge*.13,.68,1.10);
       const border=Math.min(u,1-u,v,1-v);
-      mesh[at+6]=clamp((.075-border)/.075,0,1);
+      mesh[at+6]=clamp((.115-border)/.115,0,1);
     }
   }
   function arrival(t){
