@@ -167,6 +167,89 @@ function faceOutline(connections){
   }
   return oval;
 }
+// Preserve the actual 64x64 photographic threads on browsers where a
+// WebGL context or shader cannot draw. The fallback follows tracked facial
+// landmarks and NEVER draws the old static CSS oval.
+const FACE_RIM=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
+function canvasCloth(root){
+  const canvas=document.createElement('canvas');
+  canvas.className='ar-tulle-2d';canvas.width=W;canvas.height=H;
+  canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none';
+  root.appendChild(canvas);
+  const ctx=canvas.getContext('2d',{alpha:true});
+  const tile=document.createElement('canvas');tile.width=tile.height=64;
+  const t=tile.getContext('2d',{alpha:true}),im=t.createImageData(64,64);
+  const height=getHeight();
+  for(let i=0;i<4096;i++){
+    const v=height[i],k=i*4;
+    im.data[k]=252;im.data[k+1]=249;im.data[k+2]=243;
+    im.data[k+3]=v?Math.round(80+175*Math.sqrt(v/143)):0;
+  }
+  t.putImageData(im,0,0);
+  const pattern=ctx.createPattern(tile,'repeat');
+  let positions=null,lastSeen=0,live=true;
+  function update(points,width,height){
+    if(!points?.length||points.length<468||!width||!height){
+      if(performance.now()-lastSeen>1600)positions=null;
+      return;
+    }
+    const fit=Math.max(W/width,H/height),dw=width*fit,dh=height*fit;
+    positions=points.map(p=>({x:(W-dw)/2+(1-p.x)*dw,y:(H-dh)/2+p.y*dh}));
+    lastSeen=performance.now();
+  }
+  function draw(layers,now){
+    if(!live||!ctx)return;
+    ctx.clearRect(0,0,W,H);
+    if(!positions||!layers.length)return;
+    const center=positions[1];
+    const pts=FACE_RIM.map(k=>({
+      x:center.x+(positions[k].x-center.x)*1.27,
+      y:center.y+(positions[k].y-center.y)*1.29+8
+    }));
+    const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
+    const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
+    for(const layer of layers){
+      const age=(now-layer.start)/1000;
+      const progress=clamp(age/1.25,0,1);
+      const fly=1-(1-Math.pow(1-progress,3));
+      const offX=(layer.index%2?1:-1)*56*fly;
+      const offY=-85*fly;
+      const exit=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
+      const alpha=(layer.removing?1-ease(exit):clamp(age/.24,0,1));
+      if(alpha<=0)continue;
+      ctx.save();
+      ctx.globalAlpha=alpha;
+      ctx.translate(offX+exit*45,offY-exit*155);
+      ctx.beginPath();
+      pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+      ctx.closePath();ctx.clip();
+      ctx.fillStyle='rgba(250,246,239,.25)';
+      ctx.fillRect(minX-30,minY-30,maxX-minX+60,maxY-minY+60);
+      ctx.fillStyle=pattern;
+      ctx.globalAlpha=alpha*.88;
+      ctx.fillRect(minX-30,minY-30,maxX-minX+60,maxY-minY+60);
+      const config=FIGMA_MASK_TEXT[layer.variant]?.[layer.index];
+      if(config){
+        const boundsW=Math.max(1,maxX-minX),boundsH=Math.max(1,maxY-minY);
+        const x=minX+(config.x-69.5)/289*boundsW;
+        const y=minY+(config.y-267)/376*boundsH;
+        ctx.globalAlpha=alpha;
+        ctx.translate(x,y);ctx.rotate(config.r*Math.PI/180);
+        ctx.fillStyle='#fb5511';ctx.textBaseline='top';ctx.textAlign='left';
+        const lines=config.text.split('\n');
+        const scale=Math.min(1.15,Math.max(.68,boundsW/289));
+        ctx.scale(scale,scale);
+        let py=0;
+        for(let i=0;i<lines.length;i++){
+          ctx.font='700 '+(config.fs[i]||18)+'px "Turret Road",sans-serif';
+          ctx.fillText(lines[i],0,py);py+=config.lh[i]||20;
+        }
+      }
+      ctx.restore();
+    }
+  }
+  return {update,draw,destroy(){live=false;canvas.remove();}};
+}
 function create(root){
   if(!root)return null;
   const canvas=document.createElement('canvas');
@@ -180,7 +263,22 @@ function create(root){
     gl.attachShader(program,shader(gl,gl.FRAGMENT_SHADER,FRAG));
     gl.linkProgram(program);
     if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));
-  }catch(error){console.warn('[DCD] Cloth WebGL unavailable',error);canvas.remove();return null;}
+  }catch(error){
+    console.warn('[DCD] Cloth WebGL unavailable; using tracked canvas cloth:',error);
+    canvas.remove();
+    const backup=canvasCloth(root),layers=[];
+    let frameId=0,live=true;
+    function tick(now){if(!live)return;backup.draw(layers,now);frameId=requestAnimationFrame(tick);}
+    frameId=requestAnimationFrame(tick);
+    return {
+      setConnections(){return true},
+      update:backup.update,
+      add(variant,index){const layer={variant,index,start:performance.now(),removing:false,exit:0};layers.push(layer);return layer;},
+      remove(layer){if(layer){layer.removing=true;layer.exit=performance.now();}},
+      clear(){layers.length=0;},
+      destroy(){live=false;cancelAnimationFrame(frameId);backup.destroy();}
+    };
+  }
   // Suppress the old flat CSS oval when the tracked 3D cloth is available.
   root.classList.add('ar-tulle-gpu');
   const vb=gl.createBuffer(),ib=gl.createBuffer();
@@ -207,6 +305,7 @@ function create(root){
     }
   }
   const textures={},layers=[];
+  const canvasBackup=canvasCloth(root);
   function setConnections(){
     const canonical=window.DCD_FACE_CANONICAL;
     if(!canonical||canonical.uv.length!==468||canonical.triangles.length<2000)return false;
@@ -316,9 +415,11 @@ function create(root){
       // Landmark detection can temporarily drop a frame while the user
       // remains in view. Do not erase the already fitted fabric immediately.
       if(performance.now()-lastFaceSeenAt>1600)faceCenter=null;
+      canvasBackup.update(null,width,height);
       return;
     }
     lastFaceSeenAt=performance.now();
+    canvasBackup.update(points,width,height);
     // Landmark coordinates and the mirrored live camera use one consistent
     // screen-space projection. Official UVs stay attached to each landmark.
     const fit=Math.max(W/width,H/height),dw=width*fit,dh=height*fit;
@@ -390,6 +491,7 @@ function create(root){
     if(!ready||gl.isContextLost()){
       reportState(gl.isContextLost()?'context-lost':(!faceCenter?'no-face':(!textures.first?'no-texture':'not-ready')),now);
       root.classList.remove('ar-tulle-ready');
+      canvasBackup.draw(layers,now);
       return;
     }
     try{
@@ -453,10 +555,12 @@ function create(root){
     const error=gl.getError();
     if(error!==gl.NO_ERROR)throw new Error('WebGL draw error '+error);
     root.classList.add('ar-tulle-ready');
+    canvasBackup.draw([],now);
     reportState('rendering',now);
     renderErrorReported=false;
     }catch(error){
       root.classList.remove('ar-tulle-ready');
+      canvasBackup.draw(layers,now);
       reportState('draw-error',now);
       if(!renderErrorReported){console.warn('[DCD AR] Cloth render fallback:',error);renderErrorReported=true;}
     }
@@ -483,6 +587,7 @@ function create(root){
     for(const texArray of Object.values(textures))for(const pair of texArray){
       for(const t of [pair.fabric,pair.thread])if(!seen.has(t)){gl.deleteTexture(t);seen.add(t);}
     }
+    canvasBackup.destroy();
     gl.deleteBuffer(vb);gl.deleteBuffer(ib);gl.deleteProgram(program);canvas.remove();
     root.classList.remove('ar-tulle-gpu','ar-tulle-ready');
   }
