@@ -233,26 +233,27 @@ function create(root){
   if(!started){since=now;started=true;}
   if(now-last<33)return;
   last=now;
-  // Repeat the entire 5.1-second set until the FIRST fabric is removed.
-  // Never restart the clock merely because AR6 advances to AR7.
-  const t=((now-since)/1000)%5.10;
-  // One complete gesture, with a clearly held start and endpoint:
-  // 0.00–0.85  Palm faces viewer, index/thumb OPEN, other three FOLDED
-  // 0.85–1.70  Rotate to show back of hand; fingers stay unchanged
-  // 1.70–2.65  Move away from the screen, and pinch index/thumb together
-  // 2.65–2.95  Hold the closed pinch at the far position
-  // 2.95–3.35  RELEASE index/thumb while still far away
-  // 3.45–4.35  Move closer with index/thumb ALREADY OPEN
-  // 4.35–5.10 Hold the open pose; restart from the initial palm pose.
-  // Only the real first mask removal can hide the guide.
-  const rotate=smooth((t-.85)/.85);
-  const recede=smooth((t-1.70)/.95);
-  // The return movement starts only AFTER the release has finished.
-  const approach=smooth((t-3.45)/.90);
-  const pinch=smooth((t-1.70)/.95)*(1-smooth((t-2.95)/.40));
+  // One discrete demonstration. The hand never travels back toward the
+  // viewer at the end. It DISAPPEARS in the distance and a fresh OPEN hand
+  // appears at the original front position at the next loop boundary.
+  // Continue until the first successful physical mask peel.
+  const cycle=3.85;
+  const t=((now-since)/1000)%cycle;
+  // 0.00–0.65: front-facing hand, thumb/index OPEN, other fingers CURLED
+  // 0.65–1.45: rotate to show back of hand; thumb/index stay OPEN
+  // 1.45–1.95: PINCH thumb/index while stationary, already back-facing
+  // 1.95–3.05: move AWAY from the screen, keeping pinch CLOSED
+  // 2.70–3.20: fade out at the distant position
+  // 3.20–3.85: invisible gap before next fresh front-facing appearance
+  const rotate=smooth((t-.65)/.80);
+  const pinch=smooth((t-1.45)/.50);
+  const recede=smooth((t-1.95)/1.10);
+  const fadeIn=smooth(t/.20);
+  const fadeOut=1-smooth((t-2.70)/.50);
+  const visibility=fadeIn*fadeOut;
   // Open thumb/index = Pose_OKHand start; closed thumb/index = Pose_OK end.
-  // Other three curled fingers remain locked at Pose_OK end. Critically,
-  // the fully open pose is displayed at the START and again on RETURN.
+  // Other three curled fingers remain locked at Pose_OK end. The thumb
+  // and index CLOSE only after the rotation has finished.
   const foldedTime=Math.max(.045,clip.duration-.025);
   mixer.setTime(foldedTime);
   for(let n=0;n<initialThumbIndex.length;n++){
@@ -262,15 +263,14 @@ function create(root){
    bone.quaternion.copy(a.rotation).slerp(b.rotation,pinch);
    bone.scale.copy(a.scale).lerp(b.scale,pinch);
   }
-  // Model-facing correction is fixed at -90 deg in the child.
-  // Rotate the parent 180 deg to intentionally reveal the back of the
-  // hand without mistakenly requiring the REAL user to rotate sideways.
+  // Fixed model correction + deliberate turn from palm to hand back.
+  // No approach/return segment: recede, fade, and restart from the front.
   pivot.rotation.set(0,Math.PI*rotate,-.12*(1-rotate));
-  pivot.position.set(-10,18+18*recede-18*approach,0);
-  const far=1-.40*recede+.40*approach;
-  pivot.scale.setScalar(poseScale*far);
-  el.style.display='block';
-  el.style.opacity='1';
+  pivot.position.set(-10,18+27*recede,0);
+  const distanceScale=1-.57*recede;
+  pivot.scale.setScalar(poseScale*distanceScale);
+  el.style.display=visibility>.002?'block':'none';
+  el.style.opacity=String(visibility);
   renderer.render(scene,camera);
  }
  init();
