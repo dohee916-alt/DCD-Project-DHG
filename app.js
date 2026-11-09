@@ -86,33 +86,17 @@ function fit(){
  // when the user physically turns the phone upright, simply unrotate it.
  // This is a layout fit, NOT a simulated device-orientation animation.
  const ar=['ar','arOpen','arFace'].includes(s.page);
- // Only compensate a PHYSICAL phone turn if the browser itself is
- // portrait-locked. Never rotate landscape WEB content while held upright.
- // Once the OS rotates the viewport, the original landscape stage stays
- // untransformed, exactly as it did before these regressions.
- const lockedLandscape=phoneDevice()&&w>h&&H>W&&phonePhysicalSideways;
- const sideways=(ar&&phoneDevice()&&W>H)||lockedLandscape;
- const stageAngle=lockedLandscape?phoneTurnAngle:(sideways?-90:0);
+ const sideways=ar&&phoneDevice()&&W>H;
  v.classList.toggle('workbench-viewport',w>h);
  scale=sideways?Math.min(W/h,H/w):Math.min(W/w,H/h);
  stage.style.width=w+'px';stage.style.height=h+'px';
  stage.style.clipPath='none';
- stage.style.transform='translate(-50%,-50%) rotate('+stageAngle+'deg) scale('+scale+')';
+ stage.style.transform='translate(-50%,-50%) rotate('+(sideways?-90:0)+'deg) scale('+scale+')';
  stage.style.transformOrigin='center';
- stage.dataset.orientation=sideways?(stageAngle===90?'rotated-cw':'rotated'):'normal';
+ stage.dataset.orientation=sideways?'rotated':'normal';
  offset={x:W/2,y:H/2};
 }
-function localPoint(e){
- const r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;
- if(stage.dataset.orientation==='rotated'||stage.dataset.orientation==='rotated-cw'){
-   const [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;
-   const dir=stage.dataset.orientation==='rotated-cw'?1:-1;
-   // Inverse of the signed stage rotation; drags stay aligned to pixels.
-   return{x:w/2+dir*(e.clientY-cy)/scale+dx,
-          y:h/2-dir*(e.clientX-cx)/scale};
- }
- return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};
-}
+function localPoint(e){let r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;if(stage.dataset.orientation==='rotated'){let [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;return{x:w/2+(e.clientY-cy)/scale+dx,y:h/2-(e.clientX-cx)/scale};}return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};}
 function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
 const ropes={upper:{line:[6,20,406,596],pull:[-69,-111]},lower:{line:[8,752,406,615],pull:[90,99]}};
 function ropeAt(p){let closest=null,distance=Infinity;for(const [name,{line}] of Object.entries(ropes)){let [x1,y1,x2,y2]=line,t=clamp(((p.x-x1)*(x2-x1)+(p.y-y1)*(y2-y1))/((x2-x1)**2+(y2-y1)**2),0,1),d=Math.hypot(p.x-(x1+t*(x2-x1)),p.y-(y1+t*(y2-y1)));if(d<distance){closest=name;distance=d;}}return distance<=55?closest:null;}
@@ -1157,52 +1141,28 @@ function declineConsent(){
   root.querySelectorAll('.consent-button').forEach(n=>n.remove());
   later(()=>{if(s.page!=='16')return;if(copy){copy.innerHTML='Thank you<br>for Prescribing!';copy.style.opacity='1';}root.insertAdjacentHTML('beforeend',glassButton('TEST IT',669,241,134,'ar'));},720);
 }
-// WEB03: blink ROTATE YOUR PHONE three times, and WAIT. Never move into
-// the landscape workbench merely because three seconds elapsed. On phones,
-// accept a real physical turn even if browser auto-rotation is locked.
-let rotateTurnDetected=false,rotateLastPortrait=false,rotateSensorAt=0;
-let phonePhysicalSideways=false,phoneTurnAngle=-90;
-function landscapeViewport(){
- const v=document.querySelector('#viewport');
- return (v?.clientWidth||window.innerWidth)>(v?.clientHeight||window.innerHeight);
-}
-function finishRotateGuide(){
- if(s.page!=='03'||!rotateGuideFinished)return;
- if(rotateTurnDetected||landscapeViewport())setPage('workbench');
+// Mobile: show the original three-blink rotation instruction, then open
+// the syringe tutorial. Never transform the landscape workbench in response
+// to motion sensors. Desktop retains its original orientation interaction.
+let physicalLandscape=false;
+function finishRotationIfReady(){
+ if(s.page!=='03'||!rotateGuideFinished||phoneDevice())return;
+ if(window.innerWidth>window.innerHeight||physicalLandscape)setPage('workbench');
 }
 function startRotateGuide(){
  rotateGuideFinished=false;
- rotateTurnDetected=false;
- rotateLastPortrait=!phonePhysicalSideways;
- rotateSensorAt=0;
  setPage('03');
  later(()=>{
    if(s.page!=='03')return;
    rotateGuideFinished=true;
+   if(phoneDevice()){
+     setPage('workbench');
+     return;
+   }
    s.phase='waiting';
    render();
-   finishRotateGuide();
+   finishRotationIfReady();
  },M.rotateGuideMs);
-}
-function trackRealPhoneTurn(e){
- if(!phoneDevice()||!Number.isFinite(e.gamma))return;
- const magnitude=Math.abs(e.gamma);
- const previous=phonePhysicalSideways;
- if(magnitude<=37){
-   phonePhysicalSideways=false;
-   if(s.page==='03')rotateLastPortrait=true;
- }else if(magnitude>=58){
-   phonePhysicalSideways=true;
-   phoneTurnAngle=e.gamma>=0?-90:90;
-   if(s.page==='03'&&(rotateLastPortrait||!previous)){
-     rotateTurnDetected=true;
-     finishRotateGuide();
-   }
- }
- rotateSensorAt=performance.now();
- // The browser can remain portrait-locked after a real turn. Its layout
- // must fit the physically sideways screen instead of a tiny 874x428 strip.
- if(previous!==phonePhysicalSideways&&s.page!=='03')fit();
 }
 async function advanceNewPrescription(){
   if(s.phase==='transition')return;
@@ -1318,10 +1278,14 @@ stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){
 function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};}
 // Resize never rotates the WEB canvas in code. It only reads the user's
 // real viewport layout. Device motion unlocks the next step under OS lock.
-function onViewportChange(){fit();finishRotateGuide();}
+function onViewportChange(){fit();finishRotationIfReady();}
 window.addEventListener('resize',onViewportChange);
 window.addEventListener('orientationchange',onViewportChange);
-window.addEventListener('deviceorientation',trackRealPhoneTurn,{passive:true});
+window.addEventListener('deviceorientation',e=>{
+ if(phoneDevice())return; // No mobile motion-based transform or gate.
+ physicalLandscape=Number.isFinite(e.gamma)&&Math.abs(e.gamma)>55;
+ if(physicalLandscape)finishRotationIfReady();
+});
 if(s.page==='00'&&s.phase==='intro')runIntro('00');else if(s.page==='01'&&s.phase==='intro')runIntro('01');else if(s.page==='03')startRotateGuide();else render();
 window.DCD_DEBUG={state:()=>structuredClone(s),page:p=>setPage(p),finishRupture};
 })();
