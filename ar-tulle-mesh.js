@@ -47,7 +47,7 @@ void main(){
   // Give the photographic thread visible scattering while leaving the
   // spaces between woven fibers transparent. A faint organza body connects
   // the fabric even when individual thread pixels shrink at camera scale.
-  float netAlpha=0.065+0.68*strand+0.06*detail;
+  float netAlpha=0.030+0.31*strand+0.025*detail;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -184,7 +184,10 @@ function canvasCloth(root){
     const eyeL=positions[33],eyeR=positions[263];
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
-    const cw=fw*1.57,ch=fh*1.65;
+    // Keep generous margins around the face, but never let the cloth grow
+    // into the heading or extend an entire face-height beyond the chin.
+    const cw=clamp(fw*1.32,fw+24,350);
+    const ch=clamp(fh*1.29,fh+38,540);
     const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2;
     const angle=Math.atan2(eyeR.y-eyeL.y,eyeR.x-eyeL.x);
     for(const layer of layers){
@@ -212,9 +215,9 @@ function canvasCloth(root){
       ctx.lineTo(l,t+ch*.09);
       ctx.quadraticCurveTo(l,t,l+cw*.09,t);
       ctx.closePath();ctx.clip();
-      ctx.fillStyle='rgba(250,248,243,.15)';
+      ctx.fillStyle='rgba(250,248,243,.065)';
       ctx.fillRect(l,t,cw,ch+fh*.06);
-      ctx.fillStyle=pattern;ctx.globalAlpha=alpha*.72;
+      ctx.fillStyle=pattern;ctx.globalAlpha=alpha*.43;
       ctx.fillRect(l,t,cw,ch+fh*.06);
       const config=FIGMA_MASK_TEXT[layer.variant]?.[layer.index];
       if(config){
@@ -368,21 +371,23 @@ function create(root){
     const angle=Math.atan2(eyeB.y-eyeA.y,eyeB.x-eyeA.x),co=Math.cos(angle),si=Math.sin(angle);
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2;
     faceCenter={x:cx,y:cy};
-    const cw=fw*1.57,ch=fh*1.65;
+    const cw=clamp(fw*1.32,fw+24,350),ch=clamp(fh*1.29,fh+38,540);
     for(let y=0;y<=rows;y++)for(let x=0;x<=columns;x++){
       const u=x/columns,v=y/rows,nx=u*2-1;
       const edgeX=Math.max(0,(Math.abs(nx)-.68)/.32);
       const lower=Math.max(0,(v-.69)/.31);
       const curl=lower*lower*(.12+.28*edgeX);
       const px=nx*cw*.5*(1-curl);
-      const py=(v-.47)*ch+lower*lower*fh*.075;
+      const py=(v-.47)*ch+lower*lower*fh*.035;
       const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
       const cheek=Math.exp(-(((Math.abs(nx)-.51)/.27)**2+((v-.51)/.31)**2));
       const at=(y*(columns+1)+x)*stride;
       mesh[at]=cx+px*co-py*si;
       mesh[at+1]=cy+px*si+py*co;
       mesh[at+2]=.02+bump*.055+cheek*.025-curl*.10;
-      mesh[at+3]=u;mesh[at+4]=1-v;
+      // The uploaded canvas texture is already Y-flipped at upload. A second
+      // inversion here turned every embroidered phrase upside down.
+      mesh[at+3]=u;mesh[at+4]=v;
       mesh[at+5]=clamp(.91+.12*bump+.04*cheek-.16*curl,.70,1.10);
       const border=Math.min(u,1-u,v,1-v);
       mesh[at+6]=clamp((.075-border)/.075,0,1);
