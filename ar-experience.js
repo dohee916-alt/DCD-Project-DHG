@@ -10,8 +10,7 @@ const state={root:null,video:null,stage:null,frame:'AR3',maskCount:0,variant:'fi
  face:null,hand:null,playing:false,requestId:0,lastFace:0,lastHand:0,lastVideoTime:-1,
  guideSince:0,pinchStart:null,pinchReady:true,handGuide:null,stepTimer:[],
  tulle:null,sheets:[],faceBox:null,matte:null,session:0,
- modelState:'idle',faceSeen:false,analysisError:false,
- depthEngine:null,depthMap:null};
+ modelState:'idle',faceSeen:false,analysisError:false};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -56,7 +55,7 @@ function markup(){
  return '<div class="ar-immersive" data-ar-frame="AR3">'+
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
  '<canvas class="ar-person-segment" width="428" height="926" aria-hidden="true"></canvas>'+
- '<canvas class="ar-dark-silhouette" width="428" height="926" aria-hidden="true"></canvas>'+
+
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
  '<div class="ar-choice-gradient" aria-hidden="true"></div>'+figmaAR5GradientMarkup()+
  '<div class="ar-choice-pack" aria-hidden="true"></div>'+
@@ -163,19 +162,6 @@ function enter(frame){
  if(!state.root||!frameNames.includes(frame))return;
  stopTimers();state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
- const needsDepth=['AR5-1','AR9','AR10'].includes(frame);
- if(needsDepth&&state.playing&&!state.depthEngine&&window.DCD_AR_DEPTH){
-   state.depthEngine=window.DCD_AR_DEPTH.create(state.video,(map)=>{
-     if(!map.valid)return;
-     state.depthMap=map;
-     state.root?.classList.toggle('ar-depth-ready',['AR5-1','AR9','AR10'].includes(state.frame));
-     silhouetteLast=0;renderDarkSilhouette();
-   });
- }
- state.root.classList.toggle('ar-depth-ready',needsDepth&&!!state.depthMap);
- if(needsDepth)state.depthEngine?.start();
- else state.depthEngine?.stop();
- if(['AR5-1','AR9','AR10'].includes(frame))renderDarkSilhouette();
  switch(frame){
  case 'AR3':caption('POSITION YOUR FACE HERE');break;
  case 'AR4':
@@ -431,90 +417,10 @@ function start(video){
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }
-/* Real-time subject silhouette from the actual portrait matte alpha.
-   Based on the documented confidence-mask/smooth-edge compositing approach:
-   discard low-confidence translucent background before edge softening.
-   Runs on a half-size alpha buffer, capped at ~12fps. Other AR frames and
-   face/hand inference keep using the untouched original portrait cutout. */
-let silhouetteWork=null,silhouetteLast=0;
-function renderDarkSilhouette(){
- const root=state.root;
- if(!root||!['AR5-1','AR9','AR10'].includes(state.frame))return;
- const now=performance.now();
- if(now-silhouetteLast<90)return;
- silhouetteLast=now;
- const source=root.querySelector('.ar-person-segment');
- const target=root.querySelector('.ar-dark-silhouette');
- if(!source||!target)return;
- const ctx=target.getContext('2d',{alpha:true});
- if(!ctx)return;
- const w=214,h=463;
- if(!silhouetteWork){
-  const canvas=document.createElement('canvas');
-  canvas.width=w;canvas.height=h;
-  const workCtx=canvas.getContext('2d',{alpha:true,willReadFrequently:true});
-  if(!workCtx)return;
-  silhouetteWork={canvas,ctx:workCtx};
- }
- const work=silhouetteWork.ctx;
- try{
-  work.clearRect(0,0,w,h);
-  work.drawImage(source,0,0,w,h);
-  const image=work.getImageData(0,0,w,h);
-  const px=image.data;
-  const map=state.depthMap;
-  if(!map?.valid||!map.data?.length)return;
-  // The on-device Depth Anything V2 model produces *inverse relative
-  // depth*: larger values are nearer, not metric metres. Its brightness
-  // is NOT estimated from the portrait's alpha thickness or body shape.
-  // The model's RawImage depth is already normalized across the *whole
-  // image*. Local per-body p8/p92 stretching collapsed much of the head
-  // and torso to a uniform dark patch. Keep the global reference scale.
-  const low=12,range=231;
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-   const k=(y*w+x)*4,alpha=px[k+3]/255;
-   if(alpha<.035){px[k+3]=0;continue;}
-   const luminance=(px[k]*.2126+px[k+1]*.7152+px[k+2]*.0722)/255;
-   const mx=Math.min(map.width-1,Math.floor(x*map.width/w));
-   const my=Math.min(map.height-1,Math.floor(y*map.height/h));
-   const index=my*map.width+mx;
-   const raw=Math.max(0,Math.min(1,(map.data[index]-low)/range));
-   // Log compresses near/far response while preserving distance ordering.
-   const nearness=Math.log1p(raw*4)/Math.log1p(4);
-   const left=map.data[my*map.width+Math.max(0,mx-3)];
-   const right=map.data[my*map.width+Math.min(map.width-1,mx+3)];
-   const top=map.data[Math.max(0,my-3)*map.width+mx];
-   const bottom=map.data[Math.min(map.height-1,my+3)*map.width+mx];
-   const sideRelief=Math.max(-22,Math.min(22,(right-left)*.31+(bottom-top)*.17));
-   const near=Math.max(0,Math.min(1,nearness*.72));
-   const relief=(luminance-.47)*25+sideRelief;
-   const coarse=Math.sin(x*.39+y*.14)*Math.cos(y*.28-x*.19)*4.2;
-   let n=Math.imul((x+83),374761393)^Math.imul((y+11),668265263);
-   n=Math.imul(n^(n>>>13),1274126177);
-   const fine=((((n^(n>>>16))>>>0)/4294967295)-.5)*15;
-   const noise=coarse+fine+relief;
-   px[k]=Math.max(0,Math.min(255,248-near*172+noise));
-   px[k+1]=Math.max(0,Math.min(255,124-near*88+noise*.52));
-   px[k+2]=Math.max(0,Math.min(255,83-near*63+noise*.35));
-   const t=Math.max(0,Math.min(1,(alpha-.08)/.32));
-   px[k+3]=Math.round(255*t*t*(3-2*t)*.96);
-  }
-  work.putImageData(image,0,0);
-  ctx.clearRect(0,0,target.width,target.height);
-  ctx.imageSmoothingEnabled=true;
-  ctx.imageSmoothingQuality='high';
-  ctx.drawImage(silhouetteWork.canvas,0,0,target.width,target.height);
- }catch(error){
-  if(!silhouetteWork.warning){
-   console.warn('[DCD AR] depth-shaded silhouette:',error);
-   silhouetteWork.warning=true;
-  }
- }
-}
 function ensurePortraitMatte(){
  if(!state.playing||!state.root||state.matte)return;
  try{state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,
-   state.root.querySelector('.ar-person-segment'),renderDarkSilhouette)||null;}
+   state.root.querySelector('.ar-person-segment'))||null;}
  catch(error){console.warn('[DCD AR] Portrait matte init:',error);}
 }
 function startArVisuals(){
@@ -536,8 +442,6 @@ function stop(){
  state.session++;
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
  state.matte?.stop();state.matte=null;
- state.depthEngine?.destroy();state.depthEngine=null;state.depthMap=null;silhouetteWork=null;silhouetteLast=0;
- state.root?.classList.remove('ar-depth-ready');
  state.face?.close();state.face=null;
  state.hand?.close();state.hand=null;
  state.tulle?.destroy();state.tulle=null;state.sheets=[];
