@@ -1284,82 +1284,6 @@ canvas.figure{object-fit:contain!important}
   object-fit:fill!important;
 }
 
-/* AR5-1/AR9/AR10 visual correction: source SVG fill was darkening the
-   entire live view via three fully opaque multiply layers and exposed the
-   bounds of the tint/gradient rectangles. Preserve five source elements,
-   render them as edge-to-edge translucent color fields with smooth falloffs,
-   and never blend dark flat fills over the live portrait. */
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-tint,
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient{
-  display:block!important;
-  position:absolute!important;
-  left:0!important;top:0!important;
-  width:100%!important;height:100%!important;
-  z-index:5!important;pointer-events:none!important;
-  opacity:1!important;transform:none!important;
-  mix-blend-mode:normal!important;
-  overflow:hidden!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient rect{
-  opacity:0!important;fill:none!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-tint{
-  background:rgba(216,58,0,.14)!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-five{
-  background:radial-gradient(ellipse 110% 78% at 100% 5%,
-    rgba(202,49,20,.62) 0%,rgba(223,79,40,.36) 43%,
-    rgba(234,126,85,.12) 73%,transparent 100%)!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-four{
-  background:radial-gradient(ellipse 105% 83% at 3% 28%,
-    rgba(251,178,146,.32) 0%,rgba(250,180,155,.16) 54%,
-    transparent 100%)!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-three{
-  background:linear-gradient(to bottom,
-    rgba(255,183,155,.09) 0%,rgba(247,165,137,.13) 42%,
-    rgba(252,194,168,.16) 69%,rgba(255,224,208,.22) 100%)!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-six{
-  background:radial-gradient(ellipse 125% 66% at 50% 109%,
-    rgba(255,244,235,.84) 0%,rgba(255,236,226,.54) 44%,
-    rgba(255,236,226,0) 100%)!important;
-}
-/* Blink only Doto guidance, exactly like existing WEB guide-blink.
-   Do not blink Source Sans questions, final messages or typed captions. */
-.ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
-  animation:blink 1s steps(1,end) infinite!important;
-}
-@media (prefers-reduced-motion:reduce){
- .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
-   animation:none!important;
- }
-}
-
-/* A dedicated, dynamically alpha-matted, high-contrast person silhouette.
-   Below sharp pack and text; above the peach color field.
-   The original matte remains the tracking/segmentation source and is hidden
-   visually only for these three color-overlay steps. */
-.ar-immersive .ar-dark-silhouette{
-  position:absolute;inset:0;width:100%;height:100%;
-  z-index:6;display:none;pointer-events:none;
-}
-.ar-immersive.ar-matting-active.ar-depth-ready:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-dark-silhouette{
-  display:block;
-  filter:blur(4px) drop-shadow(0 0 9px rgba(163,48,23,.31));
-  -webkit-filter:blur(4px) drop-shadow(0 0 9px rgba(163,48,23,.31));
-  opacity:1;
-  mix-blend-mode:normal;
-}
-.ar-immersive.ar-matting-active.ar-depth-ready:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
-  opacity:0!important;visibility:hidden!important;
-}
-.ar-immersive.ar-matting-active:not(.ar-depth-ready):is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
-  visibility:visible!important;opacity:1!important;
-  filter:blur(13px) sepia(.65) saturate(1.5) brightness(.85)!important;
-}
-
 /* AR9 / AR10 typography: Figma has three distinct text layers.
    AR10 NOT and its supporting copy must not share a flowing text box. */
 .ar-immersive[data-ar-frame="AR9"] .ar-copy{
@@ -1405,4 +1329,48 @@ canvas.figure{object-fit:contain!important}
   .ar-immersive.ar-doto-blink .ar-copy{
     animation:none!important;opacity:1!important;
   }
+}
+
+/* AR5-1 / AR9 / AR10: Figma-derived warm orange background only.
+   The experimental camera depth, subject re-colour, matte enlargement,
+   granulation and blurry shadow are removed from these three frames.
+   Maintain restrained burnt-orange / peach contrast, not neon red. */
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]){
+  background:#f2c2ae!important;
+}
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) :is(
+  .ar-portrait-camera,.ar-person-segment,.ar-matting-video,
+  .ar-medium-live-video,.ar-organza-stack,.ar-dark-silhouette){
+  display:none!important;
+}
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-tint,
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient{
+  display:block!important;position:absolute!important;inset:0!important;
+  width:100%!important;height:100%!important;z-index:5!important;
+  transform:none!important;opacity:1!important;
+  mix-blend-mode:normal!important;pointer-events:none!important;
+  overflow:hidden!important;
+}
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient rect{
+  display:none!important;
+}
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-tint{
+  background:linear-gradient(172deg,#f2c4b4 0%,#eaa990 48%,#efbea9 75%,#f5d1c3 100%)!important;
+}
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-five{
+  background:radial-gradient(ellipse 99% 74% at 106% 4%,
+    rgba(147,47,30,.80) 0%,rgba(178,66,42,.62) 35%,
+    rgba(195,89,64,.31) 66%,transparent 100%)!important;
+}
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-four{
+  background:radial-gradient(ellipse 92% 65% at 0% 12%,
+    rgba(255,226,212,.52) 0%,rgba(255,218,202,.20) 60%,transparent 100%)!important;
+}
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-three{
+  background:linear-gradient(180deg,transparent 36%,
+    rgba(225,143,112,.09) 64%,rgba(255,228,214,.31) 100%)!important;
+}
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-six{
+  background:radial-gradient(ellipse 105% 52% at 54% 112%,
+    rgba(255,235,224,.56) 0%,rgba(255,230,216,.22) 55%,transparent 100%)!important;
 }
