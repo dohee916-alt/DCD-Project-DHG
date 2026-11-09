@@ -15,7 +15,7 @@ const SRC='assets/models/Do_Hand_DetailedRiggedAnimated_shared_16022026.glb';
 function create(root){
  const el=root.querySelector('.ar-gesture-guide');
  let active=true,frame='',since=0,played=false,raf=0,last=0;
- let ready=false,started=false,initialThumbIndex=[],foldedThumbIndex=[];
+ let started=false,initialThumbIndex=[],foldedThumbIndex=[],pivotCurl=[];
  let renderer=null,scene=null,camera=null,pivot=null,mixer=null,clip=null,THREE=null;
  let model=null,poseScale=1;
  const owned=[];
@@ -105,58 +105,47 @@ function create(root){
    action.play();
    foldedThumbIndex=poseSnap(sourceEnd);
    mixer.setTime(sourceEnd);
-   // We cannot assume Pose_OKHand is visibly OPEN just from its name.
-   // Build a truly separated OPEN thumb pose. Try outward thumb-base
-   // rotations in the native Y/Z palm plane, then keep the direction
-   // that increases real 3D thumb/index tip separation the most.
-   // Only the source thumb base is adjusted; index stays extended,
-   // ring/middle/pinky stay folded as authored in the GLB.
-   const thumbBase=initialThumbIndex.find(p=>p.node.name==='thumb_trapez');
-   const thumbTip=model.getObjectByName('thumb_dist');
-   const indexTip=model.getObjectByName('index_dist');
-   if(thumbBase&&thumbTip&&indexTip){
-        for(const p of initialThumbIndex){
-       p.node.position.copy(p.position);
-       p.node.quaternion.copy(p.rotation);
-       p.node.scale.copy(p.scale);
-     }
-     model.updateMatrixWorld(true);
-     const gap=()=>{
-       const a=thumbTip.getWorldPosition(new THREE.Vector3());
-       const b=indexTip.getWorldPosition(new THREE.Vector3());
-       return a.distanceTo(b);
-     };
-     const sourceGap=gap();
-     let bestGap=sourceGap,bestRotation=thumbBase.rotation.clone();
-     const original=thumbBase.node.quaternion.clone();
-     const zAxis=new THREE.Vector3(0,0,1),xAxis=new THREE.Vector3(1,0,0);
-     for(const axis of [xAxis,zAxis]){
-       for(const angle of [-.65,-.45,-.25,.25,.45,.65]){
-         thumbBase.node.quaternion.copy(original);
-         thumbBase.node.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(axis,angle));
-         model.updateMatrixWorld(true);
-         const candidate=gap();
-         if(candidate>bestGap){
-           bestGap=candidate;
-           bestRotation=thumbBase.node.rotation.clone();
-         }
+   // Use the authored source thumb pose, never maximize fingertip separation:
+   // the previous optimizer hyper-extended the thumb at its base.
+   // Three non-interacting fingers must be bent explicitly because
+   // Pose_OK itself still leaves them straight in this original GLB.
+   // Set a natural two-joint curl in each finger's own local X axis.
+   const curledFingers=['midd','ring','pinky'];
+   const fixedCurl=[];
+   const palmBone=model.getObjectByName('radius_ulna');
+   for(const finger of curledFingers){
+     const prox=model.getObjectByName(finger+'_prox');
+     const mid=model.getObjectByName(finger+'_midd');
+     if(!prox||!mid)continue;
+     // Both knuckles bend consistently; leave distal bone as authored.
+     // Try either flexion direction and use the one folding the fingertip
+     // back toward the palm, not away from it.
+     const tip=model.getObjectByName(finger+'_dist');
+     const naturalProx=prox.quaternion.clone();
+     const naturalMid=mid.quaternion.clone();
+     const wrist=model.getObjectByName('radius_ulna');
+     let best=null;
+     for(const sign of [-1,1]){
+       prox.quaternion.copy(naturalProx).multiply(
+         new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),sign*1.12));
+       mid.quaternion.copy(naturalMid).multiply(
+         new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),sign*.95));
+       model.updateMatrixWorld(true);
+       const target=wrist.getWorldPosition(new THREE.Vector3());
+       const point=tip.getWorldPosition(new THREE.Vector3());
+       const metric=point.distanceTo(target);
+       if(!best||metric<best.metric){
+         best={metric,prox:prox.quaternion.clone(),mid:mid.quaternion.clone()};
        }
      }
-     thumbBase.node.rotation.copy(bestRotation);
-     model.updateMatrixWorld(true);
-     thumbBase.rotation.copy(thumbBase.node.quaternion);
-     // Capture source OPEN finger transform after the objective correction,
-     // then reapply the compact, curled hand as the steady background pose.
-     for(const p of foldedThumbIndex){
-       p.node.position.copy(p.position);
-       p.node.quaternion.copy(p.rotation);
-       p.node.scale.copy(p.scale);
-     }
-     model.updateMatrixWorld(true);
-     console.info('[DCD AR] thumb/index OPEN correction',
-       {sourceGap:sourceGap.toFixed(2),newGap:bestGap.toFixed(2),
-        separateRatio:(bestGap/Math.max(.001,sourceGap)).toFixed(2)});
+     prox.quaternion.copy(best.prox);
+     mid.quaternion.copy(best.mid);
+     fixedCurl.push({prox,mid,proxQ:best.prox.clone(),midQ:best.mid.clone()});
    }
+   // The animation mixer overwrites all tracked bones per frame, so cache
+   // this pose and reapply it after mixer.setTime() in the render loop.
+   pivotCurl=fixedCurl;
+   model.updateMatrixWorld(true);
    console.info('[DCD AR] Distinct open/closed finger animation sources',
      {open:openClip.name,closed:clip.name,
       openBones:initialThumbIndex.length,closedBones:foldedThumbIndex.length});
@@ -256,6 +245,10 @@ function create(root){
   // and index CLOSE only after the rotation has finished.
   const foldedTime=Math.max(.045,clip.duration-.025);
   mixer.setTime(foldedTime);
+  for(const finger of pivotCurl){
+   finger.prox.quaternion.copy(finger.proxQ);
+   finger.mid.quaternion.copy(finger.midQ);
+  }
   for(let n=0;n<initialThumbIndex.length;n++){
    const a=initialThumbIndex[n],b=foldedThumbIndex[n];
    const bone=a.node;
