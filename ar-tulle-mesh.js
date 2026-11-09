@@ -261,7 +261,7 @@ function create(root){
   canvas.className='ar-tulle-webgl';canvas.width=W;canvas.height=H;root.prepend(canvas);
   let gl,program;
   try{
-    gl=canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:true});
+    gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,premultipliedAlpha:true});
     if(!gl)throw Error('WebGL not supported');
     program=gl.createProgram();
     gl.attachShader(program,shader(gl,gl.VERTEX_SHADER,VERT));
@@ -434,7 +434,9 @@ function create(root){
   function render(now){
     if(!live)return;
     gl.viewport(0,0,W,H);gl.clearColor(0,0,0,0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    // Preserve a real depth buffer for the upcoming face-occluder pass.
+    gl.depthMask(true);gl.clearDepth(1);
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     for(let i=layers.length-1;i>=0;i--){
       if(layers[i].removing&&now-layers[i].exit>1200)layers.splice(i,1);
     }
@@ -449,7 +451,10 @@ function create(root){
     // Ignore GL errors left behind by one-time texture uploads; only a
     // problem from the actual draw should switch to the fallback.
     for(let i=0;i<8&&gl.getError()!==gl.NO_ERROR;i++){}
-    gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);
+    gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
+    // Transparent fabric passes depth tests but does not overwrite depth:
+    // all five thin sheets must remain visible when layered.
+    gl.depthMask(false);gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
     gl.useProgram(program);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
