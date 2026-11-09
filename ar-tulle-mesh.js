@@ -429,5 +429,5 @@ function create(root){
   }
   return {setConnections,update,add,remove,clear,destroy};
 }
-window.DCD_TULLE={create,words:WORDS};
+window.DCD_TULLE={create,words:WORDS,layout:(variant,index)=>FIGMA_MASK_TEXT[variant]?.[index]||null};
 })();
