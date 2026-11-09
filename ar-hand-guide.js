@@ -170,15 +170,16 @@ function create(root){
   // 0.00–0.85  Palm faces viewer, index/thumb OPEN, other three FOLDED
   // 0.85–1.70  Rotate to show back of hand; fingers stay unchanged
   // 1.70–2.65  Move away from the screen, and pinch index/thumb together
-  // 2.65–3.15  Hold the closed pinch at the far position
-  // 3.15–4.00  Move closer, keeping index/thumb CLOSED
-  // 4.00–4.75  Release index/thumb, still showing back of hand
-  // 4.75–5.10 Hold the open pose; restart from the initial palm pose.
+  // 2.65–2.95  Hold the closed pinch at the far position
+  // 2.95–3.35  RELEASE index/thumb while still far away
+  // 3.45–4.35  Move closer with index/thumb ALREADY OPEN
+  // 4.35–5.10 Hold the open pose; restart from the initial palm pose.
   // Only the real first mask removal can hide the guide.
   const rotate=smooth((t-.85)/.85);
   const recede=smooth((t-1.70)/.95);
-  const approach=smooth((t-3.15)/.85);
-  const pinch=smooth((t-1.70)/.95)*(1-smooth((t-4.00)/.75));
+  // The return movement starts only AFTER the release has finished.
+  const approach=smooth((t-3.45)/.90);
+  const pinch=smooth((t-1.70)/.95)*(1-smooth((t-2.95)/.40));
   // The original asset's Pose_OK finishes with the three curled fingers.
   // Freeze those at the folded frame. Interpolate ONLY thumb/index bones.
   const foldedTime=Math.max(.045,clip.duration-.025);
