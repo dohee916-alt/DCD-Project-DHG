@@ -244,7 +244,7 @@ function handsDue(now){
 }
 function track(frame,width,height,now=performance.now()){
  try{
-   if(state.face&&now-state.lastFace>=42){
+   if(state.face&&now-state.lastFace>=95){
      state.lastFace=now;
      const points=state.face.detectForVideo(frame,now).faceLandmarks?.[0];
      state.tulle?.update(points,width,height);
@@ -270,9 +270,14 @@ function tick(){
  // Facial landmarks must continue updating whether the portrait matte is
  // loading, visible, stalled or switching engines. The matte affects only
  // the camera background, never the mask's face tracking.
- if(video.readyState<2||video.currentTime===state.lastVideoTime)return;
+ if(!video||video.readyState<2||!video.videoWidth)return;
+ // Restore the previous independently timed tracker: segmentation and
+ // WebGL updates must not trigger a heavy face inference every animation frame.
+ const now=performance.now();
+ if(!(state.face&&now-state.lastFace>=95)&&!handsDue(now))return;
+ if(video.currentTime===state.lastVideoTime)return;
  state.lastVideoTime=video.currentTime;
- track(video,video.videoWidth,video.videoHeight);
+ track(video,video.videoWidth,video.videoHeight,now);
 }
 function mount(stage,video){
  const root=stage?.querySelector('.ar-immersive');
