@@ -24,19 +24,19 @@ function warmPackingAssets(){
   [A.conveyor,A.machine,A.packFoil,A.packClearFront].forEach(src=>{const image=new Image();image.src=src;});
 }
 try{let old=JSON.parse(sessionStorage.getItem(key));if(old&&Array.isArray(old.figures)&&old.figures.length===4){s={...fresh(),...old};if((old.initialPresetVersion||0)<4&&!s.figures.some(f=>f.orange||f.purple||f.packed)){s.figures.forEach((f,i)=>{f.value=[85,70,50,100][i];});s.initialPresetVersion=4;}s.firstInject=!!(old.firstInject||s.figures.some(f=>f.orange||f.purple));s.packGuideDone=!!(old.packGuideDone||s.figures.some(f=>f.packed));if(s.page==='14'||s.page==='14done'){s.page='14';s.signed=false;}if(['08a','08b','09','10','11'].includes(s.page)){s.page='12';s.phase='ready';}if(s.page==='ar'&&!s.arPackOpened){s.page=['15','16'].includes(s.arReturnPage)?s.arReturnPage:'15';s.phase='ready';}else if(s.page==='arFace'||s.page==='arOpen'){s.page='ar';s.phase='ready';}}}catch{}
-// Previously cached WEB04 can bypass WEB03 altogether on reload. When a
-// mobile browser remains portrait (including OS rotation lock), restore its
-// 428x926 preview instead of squeezing the 874x428 workbench into a strip.
-// Preserve the user's workbench progress and first syringe tutorial state.
+// Desktop uses the native landscape pages. A portrait-locked mobile phone
+// gets a viewport-fitted VISUAL wrapper, never a fake WEB03 interaction state.
+// The same strategy applies to every WEB04–WEB16 screen.
+const landscapePages=new Set(['workbench','08a','08b','09','10','11','12','13','14','14done','15','16']);
 function mobilePortraitWorkbench(){
  const view=document.querySelector('#viewport');
  return phoneDevice()&&
    (view?.clientHeight||window.innerHeight)>(view?.clientWidth||window.innerWidth);
 }
-if(s.page==='workbench'&&mobilePortraitWorkbench()){
- s.page='03';
- s.phase='waiting';
- rotateGuideFinished=true;
+function mobilePortraitLandscape(){return landscapePages.has(s.page)&&mobilePortraitWorkbench();}
+// Migrate only the broken saved WEB03 waiting state from earlier patches.
+if(s.page==='03'&&s.phase==='waiting'&&phoneDevice()){
+ s.page='workbench';s.phase='ready';
 }
 function save(){if(!['00','01','02'].includes(s.page))sessionStorage.setItem(key,JSON.stringify(s));}
 function later(fn,ms){let id=setTimeout(fn,ms);timers.push(id);return id;}
@@ -91,7 +91,7 @@ function syringeMarkup(cls=''){
     '<span class="syringe-tip-marker" aria-hidden="true"></span>');
 }
 function setPage(p,phase='ready'){if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
-function dimensions(){return ['00','01','02','03','ar','arOpen','arFace'].includes(s.page)?[428,926]:[874,428];}
+function dimensions(){return mobilePortraitLandscape()||['00','01','02','03','ar','arOpen','arFace'].includes(s.page)?[428,926]:[874,428];}
 function fit(){
  const [w,h]=dimensions(),v=document.querySelector('#viewport');
  const W=v.clientWidth,H=v.clientHeight;
@@ -117,9 +117,10 @@ function localPoint(e){
    const [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;
    p={x:w/2+(e.clientY-cy)/scale+dx,y:h/2-(e.clientX-cx)/scale};
  }else p={x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};
- // WEB03 shows the landscape workbench in a separately rotated preview.
- // Pointer hit tests must use its inverse transform, not portrait coords.
- const preview=s.page==='03'?stage.querySelector('.rotate-preview'):null;
+ // Every mobile portrait WEB04–WEB16 page is still its REAL page,
+ // displayed inside the same 90-degree visual wrapper. Invert that wrapper
+ // for all hit tests, including syringe tip, doll packing, checkboxes and AR.
+ const preview=stage.querySelector('.rotate-preview');
  if(preview){
    const matrix=getComputedStyle(preview).transform;
    if(matrix&&matrix!=='none'){
@@ -131,9 +132,9 @@ function localPoint(e){
  return p;
 }
 function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
-function workbenchActive(){return s.page==='workbench'||(s.page==='03'&&rotateGuideFinished);}
-function workbenchReady(){return workbenchActive()&&(s.phase==='ready'||(s.page==='03'&&s.phase==='waiting'));}
-function resumeWorkbench(){s.phase=s.page==='03'?'waiting':'ready';save();render();}
+function workbenchActive(){return s.page==='workbench';}
+function workbenchReady(){return s.page==='workbench'&&s.phase==='ready';}
+function resumeWorkbench(){s.phase='ready';save();render();}
 
 const ropes={upper:{line:[6,20,406,596],pull:[-69,-111]},lower:{line:[8,752,406,615],pull:[90,99]}};
 function ropeAt(p){let closest=null,distance=Infinity;for(const [name,{line}] of Object.entries(ropes)){let [x1,y1,x2,y2]=line,t=clamp(((p.x-x1)*(x2-x1)+(p.y-y1)*(y2-y1))/((x2-x1)**2+(y2-y1)**2),0,1),d=Math.hypot(p.x-(x1+t*(x2-x1)),p.y-(y1+t*(y2-y1)));if(d<distance){closest=name;distance=d;}}return distance<=55?closest:null;}
@@ -876,10 +877,9 @@ function openArPack(){
   morphArBlister();
 }
 function render(){
- if(s.page==='workbench'&&mobilePortraitWorkbench()){
-   s.page='03';s.phase='waiting';rotateGuideFinished=true;save();
- }
- fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03'){
+ fit();stage.className='stage page-'+s.page+' phase-'+s.phase;
+ stage.dataset.mobileLandscape=String(mobilePortraitLandscape());
+ let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03'){
  // Preserve the actual workbench interaction in the portrait-locked phone:
  // its preview is the same WEB04 scene, rotated only within the existing
  // portrait stage to fit the phone, not a static photo or a disabled overlay.
@@ -887,7 +887,9 @@ function render(){
  h='<div class="rotate-preview">'+workbenchMarkup(s.phase==='waiting').replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+
    (s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');
 }else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
-stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;if(['00','01','02'].includes(s.page)&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');
+stage.innerHTML=mobilePortraitLandscape()
+ ?'<div class="rotate-preview"><div class="scene-content">'+h+'</div></div>'
+ :(dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h);if(['00','01','02'].includes(s.page)&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');
 if(packHand){
   // The workbench re-renders after injections; keep the animation clock
   // independent of each newly created DOM image.
@@ -1125,7 +1127,7 @@ async function animatePackActive(el){
     {offset:1,translate:to,transform:endTransform,opacity:1}
   ],timing);
   await Promise.allSettled([a.finished,b.finished]);
-  if(workbenchActive()&&s.phase==='packing'){s.phase=s.page==='03'?'waiting':'ready';packActive();}
+  if(workbenchActive()&&s.phase==='packing'){s.phase='ready';packActive();}
 }
 
 function unpack(i){s.figures[i].packed=false;s.active=i;s.loaded=null;save();render();}
@@ -1194,15 +1196,9 @@ function declineConsent(){
 // to motion sensors. Desktop retains its original orientation interaction.
 let physicalLandscape=false;
 function finishRotationIfReady(){
- if(s.page!=='03'||!rotateGuideFinished)return;
- // On a phone with rotation lock, the browser stays portrait: leave WEB03
- // in place instead of squeezing a landscape WEB04 into a portrait viewport.
+ if(s.page!=='03'||!rotateGuideFinished||phoneDevice())return;
  const v=document.querySelector('#viewport');
  const landscape=(v?.clientWidth||window.innerWidth)>(v?.clientHeight||window.innerHeight);
- if(phoneDevice()){
-   if(landscape)setPage('workbench');
-   return;
- }
  if(landscape||physicalLandscape)setPage('workbench');
 }
 function startRotateGuide(){
@@ -1211,6 +1207,10 @@ function startRotateGuide(){
  later(()=>{
    if(s.page!=='03')return;
    rotateGuideFinished=true;
+   if(phoneDevice()){
+     setPage('workbench');
+     return;
+   }
    s.phase='waiting';
    render();
    finishRotationIfReady();
@@ -1331,15 +1331,12 @@ function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;le
 // Resize never rotates the WEB canvas in code. It only reads the user's
 // real viewport layout. Device motion unlocks the next step under OS lock.
 function onViewportChange(){
- // Switching back to a portrait browser must never show the compressed
- // landscape WEB04 stripe. WEB03 retains the same workbench preview and hand.
- if(s.page==='workbench'&&mobilePortraitWorkbench()){
-   rotateGuideFinished=true;
-   s.page='03';s.phase='waiting';
-   save();render();
-   return;
- }
- fit();finishRotationIfReady();
+ // Rebuild only if the browser actually changes between portrait and
+ // landscape. Never change the page or discard any touch/interaction state.
+ const wrapped=String(mobilePortraitLandscape());
+ if(stage.dataset.mobileLandscape!==wrapped)render();
+ else fit();
+ finishRotationIfReady();
 }
 window.addEventListener('resize',onViewportChange);
 window.addEventListener('orientationchange',onViewportChange);
