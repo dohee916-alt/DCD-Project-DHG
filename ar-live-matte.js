@@ -101,7 +101,7 @@ function create(root,video,canvas,onFrame){
    f.lastSegment=now;
    try{
     f.segmenter.segmentForVideo(video,now,result=>{
-     const mask=result.confidenceMasks?.[0];
+     const mask=(result.confidenceMasks?.[1] ?? result.confidenceMasks?.[0]);
      if(!mask)return;
      if(f.mask.width!==mask.width||f.mask.height!==mask.height){
       f.mask.width=mask.width;f.mask.height=mask.height;
