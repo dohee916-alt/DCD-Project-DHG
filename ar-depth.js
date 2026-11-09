@@ -5,7 +5,7 @@
    Gracefully declines if the model fails, with no impact on face tracking. */
 (() => {
 'use strict';
-const CDN='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+const CDN='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm';
 const MODEL='onnx-community/depth-anything-v2-small';
 function create(video,onDepth){
  let running=false,disposed=false,inference=false,pipe=null,loopTimer=0;
