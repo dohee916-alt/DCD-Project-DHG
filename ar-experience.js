@@ -190,13 +190,13 @@ function faceDisplayRect(points){
 function observeFace(points,now){
  if(state.frame!=='AR3'||!points?.length)return;
  const face=faceDisplayRect(points);
- // The displayed camera is center-cropped and mirrored. Require only that
- // the real detected face intersects the central oval; do not reset on tiny
- // position/size jitter between consecutive inference frames.
- const intersects=face.x>.16&&face.x<.84&&face.y>.17&&face.y<.85&&face.w>.06&&face.h>.08;
- if(!intersects){state.guideSince=0;return;}
+ // The real, mirrored face must be centered within the existing AR3 guide.
+ // Require stable alignment, not merely a face anywhere in the camera.
+ const centered=face.x>.34&&face.x<.66&&face.y>.34&&face.y<.66;
+ const appropriateSize=face.w>.22&&face.w<.76&&face.h>.23&&face.h<.70;
+ if(!centered||!appropriateSize){state.guideSince=0;return;}
  if(!state.guideSince)state.guideSince=now;
- if(now-state.guideSince>=320)enter('AR4');
+ if(now-state.guideSince>=1350)enter('AR4');
 }
 function observeHands(hands,now){
  if(!['AR6','AR7'].includes(state.frame))return;
