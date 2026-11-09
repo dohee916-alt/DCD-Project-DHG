@@ -784,6 +784,11 @@ canvas.figure{object-fit:contain!important}
   font-size:16px!important;line-height:1.15!important;
 }
 .ar-organza-stack.ar-tulle-ready .ar-organza-sheet{opacity:0!important;visibility:hidden!important}
+/* A tracked GPU cloth or tracked canvas fallback owns the entire mask.
+   Never composite the obsolete flat CSS sheet/words over live fabric. */
+.ar-organza-stack.ar-tulle-gpu .ar-organza-sheet,
+.ar-organza-stack.ar-tulle-fallback .ar-organza-sheet{display:none!important}
+
 .ar-tulle-webgl{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none}
 /* AR4 remains the natural live portrait and keeps adding one cloth at a time.
    Once all five arrive, AR5/AR5-1 deliberately reintroduce the orange wash
