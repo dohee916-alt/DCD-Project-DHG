@@ -515,9 +515,8 @@ function create(root){
   }
   function render(now){
     if(!live)return;
-    gl.viewport(0,0,W,H);gl.clearColor(0,0,0,0);
-    // Preserve a real depth buffer for the upcoming face-occluder pass.
-    gl.depthMask(true);gl.clearDepth(1);
+    gl.viewport(0,0,W,H);
+    gl.depthMask(true);gl.clearDepth(1);gl.clearColor(0,0,0,0);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     for(let i=layers.length-1;i>=0;i--){
       if(layers[i].removing&&now-layers[i].exit>1200)layers.splice(i,1);
@@ -530,84 +529,108 @@ function create(root){
       return;
     }
     try{
-    // Ignore GL errors left behind by one-time texture uploads; only a
-    // problem from the actual draw should switch to the fallback.
-    for(let i=0;i<8&&gl.getError()!==gl.NO_ERROR;i++){}
-    gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
-    // Transparent fabric passes depth tests but does not overwrite depth:
-    // all five thin sheets must remain visible when layered.
-    gl.depthMask(false);gl.disable(gl.CULL_FACE);
-    gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
-    gl.useProgram(program);
-    gl.bindBuffer(gl.ARRAY_BUFFER,vb);
-    gl.enableVertexAttribArray(positionAttr);
-    gl.vertexAttribPointer(positionAttr,3,gl.FLOAT,false,stride*4,0);
-    gl.enableVertexAttribArray(uvAttr);
-    gl.vertexAttribPointer(uvAttr,2,gl.FLOAT,false,stride*4,3*4);
-    gl.enableVertexAttribArray(lightAttr);
-    gl.vertexAttribPointer(lightAttr,1,gl.FLOAT,false,stride*4,5*4);
-    gl.enableVertexAttribArray(fringeAttr);
-    gl.vertexAttribPointer(fringeAttr,1,gl.FLOAT,false,stride*4,6*4);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
-    gl.activeTexture(gl.TEXTURE0);gl.uniform1i(texUniform,0);
-    gl.uniform1i(stitchUniform,1);
-    // Draw already-settled layers first; each new veil remains on top.
-    // Standard source-over accumulates alpha across all five physical layers.
-    for(const layer of layers){
-      const tex=textures[layer.variant]?.[layer.index];
-      if(!tex)continue;
-      const seconds=(now-layer.start)/1000,progress=clamp(seconds/1.25,0,1);
-      const approaching=layer.removing?1:arrival(progress);
-      const fly=1-approaching;
-      const fadeIn=clamp(seconds/.24,0,1);
-      const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
-      const opacity=layer.removing?1-ease(leave):fadeIn;
-      if(opacity<=0)continue;
-      const offsetX=(layer.index%2?-1:1)*(56*fly);
-      const offsetY=-85*fly;
-      const settle=progress>=.90?Math.sin((progress-.9)*Math.PI*20)*
-        Math.exp(-(progress-.9)*23)*1.8:0;
-      // Arrive from in front of the viewer: grow toward the tracked face,
-      // then conform, rather than starting too large and shrinking into place.
-      const size=1-.32*fly,center=faceCenter;
-      // Distinct cloth rims are essential for a visible layered stack.
-      // Settled layers shift just 1–3 px rather than sharing one exact outline.
-      // The five thin membranes settle onto the same face-shaped surface.
-      // Distinct stacking comes from alpha, not visible dislocated rims.
-      const rimX=0,rimY=0,rimScale=1;
-      for(let at=0;at<mesh.length;at+=stride){
-        const x=mesh[at]-center.x,y=mesh[at+1]-center.y;
-        // No wave across the upper face: only hanging cloth below the jaw
-      // can flutter before it settles.
-      const hang=Math.max(0,(mesh[at+4]-.70)/.30);
-      const sway=hang*hang*Math.sin(now*.0029+x*.027+layer.index*.22)*1.1*fly;
-        const lift=ease(leave);
-        vertices[at]=(center.x+x*size*rimScale+offsetX+rimX+settle+sway+lift*(38-y*.23))/W*2-1;
-        vertices[at+1]=1-(center.y+y*size*rimScale+offsetY+rimY+lift*(-165+x*.23))/H*2;
-        // Keep the per-vertex depth produced by face tracking. A flat z=0
-        // silently destroyed the 3D surface before the GPU could use it.
-        vertices[at+2]=clamp(mesh[at+2]-.035*fly,-.8,.8);
-        for(let i=3;i<stride;i++)vertices[at+i]=mesh[at+i];
+      for(let i=0;i<8&&gl.getError()!==gl.NO_ERROR;i++){}
+      gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
+      gl.disable(gl.CULL_FACE);
+      // Occluder is depth-only: the tracked camera remains visible, while
+      // draped corners that travel behind the face disappear naturally.
+      if(occProgram&&occBuffer&&faceDepth?.length===468){
+        gl.disable(gl.BLEND);
+        gl.colorMask(false,false,false,false);gl.depthMask(true);
+        gl.useProgram(occProgram);
+        gl.bindBuffer(gl.ARRAY_BUFFER,occBuffer);
+        gl.enableVertexAttribArray(occPosition);
+        gl.vertexAttribPointer(occPosition,3,gl.FLOAT,false,12,0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,occIndex);
+        gl.drawElements(gl.TRIANGLES,occIndices,gl.UNSIGNED_SHORT,0);
+        gl.disableVertexAttribArray(occPosition);
+        gl.colorMask(true,true,true,true);
       }
-      gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
-      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.fabric);
-      gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.thread);
-      gl.uniform1f(opacityUniform,opacity);
-      gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
-    }
-    // The previous code hid the fallback before confirming that any WebGL
-    // output was produced. Keep it visible whenever GPU drawing fails.
-    const error=gl.getError();
-    if(error!==gl.NO_ERROR)throw new Error('WebGL draw error '+error);
-    root.classList.add('ar-tulle-ready');
-    canvasBackup.draw([],now);
-    reportState('rendering',now);
-    renderErrorReported=false;
+      gl.depthMask(false);
+      gl.enable(gl.BLEND);
+      gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER,vb);
+      gl.enableVertexAttribArray(positionAttr);
+      gl.vertexAttribPointer(positionAttr,3,gl.FLOAT,false,stride*4,0);
+      gl.enableVertexAttribArray(uvAttr);
+      gl.vertexAttribPointer(uvAttr,2,gl.FLOAT,false,stride*4,3*4);
+      gl.enableVertexAttribArray(lightAttr);
+      gl.vertexAttribPointer(lightAttr,1,gl.FLOAT,false,stride*4,5*4);
+      gl.enableVertexAttribArray(fringeAttr);
+      gl.vertexAttribPointer(fringeAttr,1,gl.FLOAT,false,stride*4,6*4);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
+      gl.uniform1i(texUniform,0);gl.uniform1i(stitchUniform,1);
+
+      // Two separate passes: every membrane is drawn first, then all five
+      // embroidered phrases above the yarn. Later tulle may not erase words.
+      for(let pass=0;pass<2;pass++){
+        gl.uniform1f(passUniform,pass);
+        for(const layer of layers){
+          const tex=textures[layer.variant]?.[layer.index];
+          if(!tex)continue;
+          const seconds=(now-layer.start)/1000;
+          const progress=clamp(seconds/1.25,0,1);
+          const approach=layer.removing?1:arrival(progress);
+          const fly=1-approach;
+          const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
+          const opacity=layer.removing?1-ease(leave):clamp(seconds/.24,0,1);
+          if(opacity<=0)continue;
+          const shiftX=(layer.index%2?-1:1)*56*fly;
+          const shiftY=-85*fly;
+          const center=faceCenter;
+          const clothWidth=center.cw,clothHeight=center.ch;
+          const xCos=center.co,ySin=center.si;
+          for(let at=0;at<mesh.length;at+=stride){
+            const u=mesh[at+3],v=mesh[at+4],nx=2*u-1;
+            const flatX=nx*clothWidth*.5;
+            const flatY=(v-.47)*clothHeight;
+            const startX=center.x+flatX*xCos-flatY*ySin;
+            const startY=center.y+flatX*ySin+flatY*xCos;
+            // Contact begins at the nose, spreads through the cheeks, and
+            // reaches the free edges last. At the end all vertices settle.
+            const radius=clamp(Math.hypot(nx*.7,(v-.48)*1.15),0,1);
+            const threshold=.48+.28*radius;
+            const contact=clamp((approach-threshold)/(1-threshold),0,1);
+            const smooth=contact*contact*(3-2*contact);
+            const pull=clamp((v-.73)/.27,0,1);
+            const flutter=fly*pull*pull*Math.sin(now*.003+nx*9+layer.index*.3)*1.5;
+            const x=startX+(mesh[at]-startX)*smooth;
+            const y=startY+(mesh[at+1]-startY)*smooth;
+            const lift=ease(leave);
+            const scale=1-.28*fly;
+            vertices[at]=(center.x+(x-center.x)*scale+shiftX+flutter+lift*42)/W*2-1;
+            vertices[at+1]=1-(center.y+(y-center.y)*scale+shiftY-lift*175)/H*2;
+            // Before contact the textile approaches from in front of the
+            // nose; final Z is the sampled face surface with jaw curl.
+            vertices[at+2]=clamp(-.65*fly+mesh[at+2]*approach,-.8,.8);
+            for(let j=3;j<stride;j++)vertices[at+j]=mesh[at+j];
+          }
+          gl.bindBuffer(gl.ARRAY_BUFFER,vb);
+          gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
+          gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.fabric);
+          gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.thread);
+          // Five stacked textile layers must stay translucent; embroidery
+          // remains opaque enough to be read even across the older layers.
+          gl.uniform1f(opacityUniform,opacity*(pass===0?.62:1));
+          gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
+        }
+      }
+      const err=gl.getError();
+      if(err!==gl.NO_ERROR)throw new Error('WebGL cloth/face draw error '+err);
+      root.classList.add('ar-tulle-ready');
+      canvasBackup.draw([],now);
+      reportState('rendering',now);
+      renderErrorReported=false;
     }catch(error){
+      gl.colorMask(true,true,true,true);gl.depthMask(true);
       root.classList.remove('ar-tulle-ready');
       canvasBackup.draw(layers,now);
       reportState('draw-error',now);
-      if(!renderErrorReported){console.warn('[DCD AR] Cloth render fallback:',error);renderErrorReported=true;}
+      if(!renderErrorReported){
+        console.error('[DCD AR] face/cloth pipeline:',error);
+        renderErrorReported=true;
+      }
     }
   }
   function loop(now){
@@ -633,6 +656,9 @@ function create(root){
       for(const t of [pair.fabric,pair.thread])if(!seen.has(t)){gl.deleteTexture(t);seen.add(t);}
     }
     canvasBackup.destroy();
+    if(occBuffer)gl.deleteBuffer(occBuffer);
+    if(occIndex)gl.deleteBuffer(occIndex);
+    if(occProgram)gl.deleteProgram(occProgram);
     gl.deleteBuffer(vb);gl.deleteBuffer(ib);gl.deleteProgram(program);canvas.remove();
     root.classList.remove('ar-tulle-gpu','ar-tulle-ready');
   }
