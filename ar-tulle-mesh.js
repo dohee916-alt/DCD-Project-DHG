@@ -49,10 +49,10 @@ float smoothVeilSilhouette(vec2 uv){
   float lower=smoothstep(0.74,1.0,v);
   float crown=pow(clamp((.22-v)/.22,0.0,1.0),1.55);
   float hem=pow(clamp((v-.78)/.22,0.0,1.0),1.65);
-  float width=1.0-.31*crown-.20*hem;
+  float width=1.0-.12*crown-.11*hem;
   // The crown is arched: each side starts lower than the center.
-  float topCurve=.085*pow(x,1.7);
-  float bottomCurve=.038*pow(x,1.55);
+  float topCurve=.038*pow(x,1.8);
+  float bottomCurve=.045*pow(x,1.55);
   float sideMask=1.0-smoothstep(width-.075,width+.012,x);
   float topMask=smoothstep(topCurve-.018,topCurve+.035,v);
   float bottomMask=1.0-smoothstep(1.0-bottomCurve-.045,1.0-bottomCurve+.005,v);
@@ -252,9 +252,9 @@ function canvasCloth(root){
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
     // Keep generous margins around the face, but never let the cloth grow
     // into the heading or extend an entire face-height beyond the chin.
-    const cw=clamp(fw*1.72,fw+80,412);
-    const ch=clamp(fh*1.53,fh+85,585);
-    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2-fh*.015;
+    const cw=clamp(fw*1.96,fw+104,424);
+    const ch=clamp(fh*1.78,fh+125,654);
+    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2-fh*.085;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
@@ -310,8 +310,6 @@ function canvasCloth(root){
         let yy=-total/2;
         for(let i=0;i<lines.length;i++){
           ctx.font='700 '+(config.fs[i]||18)+'px "Turret Road",sans-serif';
-          ctx.lineWidth=.75;ctx.strokeStyle='rgba(210,62,8,.65)';
-          ctx.strokeText(lines[i],0,yy);
           ctx.fillText(lines[i],0,yy);yy+=config.lh[i]||20;
         }
       }
@@ -433,12 +431,12 @@ function create(root){
       const alpha=(layer.removing?1-ease(leave):clamp(age/.14,0,1));
       if(alpha<=0)continue;
       const slot=safePrintSlots[layer.index]||safePrintSlots[4];
-      const dx=(slot.u-.5)*c.cw,dy=(slot.v-.50)*c.ch;
+      const dx=(slot.u-.5)*c.textWidth,dy=(slot.v-.50)*c.textHeight;
       const shiftX=(layer.index%2?-1:1)*245*fly;
       const shiftY=-165*fly;
       const scale=1-.46*fly;
       const px=c.x+(dx*co-dy*si)*scale+shiftX;
-      const py=c.y+(dx*si+dy*co)*scale+shiftY;
+      const py=c.textY+(dx*si+dy*co)*scale+shiftY;
       printCtx.save();
       printCtx.globalAlpha=alpha;
       printCtx.translate(px,py);
@@ -447,18 +445,16 @@ function create(root){
       const lines=config.text.split('\n');
       const lineHeight=20;
       let fs=18;
-      const maxWidth=Math.min(170,c.cw*.42);
+      const maxWidth=Math.min(170,c.textWidth*.42);
       printCtx.font='700 '+fs+'px "Turret Road",sans-serif';
       const maxMeasured=Math.max(1,...lines.map(t=>printCtx.measureText(t).width));
       if(maxMeasured>maxWidth)fs=Math.max(14,fs*maxWidth/maxMeasured);
       printCtx.font='700 '+fs+'px "Turret Road",sans-serif';
       printCtx.textAlign='center';printCtx.textBaseline='middle';
-      printCtx.lineJoin='round';printCtx.lineWidth=1.35;
-      printCtx.strokeStyle='rgba(62,28,23,.74)';
+      // Original clean orange type: never add dark outline/shadow.
       printCtx.fillStyle='#ff6b23';
       for(let j=0;j<lines.length;j++){
         const yy=(j-(lines.length-1)/2)*lineHeight;
-        printCtx.strokeText(lines[j],0,yy);
         printCtx.fillText(lines[j],0,yy);
       }
       printCtx.restore();
@@ -566,11 +562,15 @@ function create(root){
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
     const angle=uprightFaceAngle(eyeA,eyeB),co=Math.cos(angle),si=Math.sin(angle);
-    const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2-fh*.015;
-    // FaceLandmarker ends at the forehead skin, NOT at the hairline.
-    // This is an actual head-covering veil, extended above hair and ears.
-    const cw=clamp(fw*1.72,fw+80,412),ch=clamp(fh*1.53,fh+85,585);
-    faceCenter={x:cx,y:cy,cw,ch,co,si,fw,fh};
+    const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2-fh*.085;
+    // Expand the physical veil around the whole head (hair and temples).
+    // Keep the text in its PREVIOUS independent screen-space positions.
+    const cw=clamp(fw*1.96,fw+104,424),ch=clamp(fh*1.78,fh+125,654);
+    const textWidth=clamp(fw*1.72,fw+80,412);
+    const textHeight=clamp(fh*1.53,fh+85,585);
+    const textY=(forehead.y+chin.y)/2-fh*.015;
+    faceCenter={x:cx,y:cy,cw,ch,co,si,fw,fh,
+      textWidth,textHeight,textY};
     // Build the real tracked face surface in the same mirrored screen space.
     facePixels=new Float32Array(468*2);
     faceDepth=new Float32Array(468);
@@ -616,18 +616,18 @@ function create(root){
       // not a sinusoidal crease across the forehead.
       const sideFold=clamp((Math.abs(nx)-.72)/.28,0,1);
       const upperCorner=clamp((.12-v)/.12,0,1)*clamp((Math.abs(nx)-.84)/.16,0,1);
-      const curl=tuck*(.035+.025*edgeX)+sideFold*.09+upperCorner*.025;
+      const curl=tuck*(.022+.015*edgeX)+sideFold*.042+upperCorner*.018;
       // Round the forehead and contour the cheeks instead of retaining the
       // rectangular grid's top corners and perfectly vertical side rails.
       const topRegion=clamp((.29-v)/.29,0,1);
       const jawRegion=clamp((v-.61)/.39,0,1);
-      const faceContour=1-.17*topRegion*topRegion-.12*jawRegion*jawRegion;
+      const faceContour=1-.045*topRegion*topRegion-.075*jawRegion*jawRegion;
       const px=nx*cw*.5*(1-curl)*faceContour;
       const rolledEdge=Math.max(0,(v-.87)/.13);
       const curve=Math.pow(Math.abs(nx),1.5);
       // A curved forehead edge dips toward the temples. At the chin, pull
       // the outer corners up around the jaw to avoid a flat rectangular hem.
-      const foreheadRound=topRegion*topRegion*fh*.16*Math.pow(Math.abs(nx),2.3);
+      const foreheadRound=topRegion*topRegion*fh*.045*Math.pow(Math.abs(nx),2.3);
       const jawRound=jawRegion*jawRegion*fh*.07*Math.pow(Math.abs(nx),1.6);
       const hemLift=tuck*fh*.026;
       const hemScoop=tuck*fh*.025*(1-curve);
