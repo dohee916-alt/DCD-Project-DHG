@@ -7,7 +7,8 @@ const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
 function create(root,video,canvas,onFrame){
- const ctx=canvas.getContext('2d',{alpha:false});
+ // Transparency is essential: do NOT request an opaque canvas.
+ const ctx=canvas.getContext('2d',{alpha:true});
  if(!ctx)return null;
  let worker,live=true,ready=false,visible=false,pending=null,frameHandle=0,timer=0,watchdog=0;
  let lastVideoTime=-1,lastCapture=0,misses=0,failures=0,firstFrame=true;
@@ -127,7 +128,7 @@ function create(root,video,canvas,onFrame){
   f.fg.globalCompositeOperation='destination-in';
   f.fg.drawImage(f.mask,x,y,dw,dh);
   f.fg.restore();
-  ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
+  ctx.clearRect(0,0,w,h);
   ctx.drawImage(f.foreground,0,0);
   visible=true;lastCapture=now;
   root.classList.add('ar-matting-active');
@@ -179,7 +180,7 @@ function create(root,video,canvas,onFrame){
     const width=data.cutout.displayWidth||data.cutout.width;
     const height=data.cutout.displayHeight||data.cutout.height;
     const scale=Math.max(w/width,h/height),dw=width*scale,dh=height*scale;
-    ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
+    ctx.clearRect(0,0,w,h);
     ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
     // Composite in source orientation, then mirror as a whole.
     // Only confirmed background beyond a wide hair-protection margin
