@@ -9,7 +9,8 @@ const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR1
 const state={root:null,video:null,stage:null,frame:'AR3',maskCount:0,variant:'first',
  face:null,hand:null,playing:false,requestId:0,lastFace:0,lastHand:0,lastVideoTime:-1,
  guideSince:0,pinchStart:null,pinchReady:true,handGuide:null,stepTimer:[],
- tulle:null,sheets:[],faceBox:null,matte:null,session:0};
+ tulle:null,sheets:[],faceBox:null,matte:null,session:0,
+ modelState:'idle',faceSeen:false,analysisError:false};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -23,6 +24,7 @@ function markup(){
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
  '<div class="ar-copy" aria-live="polite"></div>'+
+ '<div class="ar-tracking-status" role="status" aria-live="polite"></div>'+
  '<div class="ar-face-guide" aria-hidden="true"></div>'+
  '<div class="ar-gesture-guide" aria-hidden="true"></div>'+
  '<div class="ar-flow-choices"></div></div>';
@@ -121,7 +123,10 @@ function enter(frame){
  stopTimers();state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
  switch(frame){
- case 'AR3':caption('POSITION YOUR FACE HERE');break;
+ case 'AR3':
+   caption('POSITION YOUR FACE HERE');
+   trackingStatus(state.modelState==='ready'?'POSITION YOUR FACE INSIDE THE GUIDE':'PREPARING FACE TRACKING');
+   break;
  case 'AR4':
    caption('YOU AGREED TO THESE');
    state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());
@@ -163,15 +168,56 @@ function enter(frame){
  case 'AR10':typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1500);break;
  }
 }
+function trackingStatus(message='',allowRetry=false){
+ const status=state.root?.querySelector('.ar-tracking-status');
+ if(!status||state.frame!=='AR3')return;
+ if(status.dataset.message===message&&status.dataset.retry===String(allowRetry))return;
+ status.dataset.message=message;status.dataset.retry=String(allowRetry);
+ status.replaceChildren();
+ if(message){const label=document.createElement('span');label.textContent=message;status.appendChild(label);}
+ if(allowRetry){
+   const retry=document.createElement('button');
+   retry.type='button';retry.className='ar-face-retry';
+   retry.textContent='RETRY FACE TRACKING';
+   retry.addEventListener('click',()=>initModels(state.session));
+   status.appendChild(retry);
+ }
+}
+function faceDisplayRect(points){
+ // FaceLandmarker coordinates are relative to the SOURCE camera frame.
+ // The mirrored <video> is object-fit:cover in a 428×926 portrait viewport;
+ // crop/scale the landmarks in the same way before matching the oval.
+ const video=state.video;
+ const vw=video?.videoWidth||428,vh=video?.videoHeight||926;
+ const scale=Math.max(428/vw,926/vh);
+ const left=(428-vw*scale)/2,top=(926-vh*scale)/2;
+ let l=Infinity,r=-Infinity,t=Infinity,b=-Infinity;
+ for(const p of points){
+   const x=(left+(1-p.x)*vw*scale)/428;
+   const y=(top+p.y*vh*scale)/926;
+   l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y);
+ }
+ return {x:(l+r)/2,y:(t+b)/2,w:r-l,h:b-t};
+}
 function observeFace(points,now){
- if(state.frame!=='AR3'||!points?.length)return;
- const xs=points.map(p=>1-p.x),ys=points.map(p=>p.y);
- const x=(Math.min(...xs)+Math.max(...xs))/2,y=(Math.min(...ys)+Math.max(...ys))/2;
- const width=Math.max(...xs)-Math.min(...xs);
- const aligned=x>.28&&x<.72&&y>.30&&y<.68&&width>.18;
- if(!aligned){state.guideSince=0;return;}
+ if(state.frame!=='AR3')return;
+ if(!points?.length){
+   state.guideSince=0;
+   if(state.modelState==='ready')trackingStatus('POSITION YOUR FACE INSIDE THE GUIDE');
+   return;
+ }
+ const face=faceDisplayRect(points);
+ // Do not demand an arbitrarily large face in the raw camera image. The
+ // on-screen oval is much more forgiving, especially with cover cropping.
+ const aligned=face.x>.20&&face.x<.80&&face.y>.19&&face.y<.82&&face.w>.07&&face.h>.10;
+ if(!aligned){
+   state.guideSince=0;
+   trackingStatus('CENTER YOUR FACE IN THE OVAL');
+   return;
+ }
  if(!state.guideSince)state.guideSince=now;
- if(now-state.guideSince>1350)enter('AR4');
+ trackingStatus('FACE DETECTED');
+ if(now-state.guideSince>=650)enter('AR4');
 }
 function observeHands(hands,now){
  if(!['AR6','AR7'].includes(state.frame))return;
@@ -232,12 +278,19 @@ async function initModels(session){
      });
      try{
        const model=await create('GPU').catch(()=>create('CPU'));
-       if(session===state.session)state[key]=model;else model.close();
+       if(session===state.session){state[key]?.close();state[key]=model;}
+       else model.close();
      }catch(error){console.warn('[DCD AR] '+key+' tracker:',error);}
    };
-   await load('face',m.FaceLandmarker,'face_landmarker/face_landmarker/float16/1/face_landmarker.task',{numFaces:1});
+   await load('face',m.FaceLandmarker,'face_landmarker/face_landmarker/float16/1/face_landmarker.task',{numFaces:1,minFaceDetectionConfidence:.4,minFacePresenceConfidence:.4,minTrackingConfidence:.4});
+   if(session!==state.session)return;
+   state.modelState=state.face?'ready':'error';
+   trackingStatus(state.face?'POSITION YOUR FACE INSIDE THE GUIDE':'FACE TRACKING UNAVAILABLE',!state.face);
    if(session===state.session)await load('hand',m.HandLandmarker,'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',{numHands:2});
- }catch(error){console.warn('[DCD AR] Vision models:',error);}
+ }catch(error){
+   console.warn('[DCD AR] Vision models:',error);
+   if(session===state.session){state.modelState='error';trackingStatus('FACE TRACKING UNAVAILABLE',true);}
+ }
 }
 function handsDue(now){
  return state.hand&&(state.frame==='AR6'||state.frame==='AR7')&&now-state.lastHand>=70;
@@ -261,6 +314,7 @@ function track(frame,width,height,now=performance.now()){
    }
  }catch(error){
    if(!state.analysisError){console.warn('[DCD AR] tracking:',error);state.analysisError=true;}
+   if(state.frame==='AR3'){state.modelState='error';trackingStatus('FACE TRACKING INTERRUPTED',true);}
  }
 }
 function tick(){
@@ -289,6 +343,7 @@ function mount(stage,video){
  state.handGuide=window.DCD_AR_HAND_GUIDE?.create(root)||null;
  state.sheets=[];state.variant='first';state.maskCount=0;state.analysisError=false;
  state.faceBox=null;state.lastFace=0;state.lastHand=0;state.lastVideoTime=-1;
+ state.modelState='idle';state.faceSeen=false;
  enter('AR3');
 }
 function start(video){
@@ -303,6 +358,7 @@ function start(video){
  // Portrait segmentation runs separately. Use one independent video-frame
  // tracker for the mask, so a late cutout cannot stop the AR overlay.
  state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas)||null;
+ state.modelState='loading';trackingStatus('PREPARING FACE TRACKING');
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }
