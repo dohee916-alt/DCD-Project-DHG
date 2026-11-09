@@ -15,12 +15,13 @@ const SRC='assets/models/Do_Hand_DetailedRiggedAnimated_shared_16022026.glb';
 function create(root){
  const el=root.querySelector('.ar-gesture-guide');
  let active=true,frame='',since=0,played=false,raf=0,last=0;
+ let ready=false,started=false,initialThumbIndex=[],foldedThumbIndex=[];
  let renderer=null,scene=null,camera=null,pivot=null,mixer=null,clip=null,THREE=null;
  let model=null,poseScale=1;
  const owned=[];
  function setFrame(name){
   frame=name;
-  if(name==='AR6'&&!played)since=performance.now();
+  if(name==='AR6'&&!played){since=0;started=false;}
   if(name==='AR7')played=true;
   el.style.display=name==='AR6'&&!played?'block':'none';
   el.style.opacity='0';
@@ -66,7 +67,25 @@ function create(root){
    action.setLoop(THREE.LoopOnce,0);
    action.clampWhenFinished=true;
    action.play();
-   mixer.setTime(.045);
+   // Capture actual thumb/index extended and touching poses from the
+   // supplied Pose_OK animation. Other fingers remain at its folded
+   // endpoint throughout the tutorial; only index/thumb open and pinch.
+   const sourceEnd=Math.max(.045,clip.duration-.025);
+   const fingerNodes=[];
+   model.traverse(node=>{
+    if(node.isBone&&/^(thumb|index)_/.test(node.name))fingerNodes.push(node);
+   });
+   const poseSnap=time=>{
+    mixer.setTime(time);
+    model.updateMatrixWorld(true);
+    return fingerNodes.map(node=>({
+      node,position:node.position.clone(),rotation:node.quaternion.clone(),
+      scale:node.scale.clone()
+    }));
+   };
+   initialThumbIndex=poseSnap(.045);
+   foldedThumbIndex=poseSnap(sourceEnd);
+   mixer.setTime(sourceEnd);
    const centered=new THREE.Group();
    centered.add(model);
    pivot=new THREE.Group();
@@ -75,7 +94,8 @@ function create(root){
    // VERIFIED: the hand's widest horizontal axis in the GLB is Z.
    // Rotate the entire model by -90° about Y so original Z is
    // displayed horizontally, with the palm side visible to the viewer.
-   // No gesture-driven Y rotation, ever.
+   // Initial view presents the palm; the instructional sequence rotates
+   // the visible palm toward the back of the hand after the intro hold.
    // Source hand is broad in Z, and the camera must see its palm
    // rather than the back of the pinching fingers.
    centered.rotation.y=-Math.PI/2;
@@ -130,36 +150,49 @@ function create(root){
   if(!active)return;
   raf=requestAnimationFrame(render);
   if(!renderer||!pivot||frame!=='AR6'||played){
-   el.style.opacity='0';el.style.display='none';return;
+   el.style.opacity='0';
+   el.style.display='none';
+   return;
   }
-  const u=(now-since)/1000;
-  if(u>=4.6){
-   hideOnce();return;
-  }
+  // A slow GLB fetch must never consume the single demonstration before
+  // the WebGL model has rendered its first frame.
+  if(!started){since=now;started=true;}
   if(now-last<33)return;
   last=now;
-  el.style.display='block';el.style.opacity='1';
-  const reach=smooth((u-.25)/1.1);
-  const pinch=smooth((u-1.1)/.75);
-  const pull=smooth((u-2.75)/.78);
-  const retreat=smooth((u-3.85)/.50);
-  // Fully close on the actual embedded endpoint and HOLD while pulling.
-  const pose=pinch*(1-smooth((u-3.88)/.55));
-  // Start below the face, touch the face with index/thumb,
-  // then pull outward. All motions are screen-forward, never
-  // sideways hand rotation.
-  const x=lerp(-47,2,reach)+42*pull-32*retreat;
-  const y=lerp(-135,68,reach)-32*pull-65*retreat;
-  const z=lerp(.77,1.03,reach)+.25*pull-.27*retreat;
-  // Source Pose_OK clip lasts 2.5s and is the real pinch pose.
-  // We verified its thumb-index joint distance is ~5.17 model units,
-  // vs ~8.25 in Pose_OKHand. Use the actual clip endpoint.
-  const endTime=Math.max(.045,clip.duration-.025);
-  const time=.045+(endTime-.045)*pose;
-  mixer.setTime(time);
-  pivot.position.set(x,y,0);
-  pivot.rotation.set(0,0,-.20);
-  pivot.scale.setScalar(poseScale*z);
+  const t=(now-since)/1000;
+  // One complete gesture, with a clearly held start and endpoint:
+  // 0.00–0.85  Palm faces viewer, index/thumb OPEN, other three FOLDED
+  // 0.85–1.70  Rotate to show back of hand; fingers stay unchanged
+  // 1.70–2.65  Move away from the screen, and pinch index/thumb together
+  // 2.65–3.15  Hold the closed pinch at the far position
+  // 3.15–4.00  Move closer, keeping index/thumb CLOSED
+  // 4.00–4.75  Release index/thumb, still showing back of hand
+  // 4.75–5.10  Hold open fingers; then hide and never replay
+  if(t>=5.10){hideOnce();return;}
+  const rotate=smooth((t-.85)/.85);
+  const recede=smooth((t-1.70)/.95);
+  const approach=smooth((t-3.15)/.85);
+  const pinch=smooth((t-1.70)/.95)*(1-smooth((t-4.00)/.75));
+  // The original asset's Pose_OK finishes with the three curled fingers.
+  // Freeze those at the folded frame. Interpolate ONLY thumb/index bones.
+  const foldedTime=Math.max(.045,clip.duration-.025);
+  mixer.setTime(foldedTime);
+  for(let n=0;n<initialThumbIndex.length;n++){
+   const a=initialThumbIndex[n],b=foldedThumbIndex[n];
+   const bone=a.node;
+   bone.position.copy(a.position).lerp(b.position,pinch);
+   bone.quaternion.copy(a.rotation).slerp(b.rotation,pinch);
+   bone.scale.copy(a.scale).lerp(b.scale,pinch);
+  }
+  // Model-facing correction is fixed at -90 deg in the child.
+  // Rotate the parent 180 deg to intentionally reveal the back of the
+  // hand without mistakenly requiring the REAL user to rotate sideways.
+  pivot.rotation.set(0,Math.PI*rotate,-.12*(1-rotate));
+  pivot.position.set(-10,18+18*recede-18*approach,0);
+  const far=1-.40*recede+.40*approach;
+  pivot.scale.setScalar(poseScale*far);
+  el.style.display='block';
+  el.style.opacity='1';
   renderer.render(scene,camera);
  }
  init();
