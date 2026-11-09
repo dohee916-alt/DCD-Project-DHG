@@ -24,7 +24,7 @@ function markup(){
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
  '<div class="ar-copy" aria-live="polite"></div>'+
- '<div class="ar-tracking-status" role="status" aria-live="polite"></div>'+
+
  '<div class="ar-face-guide" aria-hidden="true"></div>'+
  '<div class="ar-gesture-guide" aria-hidden="true"></div>'+
  '<div class="ar-flow-choices"></div></div>';
@@ -123,13 +123,10 @@ function enter(frame){
  stopTimers();state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
  switch(frame){
- case 'AR3':
-   caption('POSITION YOUR FACE HERE');
-   trackingStatus(state.modelState==='ready'?'POSITION YOUR FACE INSIDE THE GUIDE':'PREPARING FACE TRACKING');
-   break;
+ case 'AR3':caption('POSITION YOUR FACE HERE');break;
  case 'AR4':
-   // Hand tracking is needed only for AR6+. Do not postpone face tracking
-   // by requesting another model until the face has been recognized.
+   // Only after face recognition: start expensive cutout/fabric and hand model.
+   startArVisuals();
    if(!state.hand)loadHandWhenNeeded(state.session);
    caption('YOU AGREED TO THESE');
    state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());
@@ -171,42 +168,9 @@ function enter(frame){
  case 'AR10':typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1500);break;
  }
 }
-function trackingStatus(message='',allowRetry=false){
- const status=state.root?.querySelector('.ar-tracking-status');
- if(!status||state.frame!=='AR3')return;
- if(status.dataset.message===message&&status.dataset.retry===String(allowRetry))return;
- status.dataset.message=message;status.dataset.retry=String(allowRetry);
- status.replaceChildren();
- if(message){const label=document.createElement('span');label.textContent=message;status.appendChild(label);}
- if(allowRetry){
-   // If ML assets cannot be loaded on this device, the experience must not
-   // become a permanent dead end. Keep the fallback explicit and user-driven.
-   const continueButton=document.createElement('button');
-   continueButton.type='button';continueButton.className='ar-face-retry';
-   continueButton.textContent='CONTINUE WITHOUT FACE TRACKING';
-   continueButton.addEventListener('click',()=>enter('AR4'));
-   status.appendChild(continueButton);
-   const retry=document.createElement('button');
-   retry.type='button';retry.className='ar-face-retry';
-   retry.textContent='RETRY FACE TRACKING';
-   retry.addEventListener('click',()=>{
-     if(state.modelState==='loading')return;
-     state.modelState='loading';state.analysisError=false;state.lastVideoTime=-1;
-     trackingStatus('PREPARING FACE TRACKING');
-     initModels(state.session);
-   });
-   status.appendChild(retry);
- }
-}
-function cameraError(message){
- if(state.frame!=='AR3')return;
- state.modelState='error';
- state.guideSince=0;
- trackingStatus(message==='NotAllowedError'?'CAMERA PERMISSION DENIED':
-   message==='NotFoundError'?'FRONT CAMERA NOT FOUND':
-   message==='CAMERA CONNECTION LOST'?'CAMERA CONNECTION LOST':
-   'CAMERA UNAVAILABLE',false);
-}
+// AR3 keeps only the approved POSITION YOUR FACE HERE prompt.
+// Camera / model diagnostics are sent to the console, never to invented UI.
+function cameraError(error){console.warn('[DCD AR] Camera:',error);}
 function faceDisplayRect(points){
  // FaceLandmarker coordinates are relative to the SOURCE camera frame.
  // The mirrored <video> is object-fit:cover in a 428×926 portrait viewport;
@@ -224,24 +188,15 @@ function faceDisplayRect(points){
  return {x:(l+r)/2,y:(t+b)/2,w:r-l,h:b-t};
 }
 function observeFace(points,now){
- if(state.frame!=='AR3')return;
- if(!points?.length){
-   state.guideSince=0;
-   if(state.modelState==='ready')trackingStatus('POSITION YOUR FACE INSIDE THE GUIDE');
-   return;
- }
+ if(state.frame!=='AR3'||!points?.length)return;
  const face=faceDisplayRect(points);
- // Do not demand an arbitrarily large face in the raw camera image. The
- // on-screen oval is much more forgiving, especially with cover cropping.
- const aligned=face.x>.20&&face.x<.80&&face.y>.19&&face.y<.82&&face.w>.07&&face.h>.10;
- if(!aligned){
-   state.guideSince=0;
-   trackingStatus('CENTER YOUR FACE IN THE OVAL');
-   return;
- }
+ // The displayed camera is center-cropped and mirrored. Require only that
+ // the real detected face intersects the central oval; do not reset on tiny
+ // position/size jitter between consecutive inference frames.
+ const intersects=face.x>.16&&face.x<.84&&face.y>.17&&face.y<.85&&face.w>.06&&face.h>.08;
+ if(!intersects){state.guideSince=0;return;}
  if(!state.guideSince)state.guideSince=now;
- trackingStatus('FACE DETECTED');
- if(now-state.guideSince>=650)enter('AR4');
+ if(now-state.guideSince>=320)enter('AR4');
 }
 function observeHands(hands,now){
  if(!['AR6','AR7'].includes(state.frame))return;
@@ -309,36 +264,38 @@ async function loadHandWhenNeeded(session){
  }catch(error){console.warn('[DCD AR] Hand tracker:',error);}
 }
 async function initModels(session){
- if(session!==state.session)return;
- state.modelState='loading';
- trackingStatus('PREPARING FACE TRACKING');
+ if(session!==state.session||state.face)return;
  try{
    const m=await import(SDK);
    if(session!==state.session)return;
-   // The canonical face cloth geometry was initialized at mount time.
    const vision=await m.FilesetResolver.forVisionTasks(WASM);
    if(session!==state.session)return;
-   const load=async(key,Ctor,path,options)=>{
-     const create=delegate=>Ctor.createFromOptions(vision,{
-       baseOptions:{modelAssetPath:MODEL_ROOT+path,delegate},runningMode:'VIDEO',...options
-     });
+   // AR3 on mobile must get reliable inference priority over WebGL shaders.
+   // CPU first avoids WebGL context pressure from the AR canvas + GPU matte.
+   const delegates=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+     ?['CPU','GPU']:['GPU','CPU'];
+   let model=null,lastError;
+   for(const delegate of delegates){
      try{
-       const model=await create('GPU').catch(()=>create('CPU'));
-       if(session===state.session){state[key]?.close();state[key]=model;}
-       else model.close();
-     }catch(error){console.warn('[DCD AR] '+key+' tracker:',error);}
-   };
-   await load('face',m.FaceLandmarker,'face_landmarker/face_landmarker/float16/1/face_landmarker.task',{numFaces:1,minFaceDetectionConfidence:.4,minFacePresenceConfidence:.4,minTrackingConfidence:.4});
-   if(session!==state.session)return;
-   state.modelState=state.face?'ready':'error';
-   trackingStatus(state.face?'POSITION YOUR FACE INSIDE THE GUIDE':'FACE TRACKING UNAVAILABLE',!state.face);
-   // Loading the hand model concurrently consumes GPU/WASM resources that
-   // AR3 needs for initial face recognition. Start it only after moving on.
-   if(session===state.session&&state.frame!=='AR3')
-     await load('hand',m.HandLandmarker,'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',{numHands:2});
+       model=await m.FaceLandmarker.createFromOptions(vision,{
+         baseOptions:{modelAssetPath:MODEL_ROOT+'face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate},
+         runningMode:'VIDEO',numFaces:1,
+         minFaceDetectionConfidence:.35,
+         minFacePresenceConfidence:.35,
+         minTrackingConfidence:.35
+       });
+       break;
+     }catch(error){lastError=error;}
+   }
+   if(session!==state.session){model?.close();return;}
+   if(!model)throw lastError||new Error('Face model unavailable');
+   state.face=model;
+   state.modelState='ready';
+   state.lastVideoTime=-1;
  }catch(error){
-   console.warn('[DCD AR] Vision models:',error);
-   if(session===state.session){state.modelState='error';trackingStatus('FACE TRACKING UNAVAILABLE',true);}
+   if(session!==state.session)return;
+   state.modelState='error';
+   console.warn('[DCD AR] Face model initialization:',error);
  }
 }
 function handsDue(now){
@@ -368,7 +325,7 @@ function track(frame,width,height,now=performance.now()){
    }
  }catch(error){
    if(!state.analysisError){console.warn('[DCD AR] tracking:',error);state.analysisError=true;}
-   if(state.frame==='AR3'){state.modelState='error';trackingStatus('FACE TRACKING INTERRUPTED',true);}
+   if(state.frame==='AR3')state.modelState='error';
  }
 }
 function tick(){
@@ -393,8 +350,10 @@ function mount(stage,video){
  if(state.root===root){state.video=video||state.video;return;}
  stop();
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
- state.tulle=window.DCD_TULLE?.create(root.querySelector('.ar-organza-stack'))||null;
- state.handGuide=window.DCD_AR_HAND_GUIDE?.create(root)||null;
+ // Do NOT allocate GPU organza or start heavy matting before AR3 can see
+ // the face. Those visuals are only needed after the detection transition.
+ state.tulle=null;
+ state.handGuide=null;
  state.sheets=[];state.variant='first';state.maskCount=0;state.analysisError=false;state.tulleWarning=false;
  state.faceBox=null;state.lastFace=0;state.lastHand=0;state.lastVideoTime=-1;
  state.modelState='idle';state.faceSeen=false;
@@ -405,24 +364,27 @@ function start(video){
  if(video)state.video=video;
  if(state.playing)return;
  state.playing=true;
- const canvas=state.root.querySelector('.ar-person-segment');
- // The landmark API reads dimensions from HTML video/canvas and ImageBitmap,
- // so stage VideoFrame inputs on a reused canvas before tracking.
- // Portrait segmentation runs separately. Face tracking always reads the
- // live <video>, so a late segmentation result cannot block face alignment.
- state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas)||null;
- state.modelState='loading';trackingStatus('PREPARING FACE TRACKING');
- // Detect a video/model deadlock without prompting for camera access again.
- // A ready video with a visible face should be handled automatically; only
- // unrecoverable initialization problems expose manual continuation.
- const session=state.session;
- delay(()=>{
-   if(!state.playing||session!==state.session||state.frame!=='AR3')return;
-   if(state.modelState==='loading')
-     trackingStatus('FACE TRACKING IS TAKING LONGER THAN EXPECTED',true);
- },9000);
+ state.modelState='loading';
+ // Initial inference has priority. No segmentation / cloth GPU work in AR3.
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
+}
+function startArVisuals(){
+ if(!state.playing||!state.root)return;
+ // This work was wrongly executed before the first face detection.
+ if(!state.tulle){
+   try{state.tulle=window.DCD_TULLE?.create(state.root.querySelector('.ar-organza-stack'))||null;}
+   catch(error){console.warn('[DCD AR] Organza init:',error);}
+ }
+ if(!state.handGuide){
+   try{state.handGuide=window.DCD_AR_HAND_GUIDE?.create(state.root)||null;}
+   catch(error){console.warn('[DCD AR] Gesture guide init:',error);}
+ }
+ if(!state.matte){
+   try{state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,
+     state.root.querySelector('.ar-person-segment'))||null;}
+   catch(error){console.warn('[DCD AR] Portrait matte init:',error);}
+ }
 }
 function stop(){
  state.session++;
