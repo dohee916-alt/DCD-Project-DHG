@@ -1185,3 +1185,10 @@ canvas.figure{object-fit:contain!important}
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
 }
+
+/* The source video is only an ML input once a valid transparent foreground
+   exists. Leaving it visible under the transparent cutout recreates a hard
+   rectangular camera background, defeating the matte entirely. */
+.ar-immersive.ar-matting-active .ar-portrait-camera{
+  opacity:0!important;
+}
