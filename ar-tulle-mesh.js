@@ -186,7 +186,7 @@ function create(root){
   const stitchUniform=gl.getUniformLocation(program,'embroideryMask');
   let outline=[],neighborsByVertex=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let vertexCount=0,neutralUV=null;
-  let live=true,frameId=0,lastRendered=0;
+  let live=true,frameId=0,lastRendered=0,renderErrorReported=false;
   const textures={},layers=[];
   function setConnections(){
     const canonical=window.DCD_FACE_CANONICAL;
@@ -347,8 +347,11 @@ function create(root){
       if(layers[i].removing&&now-layers[i].exit>1200)layers.splice(i,1);
     }
     const ready=Boolean(faceCenter&&indexCount&&textures.first&&layers.length);
-    root.classList.toggle('ar-tulle-ready',ready);
-    if(!ready)return;
+    if(!ready||gl.isContextLost()){
+      root.classList.remove('ar-tulle-ready');
+      return;
+    }
+    try{
     gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
     gl.useProgram(program);
@@ -400,6 +403,16 @@ function create(root){
       gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.thread);
       gl.uniform1f(opacityUniform,opacity);
       gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
+    }
+    // The previous code hid the fallback before confirming that any WebGL
+    // output was produced. Keep it visible whenever GPU drawing fails.
+    const error=gl.getError();
+    if(error!==gl.NO_ERROR)throw new Error('WebGL draw error '+error);
+    root.classList.add('ar-tulle-ready');
+    renderErrorReported=false;
+    }catch(error){
+      root.classList.remove('ar-tulle-ready');
+      if(!renderErrorReported){console.warn('[DCD AR] Cloth render fallback:',error);renderErrorReported=true;}
     }
   }
   function loop(now){
