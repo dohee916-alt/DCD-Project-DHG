@@ -1118,8 +1118,16 @@ canvas.figure{object-fit:contain!important}
 /* AR cutout owns the visible portrait. Never reveal the raw webcam behind
    the alpha matte: a transparent pixel must show the AR backdrop, not the
    original room. The video remains mounted for inference/camera input. */
-.ar-immersive .ar-portrait-camera{opacity:0!important;visibility:hidden!important}
+.ar-immersive:not(.ar-matting-active) .ar-portrait-camera{
+  opacity:1!important;visibility:visible!important
+}
+.ar-immersive.ar-matting-active .ar-portrait-camera{
+  opacity:0!important;visibility:hidden!important
+}
 .ar-immersive .ar-person-segment{z-index:2!important}
+.ar-immersive:not(.ar-matting-active) .ar-person-segment{
+  opacity:0!important;visibility:hidden!important
+}
 .ar-immersive.ar-matting-active .ar-person-segment{
   display:block!important;visibility:visible!important;opacity:1!important
 }
