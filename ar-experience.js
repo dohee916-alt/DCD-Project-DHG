@@ -75,6 +75,8 @@ function clearScene(){
  state.root.classList.toggle('ar-final-mode',state.frame==='AR9'||state.frame==='AR10');
  state.root.classList.toggle('ar-moment',state.frame==='AR8');
  state.root.classList.toggle('ar-align-gesture',state.frame==='AR3');
+ // Blink only guidance authored in Doto, not consent or ending copy.
+ state.root.classList.toggle('ar-doto-blink',['AR3','AR6','AR7'].includes(state.frame));
  state.handGuide?.setFrame(state.frame);
  state.root.classList.toggle('ar-choice-phase',state.frame==='AR5-1');
  state.root.classList.toggle('ar-plain-choice',state.frame==='AR5');
