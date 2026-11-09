@@ -733,8 +733,12 @@ function create(root){
             const y=startY+(mesh[at+1]-startY)*smooth;
             const lift=ease(leave);
             const scale=1-.46*fly;
-            vertices[at]=(center.x+(x-center.x)*scale+shiftX+flutter+lift*42)/W*2-1;
-            vertices[at+1]=1-(center.y+(y-center.y)*scale+shiftY-lift*175)/H*2;
+            // Each successive translucent veil sits a few pixels off the
+            // previous hem. This reveals five physical boundaries without
+            // losing registration against the head.
+            const stackEdge=approach*layer.index;
+            vertices[at]=(center.x+(x-center.x)*scale+shiftX+flutter+lift*42+stackEdge*1.55)/W*2-1;
+            vertices[at+1]=1-(center.y+(y-center.y)*scale+shiftY-lift*175+stackEdge*1.05)/H*2;
             // Before contact the textile approaches from in front of the
             // nose; final Z is the sampled face surface with jaw curl.
             vertices[at+2]=clamp(-.72*fly+mesh[at+2]*approach-layer.index*.008,-.8,.8);
