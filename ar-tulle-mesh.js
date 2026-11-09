@@ -116,6 +116,10 @@ function embroideredLetters(variant,index){
  ctx.save();
  // No horizontal mirror: the camera position is mirrored once in update().
  ctx.translate(slot.u*TEXTURE_SIZE,(1-slot.v)*TEXTURE_SIZE);
+ // The live webcam is mirrored on screen, which reverses the printed
+ // embroidery. Counter-mirror the letter glyphs within their local region
+ // without moving each Figma text anchor or flipping the textile itself.
+ ctx.scale(-1,1);
  ctx.rotate(config.r*Math.PI/180);
  ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='top';
  const fs=lines.map((_,i)=>config.fs[i]||18),lh=lines.map((_,i)=>config.lh[i]||20);
@@ -390,23 +394,25 @@ function create(root){
       // the cloth falls forward, folds under the chin and tucks around the
       // left/right sides of the neck. Keep its boundary irregular and soft.
       const tuck=lower*lower*(3-2*lower);
-      const curl=tuck*(.14+.31*edgeX);
-      const pleat=Math.sin(nx*8.4+v*3.1)*Math.sin(nx*13.7-v*2.3);
-      const px=nx*cw*.5*(1-curl)+tuck*pleat*fw*.014;
-      // The bottom corners rise toward the jaw, while the central loose
-      // edge folds up slightly instead of ending on one horizontal line.
-      const hemLift=tuck*(fh*(.055+.10*edgeX)+Math.sin(nx*8.5)*fh*.014);
-      const rolledEdge=Math.max(0,(v-.90)/.10);
-      const py=(v-.47)*ch-hemLift-rolledEdge*rolledEdge*fh*.035;
+      // Upper 70% remains smoothly stretched across the face. Drape only
+      // the excess BELOW the jaw, with a curled hem instead of a straight
+      // square boundary. No creases or independent upper-layer offsets.
+      const curl=tuck*(.19+.40*edgeX);
+      const px=nx*cw*.5*(1-curl);
+      const rolledEdge=Math.max(0,(v-.85)/.15);
+      const curve=Math.pow(Math.abs(nx),1.6);
+      const hemLift=tuck*fh*(.085+.19*curve);
+      const hemScoop=tuck*fh*.08*(1-curve);
+      const py=(v-.47)*ch-hemLift+hemScoop-rolledEdge*rolledEdge*fh*.028;
       const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
       const cheek=Math.exp(-(((Math.abs(nx)-.51)/.27)**2+((v-.51)/.31)**2));
-      const foldDepth=tuck*(.028+.09*edgeX)+rolledEdge*.055;
+      const foldDepth=tuck*(.035+.11*edgeX)+rolledEdge*.055;
       const at=(y*(columns+1)+x)*stride;
       mesh[at]=cx+px*co-py*si;
       mesh[at+1]=cy+px*si+py*co;
       mesh[at+2]=.02+bump*.055+cheek*.025-foldDepth;
       mesh[at+3]=u;mesh[at+4]=v;
-      const foldShade=tuck*(.10*edgeX+.055*Math.sin(nx*15.1+v*3.2));
+      const foldShade=tuck*(.12*edgeX+.025*curve);
       mesh[at+5]=clamp(.94+.10*bump+.035*cheek-foldShade-rolledEdge*.13,.68,1.10);
       const border=Math.min(u,1-u,v,1-v);
       mesh[at+6]=clamp((.075-border)/.075,0,1);
@@ -472,12 +478,15 @@ function create(root){
       const size=1-.32*fly,center=faceCenter;
       // Distinct cloth rims are essential for a visible layered stack.
       // Settled layers shift just 1–3 px rather than sharing one exact outline.
-      const rimX=(layer.index-2)*1.35;
-      const rimY=(layer.index%2===0?-1:1)*(1.2+layer.index*.45);
-      const rimScale=1+(layer.index-2)*.006;
+      // The five thin membranes settle onto the same face-shaped surface.
+      // Distinct stacking comes from alpha, not visible dislocated rims.
+      const rimX=0,rimY=0,rimScale=1;
       for(let at=0;at<mesh.length;at+=stride){
         const x=mesh[at]-center.x,y=mesh[at+1]-center.y;
-        const sway=mesh[at+6]**2*Math.sin(now*.0029+y*.041+layer.index*.7)*2.1;
+        // No wave across the upper face: only hanging cloth below the jaw
+      // can flutter before it settles.
+      const hang=Math.max(0,(mesh[at+4]-.70)/.30);
+      const sway=hang*hang*Math.sin(now*.0029+x*.027+layer.index*.22)*1.1*fly;
         const lift=ease(leave);
         vertices[at]=(center.x+x*size*rimScale+offsetX+rimX+settle+sway+lift*(38-y*.23))/W*2-1;
         vertices[at+1]=1-(center.y+y*size*rimScale+offsetY+rimY+lift*(-165+x*.23))/H*2;
