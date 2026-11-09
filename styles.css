@@ -1392,3 +1392,89 @@ canvas.figure{object-fit:contain!important}
   letter-spacing:0!important;text-align:center!important;
   white-space:pre-line!important;color:#111!important;
 }
+
+/* AR3–AR10 text typography and geometry: audited against the actual Figma
+   428×926 artwork. #stage owns the sole viewport scaling via app.js fit();
+   these are LOCAL artboard coordinates, with no additional 80px offset,
+   percentage placement, transforms or viewport-dependent adjustments. */
+#stage .ar-immersive .ar-copy{
+  position:absolute!important;
+  right:auto!important;
+  margin:0!important;padding:0!important;
+  transform:none!important;translate:none!important;
+  letter-spacing:0!important;text-align:center!important;
+  text-wrap:initial!important;
+  white-space:pre-line!important;
+  font-kerning:normal!important;
+  font-variation-settings:normal!important;
+  z-index:9!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
+  left:50px!important;top:141px!important;width:342px!important;
+  font:900 16px/32px Doto,Arial,sans-serif!important;
+  font-variation-settings:"ROND" 0,"wght" 900!important;
+  color:#111!important;
+}
+#stage .ar-immersive[data-ar-frame="AR3"] .ar-copy{
+  left:68px!important;top:141px!important;width:292px!important;
+}
+#stage .ar-immersive[data-ar-frame="AR4"] .ar-copy{
+  left:68px!important;top:144px!important;width:306px!important;
+  height:32px!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+  color:#111!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5"],[data-ar-frame="AR5-1"]) .ar-copy{
+  left:61px!important;top:144px!important;width:306px!important;
+  height:64px!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5"] .ar-copy{color:#111!important}
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{color:#f9f6f2!important}
+#stage .ar-immersive[data-ar-frame="AR5-2"] .ar-copy{
+  left:54px!important;top:144px!important;width:306px!important;
+  height:32px!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+  color:#111!important;
+}
+#stage .ar-immersive[data-ar-frame="AR8"] .ar-copy{
+  display:none!important;
+}
+#stage .ar-immersive[data-ar-frame="AR9"] .ar-copy{
+  left:61px!important;top:430px!important;width:306px!important;
+  height:64px!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+  color:#f9f6f2!important;
+}
+#stage .ar-immersive[data-ar-frame="AR10"] .ar-copy{
+  left:0!important;top:0!important;width:428px!important;
+  height:926px!important;
+  font-family:"Source Sans 3",Arial,sans-serif!important;
+  color:#f9f6f2!important;
+}
+#stage .ar-immersive[data-ar-frame="AR10"] .ar-final-not{
+  position:absolute!important;left:61px!important;top:382px!important;
+  width:306px!important;height:70px!important;
+  font:700 64px/70px "Source Sans 3",Arial,sans-serif!important;
+  text-align:center!important;
+}
+#stage .ar-immersive[data-ar-frame="AR10"] .ar-final-rest{
+  position:absolute!important;left:61px!important;top:454px!important;
+  width:306px!important;height:96px!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+  white-space:pre-line!important;text-align:center!important;
+}
+/* The original Figma Union silhouette is part of the background of AR5-1,
+   AR9 and AR10: light gray form, 80% opacity, 30px blur in the exported
+   Figma asset. It is NOT generated from the live camera or fake depth.
+   Place it under the existing restrained peach and burnt-orange gradients. */
+#stage .ar-immersive .ar-figma-person-union{
+  display:none!important;position:absolute!important;
+  left:1px!important;top:274px!important;
+  width:428px!important;height:655.88px!important;
+  object-fit:fill!important;pointer-events:none!important;
+  z-index:2!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-figma-person-union{
+  display:block!important;
+}
