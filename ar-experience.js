@@ -428,7 +428,7 @@ function renderDarkSilhouette(){
  const root=state.root;
  if(!root||!['AR5-1','AR9','AR10'].includes(state.frame))return;
  const now=performance.now();
- if(now-silhouetteLast<80)return;
+ if(now-silhouetteLast<90)return;
  silhouetteLast=now;
  const source=root.querySelector('.ar-person-segment');
  const target=root.querySelector('.ar-dark-silhouette');
@@ -441,22 +441,63 @@ function renderDarkSilhouette(){
   canvas.width=w;canvas.height=h;
   const workCtx=canvas.getContext('2d',{alpha:true,willReadFrequently:true});
   if(!workCtx)return;
-  silhouetteWork={canvas,ctx:workCtx};
+  silhouetteWork={canvas,ctx:workCtx,dist:new Float32Array(w*h)};
  }
  const work=silhouetteWork.ctx;
  try{
   work.clearRect(0,0,w,h);
   work.drawImage(source,0,0,w,h);
   const image=work.getImageData(0,0,w,h);
-  const px=image.data;
-  // Confidence threshold eliminates background haze; smoothstep retains
-  // antialiasing at hair/shoulder edges without 5x alpha overpainting.
-  for(let k=0;k<px.length;k+=4){
-   const alpha=px[k+3]/255;
-   const t=Math.max(0,Math.min(1,(alpha-.17)/.30));
-   const smooth=t*t*(3-2*t);
-   px[k]=179;px[k+1]=52;px[k+2]=16;
-   px[k+3]=Math.round(smooth*252);
+  const px=image.data,dist=silhouetteWork.dist;
+  // Derive a fast spatial surface-shading proxy from the matte thickness:
+  // central, broad foreground surfaces become deep rust; thin/receding
+  // edges are softer copper. NOT a true metric camera depth measurement.
+  // Preserve the live image's luminance relief and add fixed fine-grain
+  // variation so the surface reads as textured, not flat poster colour.
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+   const i=y*w+x,k=i*4;
+   dist[i]=px[k+3] < 55 ? 0 : 1000;
+  }
+  // Chamfer distance transform within the human alpha boundary.
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+   const i=y*w+x;
+   if(!dist[i])continue;
+   let d=dist[i];
+   if(x)d=Math.min(d,dist[i-1]+1);
+   if(y)d=Math.min(d,dist[i-w]+1);
+   if(x&&y)d=Math.min(d,dist[i-w-1]+1.414);
+   if(x+1<w&&y)d=Math.min(d,dist[i-w+1]+1.414);
+   dist[i]=d;
+  }
+  for(let y=h-1;y>=0;y--)for(let x=w-1;x>=0;x--){
+   const i=y*w+x;
+   if(!dist[i])continue;
+   let d=dist[i];
+   if(x+1<w)d=Math.min(d,dist[i+1]+1);
+   if(y+1<h)d=Math.min(d,dist[i+w]+1);
+   if(x+1<w&&y+1<h)d=Math.min(d,dist[i+w+1]+1.414);
+   if(x&&y+1<h)d=Math.min(d,dist[i+w-1]+1.414);
+   dist[i]=d;
+  }
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+   const i=y*w+x,k=i*4,alpha=px[k+3]/255;
+   if(alpha<.04){px[k+3]=0;continue;}
+   const lum=(px[k]*.2126+px[k+1]*.7152+px[k+2]*.0722)/255;
+   const thick=Math.min(1,dist[i]/22);
+   const near=Math.pow(thick,.66);
+   const relief=(lum-.5)*15;
+   // Static small-scale grain; tied to pixels, never frame-to-frame flicker.
+   let hash=(Math.imul(x+17,374761393)^Math.imul(y+29,668265263))|0;
+   hash=Math.imul(hash^(hash>>>13),1274126177);
+   const grain=((hash^(hash>>>16))>>>0)/4294967295-.5;
+   const texture=grain*19+
+    (Math.sin(x*.71+y*.13)*Math.cos(y*.66-x*.09))*3.5;
+   const shift=texture-relief;
+   px[k]=Math.max(0,Math.min(255,185-near*112+shift));
+   px[k+1]=Math.max(0,Math.min(255,103-near*78+shift*.65));
+   px[k+2]=Math.max(0,Math.min(255,75-near*53+shift*.43));
+   const edge=Math.max(0,Math.min(1,(alpha-.09)/.34));
+   px[k+3]=Math.round(255*edge*edge*(3-2*edge)*.97);
   }
   work.putImageData(image,0,0);
   ctx.clearRect(0,0,target.width,target.height);
@@ -464,8 +505,7 @@ function renderDarkSilhouette(){
   ctx.imageSmoothingQuality='high';
   ctx.drawImage(silhouetteWork.canvas,0,0,target.width,target.height);
  }catch(error){
-  // A failed matte read must never interrupt face/hand tracking.
-  if(!silhouetteWork.warning){console.warn('[DCD AR] silhouette matte:',error);silhouetteWork.warning=true;}
+  if(!silhouetteWork.warning){console.warn('[DCD AR] textured silhouette:',error);silhouetteWork.warning=true;}
  }
 }
 function ensurePortraitMatte(){
