@@ -1240,3 +1240,35 @@ canvas.figure{object-fit:contain!important}
   left:0!important;top:0!important;
 }
 .ar-immersive[data-ar-frame="AR5-1"] .ar-choice.yes{display:none!important}
+
+
+/* AR5-1: original Figma 636:672 gradient group (861:298) exported with
+   its own exact multiply/lighten/tint layer compositing, rather than
+   approximated CSS angles and color-stop values. The group is rotated
+   180deg in Figma and its bounds extend past the 428×926 artboard. */
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient{
+  position:absolute!important;inset:0!important;
+  z-index:5!important;opacity:1!important;
+  background:transparent!important;
+  mix-blend-mode:normal!important;
+  overflow:visible!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient::before{
+  content:""!important;display:block!important;
+  position:absolute!important;
+  left:-48px!important;top:14px!important;
+  width:524px!important;height:950px!important;
+  background:url("assets/figma-current/hd/ar5-1-gradient-figma.png") center/100% 100% no-repeat!important;
+  mix-blend-mode:normal!important;opacity:1!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient::after{
+  content:none!important;display:none!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-copy{
+  top:144px!important;color:#fff!important;
+  left:61px!important;right:61px!important;
+  width:306px!important;z-index:9!important;
+}
+.ar-immersive[data-ar-frame="AR5-1"] .ar-pack-doll.ar-choice-figma-doll{
+  object-fit:fill!important;
+}
