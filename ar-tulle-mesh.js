@@ -94,7 +94,7 @@ function paintedFabric(height,index){
  // Bind word centers to the canonical face UV atlas, not guessed upper/lower
  // slots. The local face guide is x=69.5..358.5, y=267..643.
 function embroiderySlot(config){
-  const lines=config.text.split('\\n');
+  const lines=config.text.split('\n');
   const totalHeight=lines.reduce((sum,_,i)=>sum+(config.lh[i]||20),0);
   const centerX=config.x+config.w/2;
   const centerY=config.y+totalHeight/2;
