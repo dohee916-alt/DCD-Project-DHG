@@ -55,6 +55,7 @@ function markup(){
  return '<div class="ar-immersive" data-ar-frame="AR3">'+
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
  '<canvas class="ar-person-segment" width="428" height="926" aria-hidden="true"></canvas>'+
+ '<img class="ar-figma-person-union" src="assets/figma-current/hd/ar5-1-union-blurred-figma.png" alt="" aria-hidden="true">'+
 
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
  '<div class="ar-choice-gradient" aria-hidden="true"></div>'+figmaAR5GradientMarkup()+
