@@ -166,9 +166,13 @@ function enter(frame){
  const needsDepth=['AR5-1','AR9','AR10'].includes(frame);
  if(needsDepth&&state.playing&&!state.depthEngine&&window.DCD_AR_DEPTH){
    state.depthEngine=window.DCD_AR_DEPTH.create(state.video,(map)=>{
-     state.depthMap=map;silhouetteLast=0;renderDarkSilhouette();
+     if(!map.valid)return;
+     state.depthMap=map;
+     state.root?.classList.toggle('ar-depth-ready',['AR5-1','AR9','AR10'].includes(state.frame));
+     silhouetteLast=0;renderDarkSilhouette();
    });
  }
+ state.root.classList.toggle('ar-depth-ready',needsDepth&&!!state.depthMap);
  if(needsDepth)state.depthEngine?.start();
  else state.depthEngine?.stop();
  if(['AR5-1','AR9','AR10'].includes(frame))renderDarkSilhouette();
@@ -459,45 +463,31 @@ function renderDarkSilhouette(){
   const image=work.getImageData(0,0,w,h);
   const px=image.data;
   const map=state.depthMap;
+  if(!map?.valid||!map.data?.length)return;
   // The on-device Depth Anything V2 model produces *inverse relative
   // depth*: larger values are nearer, not metric metres. Its brightness
   // is NOT estimated from the portrait's alpha thickness or body shape.
-  let low=0,high=255;
-  if(map){
-   const bins=new Uint32Array(256);
-   let count=0;
-   for(let y=0;y<h;y+=3)for(let x=0;x<w;x+=3){
-    if(px[(y*w+x)*4+3]<110)continue;
-    const dx=Math.min(map.width-1,Math.floor(x*map.width/w));
-    const dy=Math.min(map.height-1,Math.floor(y*map.height/h));
-    bins[map.data[dy*map.width+dx]]++;count++;
-   }
-   if(count>80){
-    let total=0,foundLow=false;
-    for(let v=0;v<256;v++){
-     total+=bins[v];
-     if(!foundLow&&total>=count*.08){low=v;foundLow=true;}
-     if(total>=count*.92){high=v;break;}
-    }
-   }
-  }
-  const range=Math.max(22,high-low);
+  // The model's RawImage depth is already normalized across the *whole
+  // image*. Local per-body p8/p92 stretching collapsed much of the head
+  // and torso to a uniform dark patch. Keep the global reference scale.
+  const low=12,range=231;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
    const k=(y*w+x)*4,alpha=px[k+3]/255;
    if(alpha<.035){px[k+3]=0;continue;}
    const luminance=(px[k]*.2126+px[k+1]*.7152+px[k+2]*.0722)/255;
-   let nearness=0;
-   if(map){
-    const mx=Math.min(map.width-1,Math.floor(x*map.width/w));
-    const my=Math.min(map.height-1,Math.floor(y*map.height/h));
-    nearness=Math.min(1,Math.max(0,(map.data[my*map.width+mx]-low)/range));
-    nearness=nearness*nearness*(3-2*nearness);
-   }
-   // While the depth model loads, preserve the original photographic
-   // luminance; never claim this nondepth fallback is distance estimation.
-   // Actual near regions are a dark saturated rust; far areas soft copper.
-   const near=map?nearness:.48;
-   const relief=(luminance-.47)*16;
+   const mx=Math.min(map.width-1,Math.floor(x*map.width/w));
+   const my=Math.min(map.height-1,Math.floor(y*map.height/h));
+   const index=my*map.width+mx;
+   const raw=Math.max(0,Math.min(1,(map.data[index]-low)/range));
+   // Log compresses near/far response while preserving distance ordering.
+   const nearness=Math.log1p(raw*4)/Math.log1p(4);
+   const left=map.data[my*map.width+Math.max(0,mx-3)];
+   const right=map.data[my*map.width+Math.min(map.width-1,mx+3)];
+   const top=map.data[Math.max(0,my-3)*map.width+mx];
+   const bottom=map.data[Math.min(map.height-1,my+3)*map.width+mx];
+   const sideRelief=Math.max(-22,Math.min(22,(right-left)*.31+(bottom-top)*.17));
+   const near=Math.max(0,Math.min(1,nearness*.72));
+   const relief=(luminance-.47)*25+sideRelief;
    const coarse=Math.sin(x*.39+y*.14)*Math.cos(y*.28-x*.19)*4.2;
    let n=Math.imul((x+83),374761393)^Math.imul((y+11),668265263);
    n=Math.imul(n^(n>>>13),1274126177);
@@ -547,6 +537,7 @@ function stop(){
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
  state.matte?.stop();state.matte=null;
  state.depthEngine?.destroy();state.depthEngine=null;state.depthMap=null;silhouetteWork=null;silhouetteLast=0;
+ state.root?.classList.remove('ar-depth-ready');
  state.face?.close();state.face=null;
  state.hand?.close();state.hand=null;
  state.tulle?.destroy();state.tulle=null;state.sheets=[];
