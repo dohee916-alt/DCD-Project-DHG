@@ -38,8 +38,8 @@ function create(root){
    const loaded=await new GLTFLoader().loadAsync(SRC);
    if(!active)return;
    model=loaded.scene;
-   clip=loaded.animations.find(a=>a.name==='Pose_OKHand');
-   if(!clip)throw Error('Expected Pose_OKHand clip is missing from original GLB');
+   clip=loaded.animations.find(a=>a.name==='Pose_OK');
+   if(!clip)throw Error('Expected Pose_OK clip is missing from original GLB');
    scene=new THREE.Scene();
    camera=new THREE.OrthographicCamera(-214,214,463,-463,.1,4000);
    camera.position.set(0,0,1200);
@@ -151,8 +151,9 @@ function create(root){
   const x=lerp(-47,2,reach)+42*pull-32*retreat;
   const y=lerp(-135,68,reach)-32*pull-65*retreat;
   const z=lerp(.77,1.03,reach)+.25*pull-.27*retreat;
-  // Pose_OKHand runs from t=0.0417 to t=5.0 in the supplied GLB.
-  // The former 2.15s clamp stopped before the intended OK/pinch pose.
+  // Source Pose_OK clip lasts 2.5s and is the real pinch pose.
+  // We verified its thumb-index joint distance is ~5.17 model units,
+  // vs ~8.25 in Pose_OKHand. Use the actual clip endpoint.
   const endTime=Math.max(.045,clip.duration-.025);
   const time=.045+(endTime-.045)*pose;
   mixer.setTime(time);
