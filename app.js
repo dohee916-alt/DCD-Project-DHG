@@ -86,26 +86,30 @@ function fit(){
  // when the user physically turns the phone upright, simply unrotate it.
  // This is a layout fit, NOT a simulated device-orientation animation.
  const ar=['ar','arOpen','arFace'].includes(s.page);
- // WEB04–WEB16 are genuine landscape pages. Never rotate their HTML
- // inside a portrait phone; show the rotation guide first and let the phone
- // physically switch to landscape, where these pages remain upright.
- // Only the portrait AR composition keeps its existing landscape-phone fit.
- const sideways=ar&&phoneDevice()&&W>H;
+ // Only compensate a PHYSICAL phone turn if the browser itself is
+ // portrait-locked. Never rotate landscape WEB content while held upright.
+ // Once the OS rotates the viewport, the original landscape stage stays
+ // untransformed, exactly as it did before these regressions.
+ const lockedLandscape=phoneDevice()&&w>h&&H>W&&phonePhysicalSideways;
+ const sideways=(ar&&phoneDevice()&&W>H)||lockedLandscape;
+ const stageAngle=lockedLandscape?phoneTurnAngle:(sideways?-90:0);
  v.classList.toggle('workbench-viewport',w>h);
  scale=sideways?Math.min(W/h,H/w):Math.min(W/w,H/h);
  stage.style.width=w+'px';stage.style.height=h+'px';
  stage.style.clipPath='none';
- stage.style.transform='translate(-50%,-50%) rotate('+(sideways?-90:0)+'deg) scale('+scale+')';
+ stage.style.transform='translate(-50%,-50%) rotate('+stageAngle+'deg) scale('+scale+')';
  stage.style.transformOrigin='center';
- stage.dataset.orientation=sideways?'rotated':'normal';
+ stage.dataset.orientation=sideways?(stageAngle===90?'rotated-cw':'rotated'):'normal';
  offset={x:W/2,y:H/2};
 }
 function localPoint(e){
  const r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;
- if(stage.dataset.orientation==='rotated'){
+ if(stage.dataset.orientation==='rotated'||stage.dataset.orientation==='rotated-cw'){
    const [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;
-   // Invert the stage's -90deg rotation (CSS transform origin: center).
-   return{x:w/2-(e.clientY-cy)/scale+dx,y:h/2+(e.clientX-cx)/scale};
+   const dir=stage.dataset.orientation==='rotated-cw'?1:-1;
+   // Inverse of the signed stage rotation; drags stay aligned to pixels.
+   return{x:w/2+dir*(e.clientY-cy)/scale+dx,
+          y:h/2-dir*(e.clientX-cx)/scale};
  }
  return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};
 }
@@ -1157,6 +1161,7 @@ function declineConsent(){
 // the landscape workbench merely because three seconds elapsed. On phones,
 // accept a real physical turn even if browser auto-rotation is locked.
 let rotateTurnDetected=false,rotateLastPortrait=false,rotateSensorAt=0;
+let phonePhysicalSideways=false,phoneTurnAngle=-90;
 function landscapeViewport(){
  const v=document.querySelector('#viewport');
  return (v?.clientWidth||window.innerWidth)>(v?.clientHeight||window.innerHeight);
@@ -1168,7 +1173,7 @@ function finishRotateGuide(){
 function startRotateGuide(){
  rotateGuideFinished=false;
  rotateTurnDetected=false;
- rotateLastPortrait=false;
+ rotateLastPortrait=!phonePhysicalSideways;
  rotateSensorAt=0;
  setPage('03');
  later(()=>{
@@ -1180,16 +1185,24 @@ function startRotateGuide(){
  },M.rotateGuideMs);
 }
 function trackRealPhoneTurn(e){
- if(s.page!=='03'||!phoneDevice()||!Number.isFinite(e.gamma))return;
- const sideways=Math.abs(e.gamma)>=58;
- if(Math.abs(e.gamma)<=37)rotateLastPortrait=true;
- // Recognize a turn that happened during the three-blink prompt or after
- // it. The screen orientation API is not required (works with rotation lock).
- if(sideways&&rotateLastPortrait){
-   rotateTurnDetected=true;
-   finishRotateGuide();
+ if(!phoneDevice()||!Number.isFinite(e.gamma))return;
+ const magnitude=Math.abs(e.gamma);
+ const previous=phonePhysicalSideways;
+ if(magnitude<=37){
+   phonePhysicalSideways=false;
+   if(s.page==='03')rotateLastPortrait=true;
+ }else if(magnitude>=58){
+   phonePhysicalSideways=true;
+   phoneTurnAngle=e.gamma>=0?-90:90;
+   if(s.page==='03'&&(rotateLastPortrait||!previous)){
+     rotateTurnDetected=true;
+     finishRotateGuide();
+   }
  }
  rotateSensorAt=performance.now();
+ // The browser can remain portrait-locked after a real turn. Its layout
+ // must fit the physically sideways screen instead of a tiny 874x428 strip.
+ if(previous!==phonePhysicalSideways&&s.page!=='03')fit();
 }
 async function advanceNewPrescription(){
   if(s.phase==='transition')return;
