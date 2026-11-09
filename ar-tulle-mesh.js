@@ -314,6 +314,27 @@ function create(root){
   const passUniform=gl.getUniformLocation(program,'embroideryPass');
   let outline=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let facePixels=null,faceDepth=null,faceBounds=null,frameLast=0;
+  let triangleBins=null;
+  const BIN_W=20,BIN_H=32;
+  function faceSurfaceAt(x,y){
+    if(!triangleBins||!facePixels)return null;
+    const gx=clamp(Math.floor(x/W*BIN_W),0,BIN_W-1);
+    const gy=clamp(Math.floor(y/H*BIN_H),0,BIN_H-1);
+    for(const t of triangleBins[gy*BIN_W+gx]){
+      const a=faceData.triangles[t*3],b=faceData.triangles[t*3+1],c=faceData.triangles[t*3+2];
+      const ax=facePixels[a*2],ay=facePixels[a*2+1];
+      const bx=facePixels[b*2],by=facePixels[b*2+1];
+      const cx=facePixels[c*2],cy=facePixels[c*2+1];
+      const det=(by-cy)*(ax-cx)+(cx-bx)*(ay-cy);
+      if(Math.abs(det)<1e-7)continue;
+      const u=((by-cy)*(x-cx)+(cx-bx)*(y-cy))/det;
+      const v=((cy-ay)*(x-cx)+(ax-cx)*(y-cy))/det;
+      const w=1-u-v;
+      if(u>=-1e-5&&v>=-1e-5&&w>=-1e-5)
+        return u*faceDepth[a]+v*faceDepth[b]+w*faceDepth[c];
+    }
+    return null;
+  }
   const faceData=window.DCD_FACE_CANONICAL;
   // Render the real MediaPipe face triangles invisibly to the depth buffer.
   // It is not another visible mask; it only hides portions of cloth that
@@ -458,6 +479,17 @@ function create(root){
       gl.bindBuffer(gl.ARRAY_BUFFER,occBuffer);
       gl.bufferSubData(gl.ARRAY_BUFFER,0,depthVerts);
     }
+    // Spatial bins make ray-to-face triangle interpolation inexpensive.
+    triangleBins=Array.from({length:BIN_W*BIN_H},()=>[]);
+    for(let t=0;t<faceData.triangles.length/3;t++){
+      const a=faceData.triangles[t*3]*2,b=faceData.triangles[t*3+1]*2,c=faceData.triangles[t*3+2]*2;
+      const x0=Math.max(0,Math.floor(Math.min(facePixels[a],facePixels[b],facePixels[c])/W*BIN_W));
+      const x1=Math.min(BIN_W-1,Math.floor(Math.max(facePixels[a],facePixels[b],facePixels[c])/W*BIN_W));
+      const y0=Math.max(0,Math.floor(Math.min(facePixels[a+1],facePixels[b+1],facePixels[c+1])/H*BIN_H));
+      const y1=Math.min(BIN_H-1,Math.floor(Math.max(facePixels[a+1],facePixels[b+1],facePixels[c+1])/H*BIN_H));
+      for(let gy=y0;gy<=y1;gy++)for(let gx=x0;gx<=x1;gx++)
+        triangleBins[gy*BIN_W+gx].push(t);
+    }
     for(let y=0;y<=rows;y++)for(let x=0;x<=columns;x++){
       const u=x/columns,v=y/rows,nx=u*2-1;
       const edgeX=Math.max(0,(Math.abs(nx)-.68)/.32);
@@ -512,7 +544,8 @@ function create(root){
         const weight=1/(nearest[k]+160);
         weightedZ+=faceDepth[ids[k]]*weight;weightSum+=weight;
       }
-      const trackedSurface=weightedZ/Math.max(weightSum,1e-6);
+      const triangleSurface=faceSurfaceAt(xx,yy);
+      const trackedSurface=triangleSurface??(weightedZ/Math.max(weightSum,1e-6));
       const sideWrap=sideFold;
       const jawWrap=tuck*Math.max(0,(v-.74)/.26);
       const behind=.19*Math.max(sideWrap,jawWrap,upperCorner*.85);
