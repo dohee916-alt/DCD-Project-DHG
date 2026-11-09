@@ -26,6 +26,7 @@ precision highp float;
 uniform sampler2D fabric;
 uniform sampler2D embroideryMask;
 uniform float opacity;
+uniform float embroideryPass;
 varying vec2 vUV;
 varying float vLight;
 varying float vFringe;
@@ -61,10 +62,14 @@ void main(){
   vec3 orangeThread=vec3(0.99,0.315,0.035)*surface;
   float contact=clamp(max(max(eLeft,eRight),max(eUp,eDown))-stitch,0.0,1.0);
   float shade=contact*0.13;
-  vec3 color=mix(whiteNet*(1.0-shade),orangeThread,stitch);
-  float alpha=mix(netAlpha,0.99,stitch);
-  alpha*=1.0-0.85*smoothstep(0.94,1.0,vFringe);
-  gl_FragColor=vec4(color,clamp(alpha*opacity,0.0,1.0));
+  // Fabric and embroidery have independent draw passes. In particular the
+  // last fabric layer must not erase the letters from earlier layers.
+  float edgeFade=1.0-0.85*smoothstep(0.94,1.0,vFringe);
+  if(embroideryPass>0.5){
+    gl_FragColor=vec4(orangeThread,clamp(stitch*opacity,0.0,1.0));
+  }else{
+    gl_FragColor=vec4(whiteNet*(1.0-shade),clamp(netAlpha*opacity*edgeFade,0.0,1.0));
+  }
 }`;
 function shader(gl,type,code){
   const s=gl.createShader(type);gl.shaderSource(s,code);gl.compileShader(s);
@@ -119,7 +124,8 @@ function embroideredLetters(variant,index){
  // The live webcam is mirrored on screen, which reverses the printed
  // embroidery. Counter-mirror the letter glyphs within their local region
  // without moving each Figma text anchor or flipping the textile itself.
- ctx.scale(-1,1);
+ // Mesh U is already left-to-right; the previous counter-mirror reversed
+ // the glyphs. Keep all text upright in the single shared canvas/UV axis.
  ctx.rotate(config.r*Math.PI/180);
  ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='top';
  const fs=lines.map((_,i)=>config.fs[i]||18),lh=lines.map((_,i)=>config.lh[i]||20);
@@ -292,7 +298,15 @@ function create(root){
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
   const stitchUniform=gl.getUniformLocation(program,'embroideryMask');
+  const passUniform=gl.getUniformLocation(program,'embroideryPass');
   let outline=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
+  let facePixels=null,faceDepth=null,faceBounds=null,frameLast=0;
+  const faceData=window.DCD_FACE_CANONICAL;
+  // Render the real MediaPipe face triangles invisibly to the depth buffer.
+  // It is not another visible mask; it only hides portions of cloth that
+  // have curled behind the user's forehead, cheeks, or jaw.
+  let occProgram=null,occBuffer=null,occIndex=null,occIndices=0;
+  let occPosition=-1;
   let live=true,frameId=0,lastRendered=0,renderErrorReported=false;
   let setupStatus='pending',lastDiagnostic='',lastDiagnosticAt=0,lastFaceSeenAt=0;
   function reportState(state,now=performance.now()){
@@ -311,6 +325,29 @@ function create(root){
   const textures={},layers=[];
   const canvasBackup=canvasCloth(root);
   const columns=28,rows=34;
+  // Face and tulle share the same 428x926 screen projection and relative
+  // MediaPipe depth. An occluder cannot work if they use different spaces.
+  function initOccluder(){
+    if(!faceData?.triangles?.length)return false;
+    const vertexShader=String.raw`attribute vec3 position;
+      void main(){gl_Position=vec4(position,1.0);}`;
+    const fragmentShader=String.raw`precision mediump float;
+      void main(){gl_FragColor=vec4(0.0);}`;
+    occProgram=gl.createProgram();
+    gl.attachShader(occProgram,shader(gl,gl.VERTEX_SHADER,vertexShader));
+    gl.attachShader(occProgram,shader(gl,gl.FRAGMENT_SHADER,fragmentShader));
+    gl.linkProgram(occProgram);
+    if(!gl.getProgramParameter(occProgram,gl.LINK_STATUS))
+      throw new Error('Face depth shader: '+gl.getProgramInfoLog(occProgram));
+    occPosition=gl.getAttribLocation(occProgram,'position');
+    occBuffer=gl.createBuffer();occIndex=gl.createBuffer();
+    occIndices=faceData.triangles.length;
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,occIndex);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(faceData.triangles),gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER,occBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER,468*3*4,gl.DYNAMIC_DRAW);
+    return true;
+  }
   function setConnections(){
     const indices=[];
     for(let y=0;y<rows;y++)for(let x=0;x<columns;x++){
@@ -343,7 +380,8 @@ function create(root){
   // behind the asynchronous FaceLandmarker SDK / model loading sequence.
   // Previously a model-loader interruption left indexCount=0 permanently.
   try{
-    if(!setConnections())throw new Error('Canonical face mesh missing or invalid');
+    if(!setConnections())throw new Error('Textile grid missing or invalid');
+    if(!initOccluder())throw new Error('Official face triangles unavailable');
   }catch(error){
     setupStatus='error';
     root.dataset.tulleSetup='error';
