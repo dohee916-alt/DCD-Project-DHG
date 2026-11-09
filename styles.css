@@ -1374,3 +1374,21 @@ canvas.figure{object-fit:contain!important}
   background:radial-gradient(ellipse 105% 52% at 54% 112%,
     rgba(255,235,224,.56) 0%,rgba(255,230,216,.22) 55%,transparent 100%)!important;
 }
+
+/* Figma 04_AR / AR4 (640:731) and AR5-2 (640:775):
+   exact Source Sans 3 bold caption geometry — artwork 428×926, no
+   synthetic 80px inset or viewport-dependent vertical repositioning. */
+.ar-immersive[data-ar-frame="AR4"] .ar-copy{
+  position:absolute!important;left:68px!important;right:auto!important;
+  top:144px!important;width:306px!important;height:32px!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+  letter-spacing:0!important;text-align:center!important;
+  white-space:pre-line!important;color:#111!important;
+}
+.ar-immersive[data-ar-frame="AR5-2"] .ar-copy{
+  position:absolute!important;left:54px!important;right:auto!important;
+  top:144px!important;width:306px!important;height:32px!important;
+  font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
+  letter-spacing:0!important;text-align:center!important;
+  white-space:pre-line!important;color:#111!important;
+}
