@@ -223,7 +223,7 @@ async function initModels(session){
  try{
    const m=await import(SDK);
    if(session!==state.session)return;
-   state.tulle?.setConnections(m.FaceLandmarker.FACE_LANDMARKS_TESSELATION, m.FaceLandmarker.FACE_LANDMARKS_FACE_OVAL);
+   // The canonical face cloth geometry was initialized at mount time.
    const vision=await m.FilesetResolver.forVisionTasks(WASM);
    if(session!==state.session)return;
    const load=async(key,Ctor,path,options)=>{
