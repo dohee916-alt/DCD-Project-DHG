@@ -1095,8 +1095,8 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive[data-ar-frame="AR5-1"] .ar-copy,
 .ar-immersive[data-ar-frame="AR5-2"] .ar-copy,
 .ar-immersive[data-ar-frame="AR8"] .ar-copy{top:64px!important}
-.ar-immersive[data-ar-frame="AR9"] .ar-copy{top:350px!important}
-.ar-immersive[data-ar-frame="AR10"] .ar-copy{top:302px!important}
+.ar-immersive[data-ar-frame="AR9"] .ar-copy{top:430px!important}
+.ar-immersive[data-ar-frame="AR10"] .ar-copy{top:382px!important}
 
 /* WEB 01 user-approved try-webguide 607:336, not legacy WEB 01.
    Figma target shapes (30%) are reference points ONLY; no ghost rendering.
@@ -1343,7 +1343,7 @@ canvas.figure{object-fit:contain!important}
    its nontransparent pixels. Background gradients and UI remain unchanged.
    CSS blur precedes recoloring so the soft Figma portrait edge is preserved.
    Do not tint the camera input, the AR stage, or any parent composite. */
-.ar-immersive.ar-matting-active[data-ar-frame="AR5-1"] .ar-person-segment{
+.ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
   filter:blur(27px) brightness(0) saturate(100%)
     invert(29%) sepia(96%) saturate(1730%) hue-rotate(353deg)
     brightness(.77) contrast(1.08)!important;
