@@ -391,7 +391,7 @@ function bindNewSignature(){
   c.onpointerup=finish;
   c.onpointercancel=finish;
 }
-function arPackMarkup(){
+function arPackMarkup(figmaChoicePreview=false){
   // Exact approved NewAR1 doll rectangles (636:367..370), frame local.
   const slots=[[97.915,220.083,89.830,252.060],[240.590,220.083,89.830,252.060],[97.915,515.745,89.830,252.060],[240.094,515.745,89.830,252.060]],order=[0,2,3,1];
   let h='<div class="ar-pack-flip">';
@@ -401,7 +401,7 @@ function arPackMarkup(){
   let front=img(A.arOverlayFoilStates[0],50.5,150.363,328.482,693.166,'ar-intact-foil ar-original-foil');
   front+='<canvas class="ar-foil-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-foil-morph" width="428" height="926" aria-hidden="true"></canvas>';
-  front+=order.map((index,i)=>{const q=slots[i];return canvasFigure(index,q[0],q[1],q[2],q[3],'ar-pack-doll');}).join('');
+  front+=order.map((index,i)=>{const q=slots[i];return figmaChoicePreview?img('assets/figma-current/hd/ar5-1-doll-figma.png',q[0],q[1],q[2],q[3],'ar-pack-doll ar-choice-figma-doll'):canvasFigure(index,q[0],q[1],q[2],q[3],'ar-pack-doll');}).join('');
   front+=img(A.arOverlayFrontStates[0],47.5,145,333.845,703.892,'ar-intact-clear ar-original-clear');
   front+='<canvas class="ar-front-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-front-morph" width="428" height="926" aria-hidden="true"></canvas>';
@@ -409,7 +409,7 @@ function arPackMarkup(){
   return h+'</div>';
 }
 // Share the exact approved AR blister with the AR5-1 decision overlay.
-window.DCD_AR_PACK_PREVIEW=arPackMarkup;
+window.DCD_AR_PACK_PREVIEW=()=>arPackMarkup(true);
 window.DCD_RENDER_FIGURES=drawFigures;
 function arMarkup(){
   if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
