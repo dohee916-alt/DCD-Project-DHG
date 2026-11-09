@@ -86,7 +86,10 @@ function fit(){
  // when the user physically turns the phone upright, simply unrotate it.
  // This is a layout fit, NOT a simulated device-orientation animation.
  const ar=['ar','arOpen','arFace'].includes(s.page);
- const sideways=ar&&phoneDevice()&&W>H;
+ // The phone owner chooses when to turn the device. A landscape WEB scene
+ // fills a portrait phone sideways instead of shrinking to a narrow strip;
+ // when the phone is turned landscape, the scene is already upright.
+ const sideways=phoneDevice()&&((ar&&W>H)||(w>h&&H>W));
  v.classList.toggle('workbench-viewport',w>h);
  scale=sideways?Math.min(W/h,H/w):Math.min(W/w,H/h);
  stage.style.width=w+'px';stage.style.height=h+'px';
@@ -96,7 +99,15 @@ function fit(){
  stage.dataset.orientation=sideways?'rotated':'normal';
  offset={x:W/2,y:H/2};
 }
-function localPoint(e){let r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;if(stage.dataset.orientation==='rotated'){let [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;return{x:w/2+(e.clientY-cy)/scale+dx,y:h/2-(e.clientX-cx)/scale};}return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};}
+function localPoint(e){
+ const r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;
+ if(stage.dataset.orientation==='rotated'){
+   const [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+   // Invert the stage's -90deg rotation (CSS transform origin: center).
+   return{x:w/2-(e.clientY-cy)/scale+dx,y:h/2+(e.clientX-cx)/scale};
+ }
+ return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};
+}
 function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
 const ropes={upper:{line:[6,20,406,596],pull:[-69,-111]},lower:{line:[8,752,406,615],pull:[90,99]}};
 function ropeAt(p){let closest=null,distance=Infinity;for(const [name,{line}] of Object.entries(ropes)){let [x1,y1,x2,y2]=line,t=clamp(((p.x-x1)*(x2-x1)+(p.y-y1)*(y2-y1))/((x2-x1)**2+(y2-y1)**2),0,1),d=Math.hypot(p.x-(x1+t*(x2-x1)),p.y-(y1+t*(y2-y1)));if(d<distance){closest=name;distance=d;}}return distance<=55?closest:null;}
