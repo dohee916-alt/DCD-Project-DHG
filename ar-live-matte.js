@@ -64,6 +64,7 @@ function create(root,video,canvas,onFrame){
  const modes=webgpu?['large','small','mediapipe']:['small','mediapipe'];
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
+  root.classList.remove('ar-matting-active');
  }
  function closeWorker(){
   clearTimeout(watchdog);watchdog=0;
@@ -129,6 +130,7 @@ function create(root,video,canvas,onFrame){
   ctx.fillStyle='#e5edf6';ctx.fillRect(0,0,w,h);
   ctx.drawImage(f.foreground,0,0);
   visible=true;lastCapture=now;
+  root.classList.add('ar-matting-active');
   canvas.style.visibility='visible';canvas.style.opacity='1';
   try{onFrame?.(video,vw,vh);}catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
  }
@@ -198,6 +200,7 @@ function create(root,video,canvas,onFrame){
     }
     ctx.restore();
     lastCapture=performance.now();visible=true;
+    root.classList.add('ar-matting-active');
     canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
     // A landmark tracking error must not turn off a working cutout.
