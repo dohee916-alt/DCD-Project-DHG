@@ -90,28 +90,26 @@ function paintedFabric(height,index){
 // Keep embroidered phrases in stable cloth regions. Facial features are
 // still tracked by the full mesh, but the text must NOT cross eyelids or
 // fold over the nose. Five separated labels remain legible as layers stack.
-const EMBROIDERY_SLOTS={
-  first:[
-    {u:.34,v:.79,max:.23}, // upper left forehead
-    {u:.65,v:.79,max:.24}, // upper right forehead
-    {u:.77,v:.43,max:.25}, // right outer cheek
-    {u:.23,v:.43,max:.25}, // left outer cheek
-    {u:.50,v:.19,max:.28}  // lower chin
-  ],
-  replacement:[
-    {u:.34,v:.79,max:.23},
-    {u:.65,v:.79,max:.24},
-    {u:.50,v:.19,max:.28},
-    {u:.23,v:.43,max:.25},
-    {u:.77,v:.43,max:.25}
-  ]
-};
+// Reference layout from the approved Figma 428×926 portrait frame.
+ // Bind word centers to the canonical face UV atlas, not guessed upper/lower
+ // slots. The local face guide is x=69.5..358.5, y=267..643.
+function embroiderySlot(config){
+  const lines=config.text.split('\\n');
+  const totalHeight=lines.reduce((sum,_,i)=>sum+(config.lh[i]||20),0);
+  const centerX=config.x+config.w/2;
+  const centerY=config.y+totalHeight/2;
+  return {
+    u:clamp((centerX-69.5)/289,.1,.9),
+    v:clamp(1-(centerY-267)/376,.1,.9),
+    max:clamp(config.w/289,.15,.50)
+  };
+}
 function embroideredLetters(variant,index){
   const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
   const ctx=c.getContext('2d');
   const config=FIGMA_MASK_TEXT[variant]?.[index];
-  const slot=EMBROIDERY_SLOTS[variant]?.[index];
-  if(!config||!slot)return c;
+  if(!config)return c;
+  const slot=embroiderySlot(config);
   // Canonical UVs have a bottom-left origin. Canvas pixels are top-left.
   // The camera mesh is mirrored; inverse the atlas once, not each letter.
   ctx.save();
@@ -274,12 +272,15 @@ function create(root){
   }
   (async()=>{
     try{
-      const [height]=await Promise.all([
-        getHeight(),
-        document.fonts?.load('700 18px "Turret Road"').catch(()=>{})||Promise.resolve()
+      // A failed font request must not prevent the actual cloth from loading.
+      // Keep native fabric preparation independent of optional font loading.
+      const height=await getHeight();
+      if(!live)return;
+      await Promise.race([
+        document.fonts?.load('700 18px "Turret Road"').catch(()=>{})||Promise.resolve(),
+        new Promise(resolve=>setTimeout(resolve,800))
       ]);
       if(!live)return;
-      root.dataset.tulleTexture='ready';
       const fiberTextures=Array.from({length:5},(_,i)=>makeTexture(paintedFabric(height,i)));
       for(const variant of ['first','replacement']){
         textures[variant]=WORDS[variant].map((phrase,i)=>({
@@ -287,6 +288,7 @@ function create(root){
           thread:makeTexture(embroideredLetters(variant,i))
         }));
       }
+      root.dataset.tulleTexture='ready';
     }catch(error){root.dataset.tulleTexture='error';console.error('[DCD] Cloth texture preparation:',error);}
   })();
   function update(points,width,height){
