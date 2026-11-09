@@ -1331,50 +1331,6 @@ canvas.figure{object-fit:contain!important}
   }
 }
 
-/* AR5-1 / AR9 / AR10: Figma-derived warm orange background only.
-   The experimental camera depth, subject re-colour, matte enlargement,
-   granulation and blurry shadow are removed from these three frames.
-   Maintain restrained burnt-orange / peach contrast, not neon red. */
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]){
-  background:#f2c2ae!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) :is(
-  .ar-portrait-camera,.ar-person-segment,.ar-matting-video,
-  .ar-medium-live-video,.ar-organza-stack,.ar-dark-silhouette){
-  display:none!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-tint,
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient{
-  display:block!important;position:absolute!important;inset:0!important;
-  width:100%!important;height:100%!important;z-index:5!important;
-  transform:none!important;opacity:1!important;
-  mix-blend-mode:normal!important;pointer-events:none!important;
-  overflow:hidden!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient rect{
-  display:none!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-tint{
-  background:linear-gradient(172deg,#f2c4b4 0%,#eaa990 48%,#efbea9 75%,#f5d1c3 100%)!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-five{
-  background:radial-gradient(ellipse 99% 74% at 106% 4%,
-    rgba(147,47,30,.80) 0%,rgba(178,66,42,.62) 35%,
-    rgba(195,89,64,.31) 66%,transparent 100%)!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-four{
-  background:radial-gradient(ellipse 92% 65% at 0% 12%,
-    rgba(255,226,212,.52) 0%,rgba(255,218,202,.20) 60%,transparent 100%)!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-three{
-  background:linear-gradient(180deg,transparent 36%,
-    rgba(225,143,112,.09) 64%,rgba(255,228,214,.31) 100%)!important;
-}
-.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-six{
-  background:radial-gradient(ellipse 105% 52% at 54% 112%,
-    rgba(255,235,224,.56) 0%,rgba(255,230,216,.22) 55%,transparent 100%)!important;
-}
-
 /* Figma 04_AR / AR4 (640:731) and AR5-2 (640:775):
    exact Source Sans 3 bold caption geometry — artwork 428×926, no
    synthetic 80px inset or viewport-dependent vertical repositioning. */
@@ -1464,59 +1420,6 @@ canvas.figure{object-fit:contain!important}
   font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
   white-space:pre-line!important;text-align:center!important;
 }
-/* The original Figma Union silhouette is part of the background of AR5-1,
-   AR9 and AR10: light gray form, 80% opacity, 30px blur in the exported
-   Figma asset. It is NOT generated from the live camera or fake depth.
-   Place it under the existing restrained peach and burnt-orange gradients. */
-#stage .ar-immersive .ar-figma-person-union{
-  display:none!important;position:absolute!important;
-  left:1px!important;top:274px!important;
-  width:428px!important;height:655.88px!important;
-  object-fit:fill!important;pointer-events:none!important;
-  z-index:2!important;
-}
-#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-figma-person-union{
-  display:block!important;
-}
-
-/* Correct compositing order:
-   4: full-bleed Figma-toned peach base
-   5: original blurred person Union (multiply onto peach)
-   6: softened color-field layers
-   7+: approved blister, text and choices.
-   The previous shared z=5 let the opaque peach base cover the Union. */
-#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-tint{
-  z-index:4!important;
-}
-#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-figma-person-union{
-  z-index:5!important;
-  mix-blend-mode:multiply!important;
-}
-#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient{
-  z-index:6!important;
-}
-
-/* Final AR5-1 / AR9 / AR10 Figma composited backgrounds.
-   Source: original 428x926 Figma frames, first three layers only:
-   workbench image, 30px-blurred Union, five-mode orange gradient group.
-   The text, blister and buttons stay separate sharp interactive elements.
-   Disable ALL legacy gradient/silhouette synthesis so no duplicate wash
-   or dark blob can appear above the exact Figma source imagery. */
-#stage .ar-immersive[data-ar-frame="AR5-1"]{
-  background:#f5bfa9 url("assets/figma-current/hd/ar5-1-exact-figma-background.png") center center / 100% 100% no-repeat!important;
-}
-#stage .ar-immersive[data-ar-frame="AR9"]{
-  background:#f5bfa9 url("assets/figma-current/hd/ar9-exact-figma-background.png") center center / 100% 100% no-repeat!important;
-}
-#stage .ar-immersive[data-ar-frame="AR10"]{
-  background:#f5bfa9 url("assets/figma-current/hd/ar10-exact-figma-background.png") center center / 100% 100% no-repeat!important;
-}
-#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) :is(
-  .ar-choice-gradient,.ar5-figma-tint,.ar5-figma-gradient,
-  .ar-figma-person-union,.ar-final-color,.ar-organza-stack,
-  .ar-person-segment,.ar-portrait-camera){
-  display:none!important;
-}
 /* Explicitly preserve the previously approved high caption placement.
    Artboard mock header occupies 80px; live AR does not include it. */
 #stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
@@ -1524,4 +1427,43 @@ canvas.figure{object-fit:contain!important}
 }
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"]) .ar-copy{
   top:64px!important;
+}
+
+/* Figma Group 3 (AR5-1 861:298, AR9 862:304, AR10 862:310).
+   This is the exported ORIGINAL five-layer SVG, not an image of a person
+   or a substituted CSS gradient. Group opacity 100%, tint layer COLOR /
+   HARD_LIGHT #D83A00, three MULTIPLY gradients, one LIGHTEN gradient.
+   SVG crop is the frame intersection 428×912 with artboard top=14.
+   Keep live alpha-matted camera subject behind the Figma colour effects. */
+#stage .ar-immersive .ar-group3-figma{
+  display:none!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]){
+  background:#e5edf6!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-group3-figma{
+  display:block!important;
+  position:absolute!important;
+  left:0!important;top:14px!important;width:428px!important;height:912px!important;
+  z-index:5!important;opacity:1!important;pointer-events:none!important;
+  overflow:visible!important;mix-blend-mode:normal!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) :is(
+  .ar-choice-gradient,.ar5-figma-tint,.ar5-figma-gradient,.ar-final-color,
+  .ar-figma-person-union){
+  display:none!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-organza-stack{
+  display:none!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
+  display:block!important;z-index:2!important;
+  filter:blur(30px)!important;-webkit-filter:blur(30px)!important;
+  opacity:1!important;mix-blend-mode:normal!important;
+}
+#stage .ar-immersive:not(.ar-matting-active):is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
+  opacity:0!important;
+}
+#stage .ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-portrait-camera{
+  opacity:0!important;visibility:visible!important;
 }
