@@ -380,6 +380,11 @@ function create(root){
     const ox=(W-dw)/2,oy=(H-dh)/2;
     const p=i=>({x:ox+(1-points[i].x)*dw,y:oy+points[i].y*dh});
     const forehead=p(10),chin=p(152),left=p(234),right=p(454),eyeA=p(33),eyeB=p(263);
+    // MediaPipe landmark Z is relative to face width (negative toward the
+    // camera). Compute a bounded nose/cheek relief from measured depth;
+    // this remains a relative depth field, NOT a metric camera calibration.
+    const rawNose=points[1].z,rawCheek=(points[205].z+points[425].z)*.5;
+    const noseRelief=clamp((rawCheek-rawNose)*1.8,.015,.18);
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
     const angle=Math.atan2(eyeB.y-eyeA.y,eyeB.x-eyeA.x),co=Math.cos(angle),si=Math.sin(angle);
@@ -410,7 +415,9 @@ function create(root){
       const at=(y*(columns+1)+x)*stride;
       mesh[at]=cx+px*co-py*si;
       mesh[at+1]=cy+px*si+py*co;
-      mesh[at+2]=.02+bump*.055+cheek*.025-foldDepth;
+      // Clip-space Z: smaller is nearer. This measured, bounded relief is
+      // deliberately retained through the vertex buffer (it was discarded).
+      mesh[at+2]=clamp(.12-bump*noseRelief-cheek*.025+foldDepth,-.8,.8);
       mesh[at+3]=u;mesh[at+4]=v;
       const foldShade=tuck*(.12*edgeX+.025*curve);
       mesh[at+5]=clamp(.94+.10*bump+.035*cheek-foldShade-rolledEdge*.13,.68,1.10);
@@ -490,7 +497,9 @@ function create(root){
         const lift=ease(leave);
         vertices[at]=(center.x+x*size*rimScale+offsetX+rimX+settle+sway+lift*(38-y*.23))/W*2-1;
         vertices[at+1]=1-(center.y+y*size*rimScale+offsetY+rimY+lift*(-165+x*.23))/H*2;
-        vertices[at+2]=0;
+        // Keep the per-vertex depth produced by face tracking. A flat z=0
+        // silently destroyed the 3D surface before the GPU could use it.
+        vertices[at+2]=clamp(mesh[at+2]-.035*fly,-.8,.8);
         for(let i=3;i<stride;i++)vertices[at+i]=mesh[at+i];
       }
       gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
