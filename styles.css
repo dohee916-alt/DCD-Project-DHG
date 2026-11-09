@@ -1495,3 +1495,33 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient{
   z-index:6!important;
 }
+
+/* Final AR5-1 / AR9 / AR10 Figma composited backgrounds.
+   Source: original 428x926 Figma frames, first three layers only:
+   workbench image, 30px-blurred Union, five-mode orange gradient group.
+   The text, blister and buttons stay separate sharp interactive elements.
+   Disable ALL legacy gradient/silhouette synthesis so no duplicate wash
+   or dark blob can appear above the exact Figma source imagery. */
+#stage .ar-immersive[data-ar-frame="AR5-1"]{
+  background:#f5bfa9 url("assets/figma-current/hd/ar5-1-exact-figma-background.png") center center / 100% 100% no-repeat!important;
+}
+#stage .ar-immersive[data-ar-frame="AR9"]{
+  background:#f5bfa9 url("assets/figma-current/hd/ar9-exact-figma-background.png") center center / 100% 100% no-repeat!important;
+}
+#stage .ar-immersive[data-ar-frame="AR10"]{
+  background:#f5bfa9 url("assets/figma-current/hd/ar10-exact-figma-background.png") center center / 100% 100% no-repeat!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) :is(
+  .ar-choice-gradient,.ar5-figma-tint,.ar5-figma-gradient,
+  .ar-figma-person-union,.ar-final-color,.ar-organza-stack,
+  .ar-person-segment,.ar-portrait-camera){
+  display:none!important;
+}
+/* Explicitly preserve the previously approved high caption placement.
+   Artboard mock header occupies 80px; live AR does not include it. */
+#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
+  top:61px!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"]) .ar-copy{
+  top:64px!important;
+}
