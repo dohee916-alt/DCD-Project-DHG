@@ -19,7 +19,12 @@ function markup(){
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
  '<canvas class="ar-person-segment" width="428" height="926" aria-hidden="true"></canvas>'+
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
- '<div class="ar-choice-gradient" aria-hidden="true"></div>'+
+ '<div class="ar-choice-gradient" aria-hidden="true">'+
+    '<div class="ar5-1-source-tint"></div>'+
+    '<div class="poster-gradient poster-gradient-a"></div>'+
+    '<div class="poster-gradient poster-gradient-b"></div>'+
+    '<div class="poster-gradient poster-gradient-c"></div>'+
+    '<div class="poster-gradient poster-gradient-d"></div></div>'+
  '<div class="ar-choice-pack" aria-hidden="true"></div>'+
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
