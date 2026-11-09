@@ -64,11 +64,31 @@ function create(root){
      clipAction.play();
      mixer.setTime(Math.min(.05,Math.max(.001,clip.duration-.001)));
    }
-   const box=new THREE.Box3().setFromObject(model);
-   const center=box.getCenter(new THREE.Vector3());
-   const size=box.getSize(new THREE.Vector3());
-   centered.position.copy(center).multiplyScalar(-1);
-   scale=195/Math.max(1,size.x,size.y);
+   // Resolve the visible hand plane from the rigged mesh, not its
+   // arbitrary GLB scene forward axis. Previously a side-on rig
+   // appeared as a narrow, noisy orange strip in the AR scene.
+   // Choose the largest X/Y or Z/Y projected silhouette while
+   // preserving all original bones, mesh transforms and animation.
+   const initialBox=new THREE.Box3().setFromObject(model);
+   const nativeSize=initialBox.getSize(new THREE.Vector3());
+   const showXZ= nativeSize.z>nativeSize.x*1.18;
+   centered.rotation.y=showXZ ? -Math.PI/2 : 0;
+   centered.updateMatrixWorld(true);
+   const facingBox=new THREE.Box3().setFromObject(centered);
+   const facingCenter=facingBox.getCenter(new THREE.Vector3());
+   const facingSize=facingBox.getSize(new THREE.Vector3());
+   // Center the *posed, front-facing silhouette* in camera space.
+   // The 3D rotation is on the centered parent, so first shift its
+   // model locally by the inverse rotated world-space center.
+   centered.position.copy(facingCenter).multiplyScalar(-1);
+   // model is still positioned by original rig bones; orientation
+   // correction is owned by the parent instead of deleting tracks.
+   scale=195/Math.max(1,facingSize.x,facingSize.y);
+   console.info('[DCD AR hand] Camera-facing rig bounds',{
+     native:[nativeSize.x,nativeSize.y,nativeSize.z],
+     facing:[facingSize.x,facingSize.y,facingSize.z],
+     rotatedY:showXZ,scale
+   });
    // The WEB hand is smooth coral/peach with a warm fingertip.
    // Do NOT use the original exaggerated orange translucent shader, and
    // do NOT draw front/back faces of transparent meshes separately.
