@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 const MAX_FRAME_AGE=380, MAX_VISIBLE_AGE=1100;
-const workerURL=new URL('ar-matte-worker.js?v=verified-longpipe-20261109-2',document.currentScript.src);
+const workerURL=new URL('ar-matte-worker.js?v=mediapipe-person-mask-20261110-107',document.currentScript.src);
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
