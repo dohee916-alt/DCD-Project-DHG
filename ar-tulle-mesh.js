@@ -26,7 +26,9 @@ varying vec2 vUV;
 varying float vLight;
 varying float vFringe;
 void main(){
-  vUV=uv;vLight=lighting;vFringe=fringe;
+  // Canvas textures otherwise land upside-down on the WebGL face UVs.
+  // Flip only the sampled atlas, not the geometry or head tracking.
+  vUV=vec2(uv.x,1.0-uv.y);vLight=lighting;vFringe=fringe;
   gl_Position=vec4(position.xy,clamp(position.z,-0.8,0.8),1.0);
 }`;
 const FRAG=`
@@ -566,12 +568,11 @@ function create(root){
         }
         trackedSurface=weightedZ/Math.max(weightSum,1e-6);
       }
-      const sideWrap=sideFold;
-      const jawWrap=tuck*Math.max(0,(v-.74)/.26);
-      const behind=.19*Math.max(sideWrap,jawWrap,upperCorner*.85);
-      // Foreground fabric is just outside the face. Excess cloth moves
-      // behind the side/jaw surface where depth occlusion can hide it.
-      mesh[at+2]=clamp(trackedSurface-.032+behind+foldDepth*.16,-.79,.79);
+      // Keep the lower mask in front of the face surface: forcing the
+      // lower edge behind the face created a sharp exposed chin-shaped hole.
+      // Only the extreme outer side edges may wrap subtly behind the cheeks.
+      const behind=.035*sideFold*sideFold;
+      mesh[at+2]=clamp(trackedSurface-.045+behind+foldDepth*.08,-.79,.79);
       mesh[at+3]=u;mesh[at+4]=v;
       const foldShade=tuck*(.055*edgeX+.012*curve);
       mesh[at+5]=clamp(.94+.10*bump+.035*cheek-foldShade-rolledEdge*.13,.68,1.10);
