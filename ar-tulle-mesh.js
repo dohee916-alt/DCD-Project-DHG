@@ -192,7 +192,7 @@ function create(root){
   let outline=[],neighborsByVertex=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let vertexCount=0,neutralUV=null;
   let live=true,frameId=0,lastRendered=0,renderErrorReported=false;
-  let setupStatus='pending',lastDiagnostic='',lastDiagnosticAt=0;
+  let setupStatus='pending',lastDiagnostic='',lastDiagnosticAt=0,lastFaceSeenAt=0;
   function reportState(state,now=performance.now()){
     root.dataset.tulleState=state;
     if(state!==lastDiagnostic&&now-lastDiagnosticAt>500){
@@ -313,8 +313,12 @@ function create(root){
   })();
   function update(points,width,height){
     if(!mesh||!points?.length||points.length<468||!width||!height){
-      faceCenter=null;return;
+      // Landmark detection can temporarily drop a frame while the user
+      // remains in view. Do not erase the already fitted fabric immediately.
+      if(performance.now()-lastFaceSeenAt>1600)faceCenter=null;
+      return;
     }
+    lastFaceSeenAt=performance.now();
     // Landmark coordinates and the mirrored live camera use one consistent
     // screen-space projection. Official UVs stay attached to each landmark.
     const fit=Math.max(W/width,H/height),dw=width*fit,dh=height*fit;
