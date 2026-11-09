@@ -179,48 +179,58 @@ function canvasCloth(root){
     if(!live||!ctx)return;
     ctx.clearRect(0,0,W,H);
     if(!positions||!layers.length)return;
-    const center=positions[1];
-    const pts=FACE_RIM.map(k=>({
-      x:center.x+(positions[k].x-center.x)*1.27,
-      y:center.y+(positions[k].y-center.y)*1.29+8
-    }));
-    const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
-    const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
+    const center=positions[1],head=positions[10],jaw=positions[152];
+    const left=positions[234],right=positions[454];
+    const eyeL=positions[33],eyeR=positions[263];
+    const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
+    const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
+    const cw=fw*1.57,ch=fh*1.65;
+    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2;
+    const angle=Math.atan2(eyeR.y-eyeL.y,eyeR.x-eyeL.x);
     for(const layer of layers){
       const age=(now-layer.start)/1000;
       const progress=clamp(age/1.25,0,1);
-      const fly=1-(1-Math.pow(1-progress,3));
-      const offX=(layer.index%2?1:-1)*56*fly;
-      const offY=-85*fly;
+      const fly=Math.pow(1-progress,3);
+      const shiftX=(layer.index%2?1:-1)*56*fly,shiftY=-85*fly;
       const exit=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
-      const alpha=(layer.removing?1-ease(exit):clamp(age/.24,0,1));
+      const alpha=layer.removing?1-ease(exit):clamp(age/.24,0,1);
       if(alpha<=0)continue;
-      ctx.save();
-      ctx.globalAlpha=alpha;
-      ctx.translate(offX+exit*45,offY-exit*155);
+      ctx.save();ctx.globalAlpha=alpha;
+      ctx.translate(cx+shiftX+exit*45,cy+shiftY-exit*155);
+      ctx.rotate(angle);
+      const l=-cw/2,r=cw/2,t=-ch*.47,b=ch*.53;
+      // One cloth with four continuous sides, softened top corners and
+      // subtly tucked lower corners, rather than a face-shaped ellipse.
       ctx.beginPath();
-      pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+      ctx.moveTo(l+cw*.09,t);
+      ctx.lineTo(r-cw*.09,t);
+      ctx.quadraticCurveTo(r,t,r,t+ch*.09);
+      ctx.lineTo(r,b-ch*.18);
+      ctx.quadraticCurveTo(r-cw*.03,b-ch*.045,r-cw*.19,b);
+      ctx.quadraticCurveTo(0,b+fh*.05,l+cw*.19,b);
+      ctx.quadraticCurveTo(l+cw*.03,b-ch*.045,l,b-ch*.18);
+      ctx.lineTo(l,t+ch*.09);
+      ctx.quadraticCurveTo(l,t,l+cw*.09,t);
       ctx.closePath();ctx.clip();
-      ctx.fillStyle='rgba(250,246,239,.25)';
-      ctx.fillRect(minX-30,minY-30,maxX-minX+60,maxY-minY+60);
-      ctx.fillStyle=pattern;
-      ctx.globalAlpha=alpha*.88;
-      ctx.fillRect(minX-30,minY-30,maxX-minX+60,maxY-minY+60);
+      ctx.fillStyle='rgba(250,248,243,.15)';
+      ctx.fillRect(l,t,cw,ch+fh*.06);
+      ctx.fillStyle=pattern;ctx.globalAlpha=alpha*.72;
+      ctx.fillRect(l,t,cw,ch+fh*.06);
       const config=FIGMA_MASK_TEXT[layer.variant]?.[layer.index];
       if(config){
-        const boundsW=Math.max(1,maxX-minX),boundsH=Math.max(1,maxY-minY);
-        const x=minX+(config.x-69.5)/289*boundsW;
-        const y=minY+(config.y-267)/376*boundsH;
+        const slot=embroiderySlot(config);
+        const x=l+slot.u*cw,y=t+(1-slot.v)*ch;
         ctx.globalAlpha=alpha;
         ctx.translate(x,y);ctx.rotate(config.r*Math.PI/180);
-        ctx.fillStyle='#fb5511';ctx.textBaseline='top';ctx.textAlign='left';
+        ctx.fillStyle='#fb5511';ctx.textBaseline='top';ctx.textAlign='center';
         const lines=config.text.split('\n');
-        const scale=Math.min(1.15,Math.max(.68,boundsW/289));
+        const scale=Math.min(1.15,Math.max(.72,cw/276));
         ctx.scale(scale,scale);
-        let py=0;
+        const total=lines.reduce((z,_,i)=>z+(config.lh[i]||20),0);
+        let yy=-total/2;
         for(let i=0;i<lines.length;i++){
           ctx.font='700 '+(config.fs[i]||18)+'px "Turret Road",sans-serif';
-          ctx.fillText(lines[i],0,py);py+=config.lh[i]||20;
+          ctx.fillText(lines[i],0,yy);yy+=config.lh[i]||20;
         }
       }
       ctx.restore();
