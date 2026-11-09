@@ -110,8 +110,31 @@ function fit(){
  stage.dataset.orientation=sideways?'rotated':'normal';
  offset={x:W/2,y:H/2};
 }
-function localPoint(e){let r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;if(stage.dataset.orientation==='rotated'){let [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;return{x:w/2+(e.clientY-cy)/scale+dx,y:h/2-(e.clientX-cx)/scale};}return{x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};}
+function localPoint(e){
+ const r=stage.getBoundingClientRect(),dx=dimensions()[0]===874?52:0;
+ let p;
+ if(stage.dataset.orientation==='rotated'){
+   const [w,h]=dimensions(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+   p={x:w/2+(e.clientY-cy)/scale+dx,y:h/2-(e.clientX-cx)/scale};
+ }else p={x:(e.clientX-r.left)/scale+dx,y:(e.clientY-r.top)/scale};
+ // WEB03 shows the landscape workbench in a separately rotated preview.
+ // Pointer hit tests must use its inverse transform, not portrait coords.
+ const preview=s.page==='03'?stage.querySelector('.rotate-preview'):null;
+ if(preview){
+   const matrix=getComputedStyle(preview).transform;
+   if(matrix&&matrix!=='none'){
+     const xform=new DOMMatrixReadOnly(matrix).inverse();
+     const mapped=xform.transformPoint({x:p.x,y:p.y,z:0,w:1});
+     return{x:mapped.x,y:mapped.y};
+   }
+ }
+ return p;
+}
 function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
+function workbenchActive(){return s.page==='workbench'||(s.page==='03'&&rotateGuideFinished);}
+function workbenchReady(){return workbenchActive()&&(s.phase==='ready'||(s.page==='03'&&s.phase==='waiting'));}
+function resumeWorkbench(){s.phase=s.page==='03'?'waiting':'ready';save();render();}
+
 const ropes={upper:{line:[6,20,406,596],pull:[-69,-111]},lower:{line:[8,752,406,615],pull:[90,99]}};
 function ropeAt(p){let closest=null,distance=Infinity;for(const [name,{line}] of Object.entries(ropes)){let [x1,y1,x2,y2]=line,t=clamp(((p.x-x1)*(x2-x1)+(p.y-y1)*(y2-y1))/((x2-x1)**2+(y2-y1)**2),0,1),d=Math.hypot(p.x-(x1+t*(x2-x1)),p.y-(y1+t*(y2-y1)));if(d<distance){closest=name;distance=d;}}return distance<=55?closest:null;}
 function pullDistance(g,p){
@@ -173,8 +196,8 @@ function resultMarkup(){const root='assets/figma-current/hd/';return img(A.poste
 function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.workbenchPack,0,0,337,224,'pack pack-image pack-clear-back workbench-native-export');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack',packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,88,141,110,85,'bottle');if(!s.used.purple&&s.loaded!=='purple')h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label bottle-label-purple');if(!s.used.orange&&s.loaded!=='orange')h+=text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label bottle-label-orange');
 if(!f.packed)h+=canvasFigure(s.active,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h,'active-figure');h+=syringeMarkup();
 if(showTutorial&&!s.handGuideDismissed&&!s.firstFill&&(s.phase==='ready'||(s.page==='03'&&s.phase==='waiting')))h+=handGuide();
-if(showTutorial&&s.loaded&&!s.firstInject&&s.phase==='ready')h+=injectionHandGuide();
-if(showTutorial&&s.firstInject&&!s.packGuideDone&&!s.figures.some(v=>v.packed)&&s.phase==='ready')h+=packHandGuide();
+if(showTutorial&&s.loaded&&!s.firstInject&&workbenchReady())h+=injectionHandGuide();
+if(showTutorial&&s.firstInject&&!s.packGuideDone&&!s.figures.some(v=>v.packed)&&workbenchReady())h+=packHandGuide();
 if(f.value===0)h+=text('MINIMIZE',282,392,292,44,'doto guide-blink workbench-guide');if(f.value===100)h+=text('MAXIMIZE',282,389,292,44,'doto guide-blink workbench-guide');
 h+=text('DOLL '+(s.active+1)+'/4',282,29,292,44,'progress workbench-count');return h;}
 function rearPackMarkup(x,y,w,h,cls=''){return img(A.packFoil,x,y,w,h,'rear-pack pack-image pack-foil '+cls);}
@@ -1031,7 +1054,7 @@ function abdomenTouched(tip){
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function moveSyringe(host,x,y,angle=0,ms=240){if(!host)return;host.style.transition='translate '+ms+'ms ease, transform '+ms+'ms ease';host.style.translate=x+'px '+y+'px';host.style.transform='rotate('+angle+'deg)';}
 async function fillSyringe(color,host){
-  if(s.phase!=='ready'||s.loaded)return;
+  if(!workbenchReady()||s.loaded)return;
   if(s.figures[s.active].value===(color==='orange'?0:100)){moveSyringe(host,0,0,0,330);await pause(350);render();return;}
   s.loaded=color;s.firstFill=true;s.phase='filling';
   // Hide ONLY the label beside the bottle whose liquid was just selected.
@@ -1043,7 +1066,7 @@ async function fillSyringe(color,host){
   const plunger=host.querySelector('.syringe-plunger');
   plunger.style.translate='0 -69px';
   moveSyringe(host,dx,dy,-90,220);await pause(240);
-  if(s.page!=='workbench'||s.phase!=='filling')return;
+  if(!workbenchActive()||s.phase!=='filling')return;
   const liquid=host.querySelector('.syringe-drug'),liquidWindow=host.querySelector('.syringe-drug-window');
   liquid.src=color==='orange'?A.syringeLiquidOrange:A.syringeLiquidPurple;
   liquid.className='syringe-drug '+color;
@@ -1054,12 +1077,12 @@ async function fillSyringe(color,host){
   ]);
   plunger.style.translate='0 0';
   liquidWindow.classList.add('filled');
-  if(s.page!=='workbench'||s.phase!=='filling')return;
+  if(!workbenchActive()||s.phase!=='filling')return;
   moveSyringe(host,0,0,0,320);await pause(350);
-  if(s.page==='workbench'&&s.phase==='filling'){s.phase='ready';save();render();}
+  if(workbenchActive()&&s.phase==='filling')resumeWorkbench();
 }
 async function inject(host){
-  const color=s.loaded;if(!color||s.phase!=='ready')return;
+  const color=s.loaded;if(!color||!workbenchReady())return;
   host.style.transition='none'; // Preserve the release position and angle during injection.
   s.phase='injecting';s.firstInject=true;
   stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());
@@ -1070,14 +1093,14 @@ async function inject(host){
     liquidWindow.animate([{clipPath:'inset(0 0 0 0)'},{clipPath:'inset(0 0 100% 0)'}],injectionTiming).finished,
     plunger.animate([{translate:'0 0'},{translate:'0 -69px'}],injectionTiming).finished
   ]);
-  if(s.page!=='workbench'||s.phase!=='injecting')return;
+  if(!workbenchActive()||s.phase!=='injecting')return;
   const f=s.figures[s.active],before=f.value,target=clamp(before+(color==='orange'?-7:10),0,100);
   await animateFigureValue(s.active,before,target,510);
-  if(s.page!=='workbench'||s.phase!=='injecting')return;
+  if(!workbenchActive()||s.phase!=='injecting')return;
   moveSyringe(host,0,0,0,320);
   await plunger.animate([{translate:'0 -69px'},{translate:'0 0'}],{duration:320,easing:'ease-in-out',fill:'forwards'}).finished;
-  if(s.page!=='workbench'||s.phase!=='injecting')return;
-  f.value=target;f[color]++;s.used[color]=true;s.loaded=null;s.phase='ready';save();render();
+  if(!workbenchActive()||s.phase!=='injecting')return;
+  f.value=target;f[color]++;s.used[color]=true;s.loaded=null;resumeWorkbench();
 }
 function packActive(){s.figures[s.active].packed=true;s.packGuideDone=true;s.loaded=null;let n=s.figures.findIndex(f=>!f.packed);if(n<0){save();beginPacking();}else{s.active=n;save();render();}}
 async function animatePackActive(el){
@@ -1110,7 +1133,7 @@ async function animatePackActive(el){
     {offset:1,translate:to,transform:endTransform,opacity:1}
   ],timing);
   await Promise.allSettled([a.finished,b.finished]);
-  if(s.page==='workbench'&&s.phase==='packing'){s.phase='ready';packActive();}
+  if(workbenchActive()&&s.phase==='packing'){s.phase=s.page==='03'?'waiting':'ready';packActive();}
 }
 
 function unpack(i){s.figures[i].packed=false;s.active=i;s.loaded=null;save();render();}
@@ -1263,7 +1286,7 @@ stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s
   try{stage.setPointerCapture(e.pointerId);}catch(error){console.warn('[DCD] Pointer capture:',error);}
   return;
 }
-if(s.page!=='workbench'||s.phase!=='ready')return;let kind=null,index=-1;if(hit(p,261,125,40,297))kind='syringe';else if(hit(p,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h))kind='doll';else{index=packSlots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();const el=kind==='syringe'?stage.querySelector('.syringe'):kind==='doll'?stage.querySelector('.active-figure'):stage.querySelector('canvas.packed-figure[data-figure="'+index+'"]');drag={kind,index,pointerId:e.pointerId,start:p,last:p,moved:false,angle:kind==='syringe'?(s.loaded?45:-45):0,el};if(el)el.classList.add('dragging');if(kind==='syringe'){s.handGuideDismissed=true;save();stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());if(el){el.style.transition='none';el.style.transform='rotate('+drag.angle+'deg)';}}stage.setPointerCapture(e.pointerId);}});
+if(!workbenchReady())return;let kind=null,index=-1;if(hit(p,261,125,40,297))kind='syringe';else if(hit(p,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h))kind='doll';else{index=packSlots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();const el=kind==='syringe'?stage.querySelector('.syringe'):kind==='doll'?stage.querySelector('.active-figure'):stage.querySelector('canvas.packed-figure[data-figure="'+index+'"]');drag={kind,index,pointerId:e.pointerId,start:p,last:p,moved:false,angle:kind==='syringe'?(s.loaded?45:-45):0,el};if(el)el.classList.add('dragging');if(kind==='syringe'){s.handGuideDismissed=true;save();stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());if(el){el.style.transition='none';el.style.transform='rotate('+drag.angle+'deg)';}}stage.setPointerCapture(e.pointerId);}});
 stage.addEventListener('pointermove',e=>{
   let p=localPoint(e);
   if(gesture.has(e.pointerId)){
