@@ -287,8 +287,8 @@ function create(root){
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
   const stitchUniform=gl.getUniformLocation(program,'embroideryMask');
-  let outline=[],neighborsByVertex=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
-  let vertexCount=0,neutralUV=null;
+  const rings=[.30,.60,.82,1];
+  let outline=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let live=true,frameId=0,lastRendered=0,renderErrorReported=false;
   let setupStatus='pending',lastDiagnostic='',lastDiagnosticAt=0,lastFaceSeenAt=0;
   function reportState(state,now=performance.now()){
@@ -307,60 +307,25 @@ function create(root){
   const textures={},layers=[];
   const canvasBackup=canvasCloth(root);
   function setConnections(){
-    const canonical=window.DCD_FACE_CANONICAL;
-    if(!canonical||canonical.uv.length!==468||canonical.triangles.length<2000)return false;
-    outline=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
-    const faceVertices=canonical.uv.length;
-    const ringLength=outline.length;
-    vertexCount=faceVertices+ringLength*2;
-    // MediaPipe's canonical surface leaves eye and mouth openings. This is
-    // a continuous piece of tulle, so bridge those openings using the exact
-    // surrounding facial landmarks. Never cut holes around features.
-    // Only close the eye openings. Do not triangulate the lips: a large
-    // bridge over the mouth creates visible crossing seams/false lip lines.
-    const patches=[
-      [33,160,158,133,153,144],
-      [362,385,387,263,373,380]
-    ];
-    const completeTriangles=canonical.triangles.slice();
-    for(const loop of patches){
-      for(let i=1;i<loop.length-1;i++)
-        completeTriangles.push(loop[0],loop[i],loop[i+1]);
-    }
-    // Extend the textile beyond the actual face outline (loose draped veil).
-    // These extension vertices are not extra face landmarks.
-    const rim=outline;
-    for(let ring=0;ring<2;ring++){
-      const inner=ring===0?rim:null;
-      for(let i=0;i<rim.length;i++){
-        const next=(i+1)%rim.length;
-        const a=ring===0?rim[i]:faceVertices+i;
-        const b=ring===0?rim[next]:faceVertices+next;
-        const c=faceVertices+(ring+1)*rim.length+i;
-        const d=faceVertices+(ring+1)*rim.length+next;
-        completeTriangles.push(a,b,c,b,d,c);
+    outline=FACE_RIM.slice();
+    if(outline.length<25)return false;
+    const size=outline.length;
+    const indices=[];
+    for(let i=0;i<size;i++){
+      const j=(i+1)%size;
+      indices.push(0,1+i,1+j);
+      for(let ring=1;ring<rings.length;ring++){
+        const a=1+(ring-1)*size+i,b=1+(ring-1)*size+j;
+        const c=1+ring*size+i,d=1+ring*size+j;
+        indices.push(a,c,d,a,d,b);
       }
     }
-    indexCount=completeTriangles.length;
-    mesh=new Float32Array(vertexCount*stride);
+    indexCount=indices.length;
+    const count=1+rings.length*size;
+    mesh=new Float32Array(count*stride);
     vertices=new Float32Array(mesh.length);
-    neutralUV=new Float32Array(vertexCount*2);
-    neighborsByVertex=Array.from({length:faceVertices},()=>new Set());
-    for(let i=0;i<faceVertices;i++){
-      neutralUV[i*2]=canonical.uv[i][0];
-      neutralUV[i*2+1]=canonical.uv[i][1];
-    }
-    for(let k=0;k<indexCount;k+=3){
-      const [a,b,c]=completeTriangles.slice(k,k+3);
-      if(a>=faceVertices||b>=faceVertices||c>=faceVertices)continue;
-      neighborsByVertex[a].add(b);neighborsByVertex[a].add(c);
-      neighborsByVertex[b].add(a);neighborsByVertex[b].add(c);
-      neighborsByVertex[c].add(a);neighborsByVertex[c].add(b);
-    }
-    neighborsByVertex=neighborsByVertex.map(x=>[...x]);
-
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(completeTriangles),gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER,vb);
     gl.bufferData(gl.ARRAY_BUFFER,vertices.byteLength,gl.DYNAMIC_DRAW);
     setupStatus='ready';
@@ -411,67 +376,46 @@ function create(root){
     }catch(error){root.dataset.tulleTexture='error';console.error('[DCD] Cloth texture preparation:',error);}
   })();
   function update(points,width,height){
-    if(!mesh||!points?.length||points.length<468||!width||!height){
-      // Landmark detection can temporarily drop a frame while the user
-      // remains in view. Do not erase the already fitted fabric immediately.
+    if(!mesh||!points?.length||!width||!height){
       if(performance.now()-lastFaceSeenAt>1600)faceCenter=null;
       canvasBackup.update(null,width,height);
       return;
     }
     lastFaceSeenAt=performance.now();
     canvasBackup.update(points,width,height);
-    // Landmark coordinates and the mirrored live camera use one consistent
-    // screen-space projection. Official UVs stay attached to each landmark.
-    const fit=Math.max(W/width,H/height),dw=width*fit,dh=height*fit;
+    const scale=Math.max(W/width,H/height),dw=width*scale,dh=height*scale;
     const offsetX=(W-dw)/2,offsetY=(H-dh)/2;
-    const pos=Array.from({length:468},(_,i)=>{
-      const p=points[i];
-      return {x:offsetX+(1-p.x)*dw,y:offsetY+p.y*dh,z:p.z*dw};
+    const oval=outline.map(i=>({
+      x:offsetX+(1-points[i].x)*dw,y:offsetY+points[i].y*dh
+    }));
+    const center=oval.reduce((sum,p)=>({x:sum.x+p.x/oval.length,y:sum.y+p.y/oval.length}),{x:0,y:0});
+    // Unroll the face to assign one continuous UV field. The geometry uses
+    // only the outer contour, so expressions cannot emboss eyes or lips.
+    const left=points[263],right=points[33];
+    const dx=(left.x-right.x)*dw,dy=(right.y-left.y)*dh;
+    const length=Math.hypot(dx,dy)||1,cos=dx/length,sin=dy/length;
+    const local=oval.map(p=>{
+      const x=p.x-center.x,y=p.y-center.y;
+      return {x:x*cos+y*sin,y:y*cos-x*sin};
     });
-    const c=pos[1],top=pos[10],bottom=pos[152];
-    const faceHeight=Math.max(50,Math.hypot(top.x-bottom.x,top.y-bottom.y));
-    faceCenter={x:c.x,y:c.y};
-    for(let i=0;i<468;i++){
-      const p=pos[i],off=i*stride;
-      mesh[off]=p.x;mesh[off+1]=p.y;mesh[off+2]=p.z;
-      mesh[off+3]=neutralUV[i*2];
-      mesh[off+4]=neutralUV[i*2+1];
-      // Local surface tilt from real face depth, not painted shadow.
-      let xx=0,yy=0,weight=0;
-      for(const j of neighborsByVertex[i]){
-        const q=pos[j],dx=q.x-p.x,dy=q.y-p.y;
-        const length2=dx*dx+dy*dy+3;
-        const influence=Math.min(1,55/Math.sqrt(length2));
-        xx+=(q.z-p.z)*dx/length2*influence;
-        yy+=(q.z-p.z)*dy/length2*influence;
-        weight+=influence;
-      }
-      mesh[off+5]=clamp(0.99+0.23*(-xx+yy)/Math.max(0.2,weight/5),0.71,1.21);
-      // Canonical UV distance fades only the cloth perimeter, not facial
-      // features. The real triangulation contains nose, cheek and lip bends.
-      const u=neutralUV[i*2],v=neutralUV[i*2+1];
-      const radial=Math.hypot((u-.5)*1.64,(v-.49)*1.46);
-      mesh[off+6]=clamp((radial-.76)/.25,0,1);
-    }
-    // A loose net is bigger than the head: expand a two-ring soft perimeter
-    // from the face contour, with gravity pulling the bottom edges down.
-    // The center of the net still follows the real tracked 468-point face.
-    const n=outline.length;
-    for(let ring=0;ring<2;ring++){
-      const grow=ring===0?1.16:1.35;
-      for(let j=0;j<n;j++){
-        const k=outline[j],p=pos[k],dx=p.x-c.x,dy=p.y-c.y;
-        const down=ring===0?7:24;
-        const off=(468+ring*n+j)*stride;
-        mesh[off]=c.x+dx*grow;
-        mesh[off+1]=c.y+dy*grow+down+Math.max(0,dy)*.065;
-        mesh[off+2]=p.z+6+ring*8;
-        const u=neutralUV[k*2],v=neutralUV[k*2+1];
-        mesh[off+3]=.5+(u-.5)*grow;
-        mesh[off+4]=.5+(v-.5)*grow;
-        mesh[off+5]=clamp(mesh[k*stride+5]*.96,0.72,1.16);
-        mesh[off+6]=ring===0?.18:.94;
-      }
+    const rx=Math.max(...local.map(p=>Math.abs(p.x)))*1.20;
+    const ry=Math.max(...local.map(p=>Math.abs(p.y)))*1.20;
+    if(!Number.isFinite(rx)||rx<18||ry<25){faceCenter=null;return;}
+    faceCenter=center;
+    mesh.set([center.x,center.y,0,.5,.5,1,0],0);
+    for(let ring=0;ring<rings.length;ring++){
+      const r=rings[ring];
+      local.forEach((p,i)=>{
+        const x=p.x*1.18*r,y=p.y*(p.y<0?1.25:1.15)*r;
+        const at=(1+ring*local.length+i)*stride;
+        mesh[at]=center.x+x*cos-y*sin;
+        mesh[at+1]=center.y+x*sin+y*cos;
+        mesh[at+2]=0;
+        mesh[at+3]=.5+.45*x/rx;
+        mesh[at+4]=.5-.45*y/ry;
+        mesh[at+5]=.99-.11*r*r+.045*(x/rx-y/ry);
+        mesh[at+6]=r;
+      });
     }
   }
   function arrival(t){
