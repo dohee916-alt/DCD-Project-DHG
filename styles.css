@@ -1131,3 +1131,14 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive.ar-matting-active .ar-person-segment{
   display:block!important;visibility:visible!important;opacity:1!important
 }
+
+/* Pre-workbench photograph only. Figma 03_MOBILE_WEB / try-webguide
+   776:98, IMAGE fill 776:109: temperature +0.52, saturation -0.12;
+   exposure/contrast/tint/highlights/shadows all 0.
+   CSS cannot express native Figma temperature numerically; this restrained
+   approximation affects only the existing WEB01 raster, never the assets,
+   SVG lettering, hand guides, gradient overlays, or any other page. */
+#stage.page-01 .poster-art.poster-primary,
+#stage.page-01 .poster-art.poster-alternate{
+  filter:sepia(.15) saturate(.88) hue-rotate(-2deg)!important;
+}
