@@ -1347,9 +1347,9 @@ canvas.figure{object-fit:contain!important}
 }
 .ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-dark-silhouette{
   display:block;
-  filter:blur(23px) drop-shadow(0 0 17px rgba(124,39,12,.54));
-  -webkit-filter:blur(23px) drop-shadow(0 0 17px rgba(124,39,12,.54));
-  opacity:.98;
+  filter:blur(13px) drop-shadow(0 0 12px rgba(199,65,24,.52));
+  -webkit-filter:blur(13px) drop-shadow(0 0 12px rgba(199,65,24,.52));
+  opacity:1;
   mix-blend-mode:normal;
 }
 .ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
