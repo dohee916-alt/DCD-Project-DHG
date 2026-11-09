@@ -1343,12 +1343,17 @@ canvas.figure{object-fit:contain!important}
    its nontransparent pixels. Background gradients and UI remain unchanged.
    CSS blur precedes recoloring so the soft Figma portrait edge is preserved.
    Do not tint the camera input, the AR stage, or any parent composite. */
+/* Keep the actual alpha-matted silhouette ABOVE the color wash, but
+   BELOW pack, buttons and copy. Otherwise the orange is multiplied into
+   the background and shifts to a muddy brown. */
 .ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
-  filter:blur(27px) brightness(0) saturate(100%)
-    invert(29%) sepia(96%) saturate(1730%) hue-rotate(353deg)
-    brightness(.77) contrast(1.08)!important;
-  -webkit-filter:blur(27px) brightness(0) saturate(100%)
-    invert(29%) sepia(96%) saturate(1730%) hue-rotate(353deg)
-    brightness(.77) contrast(1.08)!important;
+  z-index:6!important;
+  mix-blend-mode:normal!important;
+  filter:blur(26px) brightness(0) saturate(100%)
+    invert(36%) sepia(100%) saturate(2670%) hue-rotate(356deg)
+    brightness(.91) contrast(1.06)!important;
+  -webkit-filter:blur(26px) brightness(0) saturate(100%)
+    invert(36%) sepia(100%) saturate(2670%) hue-rotate(356deg)
+    brightness(.91) contrast(1.06)!important;
   opacity:1!important;
 }
