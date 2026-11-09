@@ -44,7 +44,8 @@ function create(root){
    if(!active)return;
    model=loaded.scene;
    clip=loaded.animations.find(a=>a.name==='Pose_OK');
-   if(!clip)throw Error('Expected Pose_OK clip is missing from original GLB');
+   const openClip=loaded.animations.find(a=>a.name==='Pose_OKHand');
+   if(!clip||!openClip)throw Error('Original GLB is missing one of the two required source poses');
    scene=new THREE.Scene();
    camera=new THREE.OrthographicCamera(-214,214,463,-463,.1,4000);
    camera.position.set(0,0,1200);
@@ -67,13 +68,18 @@ function create(root){
    fill.position.set(7,2,-5);scene.add(fill);
    mixer=new THREE.AnimationMixer(model);
    const action=mixer.clipAction(clip);
-   action.enabled=true;
-   action.setLoop(THREE.LoopOnce,0);
-   action.clampWhenFinished=true;
-   action.play();
-   // Capture actual thumb/index extended and touching poses from the
-   // supplied Pose_OK animation. Other fingers remain at its folded
-   // endpoint throughout the tutorial; only index/thumb open and pinch.
+   const openAction=mixer.clipAction(openClip);
+   // The original GLB has TWO distinct poses. Pose_OKHand at its
+   // start has an extended index and a separated thumb (joint gap ~10.4).
+   // Pose_OK at its end has the curled three fingers and closer thumb/index
+   // (joint gap ~5.2). Using Pose_OK's start for BOTH was the bug:
+   // it does not show a clearly OPEN initial thumb/index silhouette.
+   // Sample the OPEN pose from Pose_OKHand, while keeping the remaining
+   // three fingers curled from Pose_OK.
+   openAction.enabled=true;
+   openAction.setLoop(THREE.LoopOnce,0);
+   openAction.clampWhenFinished=true;
+   openAction.play();
    const sourceEnd=Math.max(.045,clip.duration-.025);
    const fingerNodes=[];
    model.traverse(node=>{
@@ -88,8 +94,16 @@ function create(root){
     }));
    };
    initialThumbIndex=poseSnap(.045);
+   openAction.stop();
+   action.enabled=true;
+   action.setLoop(THREE.LoopOnce,0);
+   action.clampWhenFinished=true;
+   action.play();
    foldedThumbIndex=poseSnap(sourceEnd);
    mixer.setTime(sourceEnd);
+   console.info('[DCD AR] Distinct open/closed finger animation sources',
+     {open:openClip.name,closed:clip.name,
+      openBones:initialThumbIndex.length,closedBones:foldedThumbIndex.length});
    const centered=new THREE.Group();
    centered.add(model);
    pivot=new THREE.Group();
@@ -180,8 +194,9 @@ function create(root){
   // The return movement starts only AFTER the release has finished.
   const approach=smooth((t-3.45)/.90);
   const pinch=smooth((t-1.70)/.95)*(1-smooth((t-2.95)/.40));
-  // The original asset's Pose_OK finishes with the three curled fingers.
-  // Freeze those at the folded frame. Interpolate ONLY thumb/index bones.
+  // Open thumb/index = Pose_OKHand start; closed thumb/index = Pose_OK end.
+  // Other three curled fingers remain locked at Pose_OK end. Critically,
+  // the fully open pose is displayed at the START and again on RETURN.
   const foldedTime=Math.max(.045,clip.duration-.025);
   mixer.setTime(foldedTime);
   for(let n=0;n<initialThumbIndex.length;n++){
