@@ -1338,22 +1338,21 @@ canvas.figure{object-fit:contain!important}
  }
 }
 
-/* AR5-1 silhouette-only burnt-orange recolor.
-   The live cutout canvas already contains the subject alpha: recolor only
-   its nontransparent pixels. Background gradients and UI remain unchanged.
-   CSS blur precedes recoloring so the soft Figma portrait edge is preserved.
-   Do not tint the camera input, the AR stage, or any parent composite. */
-/* Keep the actual alpha-matted silhouette ABOVE the color wash, but
-   BELOW pack, buttons and copy. Otherwise the orange is multiplied into
-   the background and shifts to a muddy brown. */
+/* A dedicated, dynamically alpha-matted, high-contrast person silhouette.
+   Below sharp pack and text; above the peach color field.
+   The original matte remains the tracking/segmentation source and is hidden
+   visually only for these three color-overlay steps. */
+.ar-immersive .ar-dark-silhouette{
+  position:absolute;inset:0;width:100%;height:100%;
+  z-index:6;display:none;pointer-events:none;
+}
+.ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-dark-silhouette{
+  display:block;
+  filter:blur(23px) drop-shadow(0 0 17px rgba(124,39,12,.54));
+  -webkit-filter:blur(23px) drop-shadow(0 0 17px rgba(124,39,12,.54));
+  opacity:.98;
+  mix-blend-mode:normal;
+}
 .ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
-  z-index:6!important;
-  mix-blend-mode:normal!important;
-  filter:blur(26px) brightness(0) saturate(100%)
-    invert(36%) sepia(100%) saturate(2670%) hue-rotate(356deg)
-    brightness(.91) contrast(1.06)!important;
-  -webkit-filter:blur(26px) brightness(0) saturate(100%)
-    invert(36%) sepia(100%) saturate(2670%) hue-rotate(356deg)
-    brightness(.91) contrast(1.06)!important;
-  opacity:1!important;
+  opacity:0!important;visibility:hidden!important;
 }
