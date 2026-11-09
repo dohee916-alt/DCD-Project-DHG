@@ -20,10 +20,14 @@ function create(root){
  let model=null,poseScale=1;
  const owned=[];
  function setFrame(name){
+  const previous=frame;
   frame=name;
-  if(name==='AR6'&&!played){since=0;started=false;}
-  if(name==='AR7')played=true;
-  el.style.display=name==='AR6'&&!played?'block':'none';
+  // One uninterrupted demonstration from AR6 into AR7. Only a real first
+  // fabric removal calls hideOnce(); changing stages must not stop it.
+  if(name==='AR6'&&previous!=='AR6'&&previous!=='AR7'&&!played){
+   since=0;started=false;
+  }
+  el.style.display=(name==='AR6'||name==='AR7')&&!played?'block':'none';
   el.style.opacity='0';
  }
  function hideOnce(){
@@ -149,7 +153,7 @@ function create(root){
  function render(now){
   if(!active)return;
   raf=requestAnimationFrame(render);
-  if(!renderer||!pivot||frame!=='AR6'||played){
+  if(!renderer||!pivot||!['AR6','AR7'].includes(frame)||played){
    el.style.opacity='0';
    el.style.display='none';
    return;
@@ -159,7 +163,9 @@ function create(root){
   if(!started){since=now;started=true;}
   if(now-last<33)return;
   last=now;
-  const t=(now-since)/1000;
+  // Repeat the entire 5.1-second set until the FIRST fabric is removed.
+  // Never restart the clock merely because AR6 advances to AR7.
+  const t=((now-since)/1000)%5.10;
   // One complete gesture, with a clearly held start and endpoint:
   // 0.00–0.85  Palm faces viewer, index/thumb OPEN, other three FOLDED
   // 0.85–1.70  Rotate to show back of hand; fingers stay unchanged
@@ -167,8 +173,8 @@ function create(root){
   // 2.65–3.15  Hold the closed pinch at the far position
   // 3.15–4.00  Move closer, keeping index/thumb CLOSED
   // 4.00–4.75  Release index/thumb, still showing back of hand
-  // 4.75–5.10  Hold open fingers; then hide and never replay
-  if(t>=5.10){hideOnce();return;}
+  // 4.75–5.10 Hold the open pose; restart from the initial palm pose.
+  // Only the real first mask removal can hide the guide.
   const rotate=smooth((t-.85)/.85);
   const recede=smooth((t-1.70)/.95);
   const approach=smooth((t-3.15)/.85);
