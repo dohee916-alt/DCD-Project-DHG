@@ -325,8 +325,11 @@ function newPrescriptionMarkup(page=s.page){
     h+=newButton('NEXT','next',827,347,!selected.length);
   }else if(sign){
     if(page==='14'&&!signatureInk){
-      h+=img('assets/figma/3fe8e.svg',568,162,156,135,'new-signature-sample');
-      h+='<svg class="lay new-signature-trace" '+box(568,162,156,135)+' viewBox="0 0 73 64" aria-hidden="true"><defs><linearGradient id="signature-trace-color"><stop stop-color="#D83A00"/><stop offset=".4" stop-color="#FF6A1C"/><stop offset="1" stop-color="#FFAE65"/></linearGradient></defs><path d="'+signaturePath+'" fill="none" stroke="url(#signature-trace-color)" stroke-width="5" stroke-linecap="round" stroke-dasharray="25 75" pathLength="100"/></svg>';
+      // Visuals match the latest Figma "수정해봐" signature guide; interaction is unchanged.
+      const figmaSignPath='M 0 84.24068450927734 C 3.380992889404297 52.65737342834473 28.738441467285156 9.79428493976593 69.31035614013672 1.3346387147903442 C 125.67641067504883 -10.418242335319519 77.76283836364746 57.770259857177734 28.738439559936523 114.69639587402344 C 1.8616466522216797 145.90518188476562 61.78536605834961 135 114.9537582397461 69.0134506225586 C 157.21617126464844 16.56216049194336 180.88311767578125 50.401397705078125 114.9537582397461 135';
+      const signView='0 -11 181 157';
+      h+='<svg class="lay new-signature-sample" '+box(568,162,156,135)+' viewBox="'+signView+'" aria-hidden="true"><defs><linearGradient id="signature-base-color" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFE8E0"/><stop offset=".52" stop-color="#FFC4AB"/><stop offset="1" stop-color="#FFF0E8"/></linearGradient></defs><path d="'+figmaSignPath+'" fill="none" stroke="url(#signature-base-color)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      h+='<svg class="lay new-signature-trace" '+box(568,162,156,135)+' viewBox="'+signView+'" aria-hidden="true"><defs><linearGradient id="signature-trace-color" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFE1DC" stop-opacity="0"/><stop offset=".22" stop-color="#FFBC97"/><stop offset=".65" stop-color="#FF813C"/><stop offset="1" stop-color="#FFE1DC" stop-opacity="0"/></linearGradient></defs><path d="'+figmaSignPath+'" fill="none" stroke="url(#signature-trace-color)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="25 75" pathLength="100"/></svg>';
     }
     if(signatureInk)h+='<img class="lay new-signature-ink" '+box(524,82,291,260)+' src="'+signatureInk+'" alt="">';
     else h+='<canvas id="new-signature" class="lay new-signature-canvas" '+box(524,82,291,260)+' width="873" height="780" aria-label="Draw your signature"></canvas>';
