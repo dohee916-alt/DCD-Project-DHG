@@ -209,9 +209,12 @@ function canvasCloth(root){
       ctx.lineTo(r-cw*.09,t);
       ctx.quadraticCurveTo(r,t,r,t+ch*.09);
       ctx.lineTo(r,b-ch*.18);
-      ctx.quadraticCurveTo(r-cw*.03,b-ch*.045,r-cw*.19,b);
-      ctx.quadraticCurveTo(0,b+fh*.05,l+cw*.19,b);
-      ctx.quadraticCurveTo(l+cw*.03,b-ch*.045,l,b-ch*.18);
+      // Raise and tuck the lower corners, allow the central hem to curl.
+      // Two unequal arcs prevent the sheet from ending in a straight edge.
+      ctx.quadraticCurveTo(r-cw*.035,b-ch*.11,r-cw*.21,b-ch*.075);
+      ctx.quadraticCurveTo(r-cw*.38,b-ch*.025,0,b-ch*.035);
+      ctx.quadraticCurveTo(l+cw*.40,b+ch*.015,l+cw*.21,b-ch*.085);
+      ctx.quadraticCurveTo(l+cw*.035,b-ch*.12,l,b-ch*.18);
       ctx.lineTo(l,t+ch*.09);
       ctx.quadraticCurveTo(l,t,l+cw*.09,t);
       ctx.closePath();ctx.clip();
@@ -219,6 +222,13 @@ function canvasCloth(root){
       ctx.fillRect(l,t,cw,ch+fh*.06);
       ctx.fillStyle=pattern;ctx.globalAlpha=alpha*.43;
       ctx.fillRect(l,t,cw,ch+fh*.06);
+      // Soft fold shadow follows the tucked hem, without painting a hard line.
+      ctx.globalAlpha=alpha*.26;
+      const fold=ctx.createLinearGradient(0,b-ch*.23,0,b);
+      fold.addColorStop(0,'rgba(100,91,84,0)');
+      fold.addColorStop(.65,'rgba(86,81,77,.16)');
+      fold.addColorStop(1,'rgba(253,249,243,.22)');
+      ctx.fillStyle=fold;ctx.fillRect(l,b-ch*.23,cw,ch*.23);
       const config=FIGMA_MASK_TEXT[layer.variant]?.[layer.index];
       if(config){
         const slot=embroiderySlot(config);
@@ -457,7 +467,9 @@ function create(root){
       const offsetY=-85*fly;
       const settle=progress>=.90?Math.sin((progress-.9)*Math.PI*20)*
         Math.exp(-(progress-.9)*23)*1.8:0;
-      const size=1+.12*fly,center=faceCenter;
+      // Arrive from in front of the viewer: grow toward the tracked face,
+      // then conform, rather than starting too large and shrinking into place.
+      const size=1-.32*fly,center=faceCenter;
       // Distinct cloth rims are essential for a visible layered stack.
       // Settled layers shift just 1–3 px rather than sharing one exact outline.
       const rimX=(layer.index-2)*1.35;
