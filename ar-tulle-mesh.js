@@ -43,7 +43,7 @@ varying float vFringe;
 float smoothVeilSilhouette(vec2 uv){
   // Head-covering sculpted veil. Unlike the old screen-size rectangular
   // mesh, this has a domed crown, soft side falloff and rounded lower hem.
-  float v=uv.y;
+  float v=1.0-uv.y; // UVs are vertically flipped at the vertex shader.
   float x=abs(uv.x-.5)*2.0;
   float upper=1.0-smoothstep(0.0,0.21,v);
   float lower=smoothstep(0.74,1.0,v);
