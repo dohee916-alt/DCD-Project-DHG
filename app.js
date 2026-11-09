@@ -24,6 +24,20 @@ function warmPackingAssets(){
   [A.conveyor,A.machine,A.packFoil,A.packClearFront].forEach(src=>{const image=new Image();image.src=src;});
 }
 try{let old=JSON.parse(sessionStorage.getItem(key));if(old&&Array.isArray(old.figures)&&old.figures.length===4){s={...fresh(),...old};if((old.initialPresetVersion||0)<4&&!s.figures.some(f=>f.orange||f.purple||f.packed)){s.figures.forEach((f,i)=>{f.value=[85,70,50,100][i];});s.initialPresetVersion=4;}s.firstInject=!!(old.firstInject||s.figures.some(f=>f.orange||f.purple));s.packGuideDone=!!(old.packGuideDone||s.figures.some(f=>f.packed));if(s.page==='14'||s.page==='14done'){s.page='14';s.signed=false;}if(['08a','08b','09','10','11'].includes(s.page)){s.page='12';s.phase='ready';}if(s.page==='ar'&&!s.arPackOpened){s.page=['15','16'].includes(s.arReturnPage)?s.arReturnPage:'15';s.phase='ready';}else if(s.page==='arFace'||s.page==='arOpen'){s.page='ar';s.phase='ready';}}}catch{}
+// Previously cached WEB04 can bypass WEB03 altogether on reload. When a
+// mobile browser remains portrait (including OS rotation lock), restore its
+// 428x926 preview instead of squeezing the 874x428 workbench into a strip.
+// Preserve the user's workbench progress and first syringe tutorial state.
+function mobilePortraitWorkbench(){
+ const view=document.querySelector('#viewport');
+ return phoneDevice()&&
+   (view?.clientHeight||window.innerHeight)>(view?.clientWidth||window.innerWidth);
+}
+if(s.page==='workbench'&&mobilePortraitWorkbench()){
+ s.page='03';
+ s.phase='waiting';
+ rotateGuideFinished=true;
+}
 function save(){if(!['00','01','02'].includes(s.page))sessionStorage.setItem(key,JSON.stringify(s));}
 function later(fn,ms){let id=setTimeout(fn,ms);timers.push(id);return id;}
 function clearTimers(){timers.forEach(clearTimeout);timers=[];}
@@ -1282,7 +1296,17 @@ stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){
 function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};}
 // Resize never rotates the WEB canvas in code. It only reads the user's
 // real viewport layout. Device motion unlocks the next step under OS lock.
-function onViewportChange(){fit();finishRotationIfReady();}
+function onViewportChange(){
+ // Switching back to a portrait browser must never show the compressed
+ // landscape WEB04 stripe. WEB03 retains the same workbench preview and hand.
+ if(s.page==='workbench'&&mobilePortraitWorkbench()){
+   rotateGuideFinished=true;
+   s.page='03';s.phase='waiting';
+   save();render();
+   return;
+ }
+ fit();finishRotationIfReady();
+}
 window.addEventListener('resize',onViewportChange);
 window.addEventListener('orientationchange',onViewportChange);
 window.addEventListener('deviceorientation',e=>{
@@ -1290,6 +1314,7 @@ window.addEventListener('deviceorientation',e=>{
  physicalLandscape=Number.isFinite(e.gamma)&&Math.abs(e.gamma)>55;
  if(physicalLandscape)finishRotationIfReady();
 });
-if(s.page==='00'&&s.phase==='intro')runIntro('00');else if(s.page==='01'&&s.phase==='intro')runIntro('01');else if(s.page==='03')startRotateGuide();else render();
+if(s.page==='00'&&s.phase==='intro')runIntro('00');else if(s.page==='01'&&s.phase==='intro')runIntro('01');else if(s.page==='03'&&s.phase==='waiting'){rotateGuideFinished=true;render();}
+else if(s.page==='03')startRotateGuide();else render();
 window.DCD_DEBUG={state:()=>structuredClone(s),page:p=>setPage(p),finishRupture};
 })();
