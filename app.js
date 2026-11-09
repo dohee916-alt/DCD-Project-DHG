@@ -627,7 +627,19 @@ async function morphArBlister(){
 }
 function stopArCamera(){window.DCD_AR_FLOW?.stop();if(arCameraStream){arCameraStream.getTracks().forEach(track=>track.stop());arCameraStream=null;}arCameraReady=false;}
 window.addEventListener('pagehide',stopArCamera);
-function attachArCamera(){const video=stage.querySelector('.ar-camera-video');if(video&&arCameraStream){video.srcObject=arCameraStream;video.play().then(()=>{if(s.page==='arFace'){window.DCD_AR_FLOW?.mount(stage,video);window.DCD_AR_FLOW?.start(video);}}).catch(error=>console.warn('[DCD AR] Camera playback:',error));}}
+function attachArCamera(){
+ const video=stage.querySelector('.ar-camera-video');
+ if(!video||!arCameraStream||s.page!=='arFace')return;
+ if(video.srcObject!==arCameraStream)video.srcObject=arCameraStream;
+ // Do not gate MediaPipe startup behind the play() Promise. Some mobile
+ // browsers delay its resolution even with a live, granted camera stream;
+ // the old code then showed POSITION YOUR FACE HERE forever.
+ window.DCD_AR_FLOW?.mount(stage,video);
+ window.DCD_AR_FLOW?.start(video);
+ if(video.paused){
+   video.play().catch(error=>console.warn('[DCD AR] Camera playback:',error));
+ }
+}
 function finishArIfReady(){if(s.page==='arOpen'&&arDropFinished){setPage('arFace');attachArCamera();}}
 async function askArCamera(){
   arCameraError='';
