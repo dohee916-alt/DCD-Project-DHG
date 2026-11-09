@@ -961,7 +961,7 @@ canvas.figure{object-fit:contain!important}
   opacity:1;visibility:visible;
 }
 .ar-immersive.ar-matting-active .ar-person-segment{
-  opacity:0!important;visibility:hidden!important;
+  opacity:1!important;visibility:visible!important;
 }
 .ar-immersive.ar-matting-active[data-ar-frame="AR4"] .ar-matting-video,
 .ar-immersive.ar-matting-active[data-ar-frame="AR5"] .ar-matting-video,
@@ -990,6 +990,7 @@ canvas.figure{object-fit:contain!important}
 /* Live portrait: the source frame updates independently from the matte. */
 .ar-immersive .ar-matting-video{display:none!important}
 .ar-immersive .ar-person-segment{transition:none!important;will-change:auto}
+.ar-immersive.ar-matting-active .ar-person-segment{opacity:1!important;visibility:visible!important;display:block!important}
 .ar-immersive:not(.ar-choice-phase):not(.ar-final-mode) .ar-person-segment{filter:none!important}
 
 /* Actual Figma export: keep the original 21px drop-shadow area outside
