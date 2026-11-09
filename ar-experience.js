@@ -179,6 +179,13 @@ function trackingStatus(message='',allowRetry=false){
  status.replaceChildren();
  if(message){const label=document.createElement('span');label.textContent=message;status.appendChild(label);}
  if(allowRetry){
+   // If ML assets cannot be loaded on this device, the experience must not
+   // become a permanent dead end. Keep the fallback explicit and user-driven.
+   const continueButton=document.createElement('button');
+   continueButton.type='button';continueButton.className='ar-face-retry';
+   continueButton.textContent='CONTINUE WITHOUT FACE TRACKING';
+   continueButton.addEventListener('click',()=>enter('AR4'));
+   status.appendChild(continueButton);
    const retry=document.createElement('button');
    retry.type='button';retry.className='ar-face-retry';
    retry.textContent='RETRY FACE TRACKING';
@@ -405,6 +412,15 @@ function start(video){
  // live <video>, so a late segmentation result cannot block face alignment.
  state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,canvas)||null;
  state.modelState='loading';trackingStatus('PREPARING FACE TRACKING');
+ // Detect a video/model deadlock without prompting for camera access again.
+ // A ready video with a visible face should be handled automatically; only
+ // unrecoverable initialization problems expose manual continuation.
+ const session=state.session;
+ delay(()=>{
+   if(!state.playing||session!==state.session||state.frame!=='AR3')return;
+   if(state.modelState==='loading')
+     trackingStatus('FACE TRACKING IS TAKING LONGER THAN EXPECTED',true);
+ },9000);
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }
