@@ -880,20 +880,12 @@ function render(){
    s.page='03';s.phase='waiting';rotateGuideFinished=true;save();
  }
  fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03'){
- // A portrait-locked browser must keep the preceding PORTRAIT scene intact.
- // The old rotate-preview showed a landscape workbench strip while the
- // browser viewport was still upright. Never render that preview on mobile.
- const lockedMobile=mobilePortraitWorkbench();
- if(lockedMobile){
-   h=resultMarkup()
-     .replace(/<button class="full-hit"[^>]*><\/button>/,'')
-     .replace(/<div class="lay doto guide-blink poster-click-guide"[^>]*>[\s\S]*?<\/div>/,'');
-   if(s.phase==='ready')
-     h+=text('ROTATE YOUR PHONE',55,554,318,44,'doto guide-blink rotate-guide');
- }else{
-   h='<div class="rotate-preview">'+workbenchMarkup(s.phase==='waiting').replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+
-     (s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');
- }
+ // Preserve the actual workbench interaction in the portrait-locked phone:
+ // its preview is the same WEB04 scene, rotated only within the existing
+ // portrait stage to fit the phone, not a static photo or a disabled overlay.
+ // This scene must stay interactive after the three instruction blinks.
+ h='<div class="rotate-preview">'+workbenchMarkup(s.phase==='waiting').replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+
+   (s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');
 }else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;if(['00','01','02'].includes(s.page)&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');
 if(packHand){
