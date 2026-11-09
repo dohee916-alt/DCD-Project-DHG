@@ -86,10 +86,11 @@ function fit(){
  // when the user physically turns the phone upright, simply unrotate it.
  // This is a layout fit, NOT a simulated device-orientation animation.
  const ar=['ar','arOpen','arFace'].includes(s.page);
- // The phone owner chooses when to turn the device. A landscape WEB scene
- // fills a portrait phone sideways instead of shrinking to a narrow strip;
- // when the phone is turned landscape, the scene is already upright.
- const sideways=phoneDevice()&&((ar&&W>H)||(w>h&&H>W));
+ // WEB04–WEB16 are genuine landscape pages. Never rotate their HTML
+ // inside a portrait phone; show the rotation guide first and let the phone
+ // physically switch to landscape, where these pages remain upright.
+ // Only the portrait AR composition keeps its existing landscape-phone fit.
+ const sideways=ar&&phoneDevice()&&W>H;
  v.classList.toggle('workbench-viewport',w>h);
  scale=sideways?Math.min(W/h,H/w):Math.min(W/w,H/h);
  stage.style.width=w+'px';stage.style.height=h+'px';
@@ -849,7 +850,7 @@ function openArPack(){
   setPage('arOpen','opening');
   morphArBlister();
 }
-function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(s.phase==='ready'?text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'):'');else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
+function render(){fit();stage.className='stage page-'+s.page+' phase-'+s.phase;let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03')h='<div class="rotate-preview">'+workbenchMarkup(false).replace(/<div class="lay doto[^"]*"[^>]*>[\s\S]*?<\/div>/g,'')+'</div>'+(text('ROTATE YOUR PHONE',73,554,292,44,'doto guide-blink rotate-guide'));else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h;if(['00','01','02'].includes(s.page)&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');
 if(packHand){
   // The workbench re-renders after injections; keep the animation clock
@@ -1153,16 +1154,26 @@ function declineConsent(){
   later(()=>{if(s.page!=='16')return;if(copy){copy.innerHTML='Thank you<br>for Prescribing!';copy.style.opacity='1';}root.insertAdjacentHTML('beforeend',glassButton('TEST IT',669,241,134,'ar'));},720);
 }
 let physicalLandscape=false;
+function viewportLandscape(){
+ const v=document.querySelector('#viewport');
+ return (v?.clientWidth||window.innerWidth)>(v?.clientHeight||window.innerHeight);
+}
 function finishRotationIfReady(){
- if(s.page==='03'&&rotateGuideFinished&&(phoneDevice()||window.innerWidth>window.innerHeight||physicalLandscape))setPage('workbench');
+ // On mobile, wait for the BROWSER VIEWPORT to physically become landscape.
+ // Device tilt alone does not mean the CSS viewport rotated (auto-rotate may
+ // be disabled); entering workbench then would recreate the tiny-strip bug.
+ const rotated=phoneDevice()?viewportLandscape():(viewportLandscape()||physicalLandscape);
+ if(s.page==='03'&&rotateGuideFinished&&rotated)setPage('workbench');
 }
 function startRotateGuide(){
- // Mobile browsers already follow the user's chosen physical orientation.
- // Do not gate the first syringe tutorial on orientation sensor permission
- // or require the user to turn the phone to unlock WEB04.
- if(phoneDevice()){rotateGuideFinished=true;setPage('workbench');return;}
- rotateGuideFinished=false;setPage('03');
- later(()=>{if(s.page!=='03')return;rotateGuideFinished=true;s.phase='waiting';render();finishRotationIfReady();},M.rotateGuideMs);
+ // Both desktop and mobile retain WEB03 and its rotate-phone prompt.
+ rotateGuideFinished=false;
+ setPage('03');
+ later(()=>{
+   if(s.page!=='03')return;
+   rotateGuideFinished=true;s.phase='waiting';render();
+   finishRotationIfReady();
+ },M.rotateGuideMs);
 }
 async function advanceNewPrescription(){
   if(s.phase==='transition')return;
