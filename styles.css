@@ -1478,3 +1478,20 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-figma-person-union{
   display:block!important;
 }
+
+/* Correct compositing order:
+   4: full-bleed Figma-toned peach base
+   5: original blurred person Union (multiply onto peach)
+   6: softened color-field layers
+   7+: approved blister, text and choices.
+   The previous shared z=5 let the opaque peach base cover the Union. */
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-tint{
+  z-index:4!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-figma-person-union{
+  z-index:5!important;
+  mix-blend-mode:multiply!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient{
+  z-index:6!important;
+}
