@@ -214,47 +214,71 @@ function observeFace(points,now){
 }
 function observeHands(hands,now){
  if(!['AR6','AR7'].includes(state.frame))return;
- const hand=hands?.[0];
- if(!hand?.length){state.guideSince=0;state.pinchStart=null;state.pinchReady=true;return;}
+ const box=state.faceBox;
+ // Do not guess a generic face position if face tracking temporarily drops.
+ if(!box)return;
+ const near=(p,pad=.075)=>p.x>box.l-pad&&p.x<box.r+pad
+   &&p.y>box.t-pad&&p.y<box.b+pad;
  const display=p=>({x:1-p.x,y:p.y});
- const index=display(hand[8]),thumb=display(hand[4]),palm=display(hand[9]);
- const pick={x:(index.x+thumb.x)/2,y:(index.y+thumb.y)/2};
- const width=Math.max(.045,distance(hand[5],hand[17]));
- // Palm-size relative threshold works for frontal hands as well as rotated
- // hands, without requiring users to turn a pinching hand sideways.
- const pinch=distance(hand[4],hand[8])<Math.max(.045,width*.66);
- const box=state.faceBox||{l:.25,r:.75,t:.21,b:.77};
- const near=(p,pad=.055)=>p.x>box.l-pad&&p.x<box.r+pad&&p.y>box.t-pad&&p.y<box.b+pad;
- const onFace=near(pick)||near(index,.075);
+ const choices=(hands||[]).filter(h=>h?.length>=21).map(h=>{
+   const index=display(h[8]),thumb=display(h[4]);
+   const pick={x:(index.x+thumb.x)*.5,y:(index.y+thumb.y)*.5};
+   const palmWidth=Math.max(.035,distance(h[5],h[17]));
+   const tipGap=distance(h[4],h[8]);
+   const pinch=tipGap<Math.max(.065,palmWidth*.78);
+   const palmSpan=Math.max(.04,distance(h[0],h[9]));
+   return {pick,tipGap,pinch,palmSpan,onFace:near(pick)||near(index,.085),h};
+ });
+ if(!choices.length){
+   // A hand can briefly be occluded by the face; do not force the user to
+   // turn it sideways just to preserve tracking.
+   if(state.pinchStart&&now-state.pinchStart.lastSeen<280)return;
+   state.pinchStart=null;state.pinchReady=true;return;
+ }
+ // Choose the hand closest to the user's FACE, not blindly hands[0].
+ const mid={x:(box.l+box.r)/2,y:(box.t+box.b)/2};
+ choices.sort((a,b)=>((!a.onFace?1:0)-(!b.onFace?1:0))
+   ||distance(a.pick,mid)-distance(b.pick,mid));
+ const hand=choices[0];
  if(state.frame==='AR6'){
-   // Advance after user imitates the pinch AND pull, not merely face proximity.
-   if(!pinch){state.pinchStart=null;state.pinchReady=true;return;}
-   if(!state.pinchReady)return;
-   const span=Math.max(.06,distance(hand[0],hand[9]));
-   if(!state.pinchStart){state.pinchStart={point:pick,span,near:now};return;}
-   const start=state.pinchStart;
-   if((distance(pick,start.point)>.105||span>start.span*1.27)&&now-start.near>140){
-     state.pinchReady=false;state.pinchStart=null;
-     state.handGuide?.hideOnce(400);
+   // First touch the actual face while pinching; pulling belongs to AR7.
+   if(!hand.onFace||!hand.pinch){state.pinchStart=null;return;}
+   if(!state.pinchStart){state.pinchStart={point:hand.pick,near:now,lastSeen:now};return;}
+   state.pinchStart.lastSeen=now;
+   if(now-state.pinchStart.near>=130){
+     state.pinchStart=null;state.pinchReady=true;
+     state.handGuide?.hideOnce(0);
      enter('AR7');
    }
    return;
  }
- if(!pinch){state.pinchStart=null;state.pinchReady=true;return;}
+ if(!hand.pinch){
+   // Every fabric is a separate touch -> pull. Reset after releasing.
+   state.pinchStart=null;state.pinchReady=true;return;
+ }
  if(!state.pinchReady)return;
- const span=Math.max(.06,distance(hand[0],hand[9]));
  if(!state.pinchStart){
-   if(onFace)state.pinchStart={point:pick,span,near:now};
+   if(hand.onFace){
+     state.pinchStart={point:hand.pick,palmSpan:hand.palmSpan,
+       near:now,lastSeen:now,fromFace:true};
+   }
    return;
  }
  const start=state.pinchStart;
- const awayFromFace=distance(pick,start.point)>.105;
- // Pulling towards the camera grows the hand's apparent palm size.
- const pullTowardCamera=span>start.span*1.27;
- if((awayFromFace||pullTowardCamera)&&now-start.near>140){
+ start.lastSeen=now;
+ const moved=distance(hand.pick,start.point);
+ // Pull the pinched fabric AWAY from the face in the image plane, or toward
+ // the viewer via perspective growth. Neither requires sideways rotation.
+ const faceCenterDistance=distance(hand.pick,mid);
+ const startCenterDistance=distance(start.point,mid);
+ const awayFromFace=faceCenterDistance>startCenterDistance+.055;
+ const movedOut=moved>.085&&awayFromFace;
+ const movedForward=hand.palmSpan>start.palmSpan*1.16;
+ if(now-start.near>=135&&(movedOut||movedForward)){
    state.pinchReady=false;state.pinchStart=null;
    removeFabric();
-   state.handGuide?.hideOnce(900);
+   state.handGuide?.hideOnce(0);
+   // Do not repeat the 3D guide for every remaining mask.
    if(state.maskCount===0)delay(()=>enter('AR8'),420);
  }
 }
