@@ -147,7 +147,12 @@ function enter(frame){
      preview.innerHTML=window.DCD_AR_PACK_PREVIEW();
      window.DCD_RENDER_FIGURES?.();
    }
-   buttons(()=>enter('AR6'),()=>enter('AR5-2'));break;
+   // Figma AR5-1 (636:672) has a single centered NO button.
+   // The prior YES choice remains in AR5 and is not repeated here.
+   const choiceArea=state.root.querySelector('.ar-flow-choices');
+   choiceArea.innerHTML='<button type="button" data-ar-choice="no" class="ar-choice no">NO</button>';
+   choiceArea.querySelector('[data-ar-choice=no]').addEventListener('click',e=>{e.stopPropagation();enter('AR5-2');});
+   break;
  case 'AR5-2':
    caption('YOU AGREED TO THESE');
    // Remove the original five fabrics with time to see them separate.
