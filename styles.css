@@ -1395,8 +1395,8 @@ canvas.figure{object-fit:contain!important}
 
 /* AR3–AR10 text typography and geometry: audited against the actual Figma
    428×926 artwork. #stage owns the sole viewport scaling via app.js fit();
-   these are LOCAL artboard coordinates, with no additional 80px offset,
-   percentage placement, transforms or viewport-dependent adjustments. */
+   the mockup header is removed on live AR: subtract its 80px area,
+   without resizing fonts or altering horizontal positions. */
 #stage .ar-immersive .ar-copy{
   position:absolute!important;
   right:auto!important;
@@ -1410,29 +1410,29 @@ canvas.figure{object-fit:contain!important}
   z-index:9!important;
 }
 #stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
-  left:50px!important;top:141px!important;width:342px!important;
+  left:50px!important;top:61px!important;width:342px!important;
   font:900 16px/32px Doto,Arial,sans-serif!important;
   font-variation-settings:"ROND" 0,"wght" 900!important;
   color:#111!important;
 }
 #stage .ar-immersive[data-ar-frame="AR3"] .ar-copy{
-  left:68px!important;top:141px!important;width:292px!important;
+  left:68px!important;top:61px!important;width:292px!important;
 }
 #stage .ar-immersive[data-ar-frame="AR4"] .ar-copy{
-  left:68px!important;top:144px!important;width:306px!important;
+  left:68px!important;top:64px!important;width:306px!important;
   height:32px!important;
   font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
   color:#111!important;
 }
 #stage .ar-immersive:is([data-ar-frame="AR5"],[data-ar-frame="AR5-1"]) .ar-copy{
-  left:61px!important;top:144px!important;width:306px!important;
+  left:61px!important;top:64px!important;width:306px!important;
   height:64px!important;
   font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
 }
 #stage .ar-immersive[data-ar-frame="AR5"] .ar-copy{color:#111!important}
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{color:#f9f6f2!important}
 #stage .ar-immersive[data-ar-frame="AR5-2"] .ar-copy{
-  left:54px!important;top:144px!important;width:306px!important;
+  left:54px!important;top:64px!important;width:306px!important;
   height:32px!important;
   font:700 26px/32px "Source Sans 3",Arial,sans-serif!important;
   color:#111!important;
