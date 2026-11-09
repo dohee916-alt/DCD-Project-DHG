@@ -677,6 +677,9 @@ canvas.figure{object-fit:contain!important}
 .dcd-ar-handoff-stage .ar-pack-flip,
 .dcd-ar-handoff-stage .ar-orange-background,
 .dcd-ar-handoff-stage .ar-headline{animation:none!important}
+/* The WEB15/16 blister itself morphs into AR. Once that transfer finishes,
+   the separate standalone AR entrance animation must NEVER replay. */
+#stage.page-ar.dcd-ar-arrived .ar-pack-flip{animation:none!important;transform:none!important}
 
 /* Clean white intermediate canvas between fading landscape and portrait gradients.
    Does not affect WEB15/16 or the completed AR background. */
