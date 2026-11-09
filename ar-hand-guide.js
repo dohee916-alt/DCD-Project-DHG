@@ -97,9 +97,27 @@ function create(root){
     }));
    };
    initialThumbIndex=poseSnap(.045);
-   // Same GLB animation used before the regression: natural thumb pinch
-   // at 1.95s, with no forced base rotation or pose mixing for the thumb.
-   const naturalPinch=poseSnap(Math.min(1.95,openClip.duration*.49));
+   // The previous hardcoded 1.95-second snapshot bends the thumb across
+   // the palm. Instead inspect the ACTUAL fingertip positions throughout
+   // the authored Pose_OKHand animation to find its real pinch frame.
+   // The thumb is never manually rotated: only source animation keyframes.
+   const thumbTip=model.getObjectByName('thumb_dist');
+   const indexTip=model.getObjectByName('index_dist');
+   if(!thumbTip||!indexTip)throw Error('Hand fingertip bones missing');
+   let bestTime=.05,bestGap=Infinity;
+   const thumbWorld=new THREE.Vector3(),indexWorld=new THREE.Vector3();
+   for(let step=1;step<200;step++){
+    const sampleTime=openClip.duration*step/200;
+    mixer.setTime(sampleTime);
+    model.updateMatrixWorld(true);
+    thumbTip.getWorldPosition(thumbWorld);
+    indexTip.getWorldPosition(indexWorld);
+    const gap=thumbWorld.distanceTo(indexWorld);
+    if(gap<bestGap){bestGap=gap;bestTime=sampleTime;}
+   }
+   const naturalPinch=poseSnap(bestTime);
+   console.info('[DCD AR] Native fingertip pinch candidate',
+     {time:bestTime.toFixed(3),boneGap:bestGap.toFixed(3)});
    openAction.stop();
    action.reset();
    action.enabled=true;
