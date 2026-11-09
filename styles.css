@@ -728,6 +728,11 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive[data-ar-frame=AR3] .ar-copy,.ar-immersive[data-ar-frame=AR6] .ar-copy,.ar-immersive[data-ar-frame=AR7] .ar-copy{
  font:900 21px/1.3 Doto,Arial,sans-serif}
 .ar-immersive[data-ar-frame=AR8] .ar-copy{color:#d83a00}
+/* AR3 tracker feedback: visible only during face positioning. This keeps
+   camera/model failures distinguishable from a face not yet aligned. */
+.ar-tracking-status{position:absolute;left:25px;right:25px;bottom:136px;z-index:12;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;text-align:center;color:#d83a00;font:700 15px/20px 'Source Sans 3',Arial,sans-serif}
+.ar-immersive:not([data-ar-frame="AR3"]) .ar-tracking-status{display:none}
+.ar-tracking-status .ar-face-retry{pointer-events:auto;touch-action:manipulation;border:1px solid #e84c16;border-radius:26px;background:rgba(255,255,255,.93);color:#d83a00;font:700 14px/20px 'Source Sans 3',Arial,sans-serif;padding:12px 20px;cursor:pointer}
 .ar-face-guide{position:absolute;left:69px;top:267px;width:290px;height:376px;z-index:5;
  border:4px dotted #ed3e11;border-radius:50%;opacity:0;pointer-events:none}
 .ar-align-gesture .ar-face-guide{opacity:1;animation:arGuidePulse 2s ease-in-out infinite}
