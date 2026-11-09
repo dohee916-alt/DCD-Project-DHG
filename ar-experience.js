@@ -128,6 +128,9 @@ function enter(frame){
    trackingStatus(state.modelState==='ready'?'POSITION YOUR FACE INSIDE THE GUIDE':'PREPARING FACE TRACKING');
    break;
  case 'AR4':
+   // Hand tracking is needed only for AR6+. Do not postpone face tracking
+   // by requesting another model until the face has been recognized.
+   if(!state.hand)loadHandWhenNeeded(state.session);
    caption('YOU AGREED TO THESE');
    state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());
    state.sheets=[];state.tulle?.clear();
@@ -187,6 +190,15 @@ function trackingStatus(message='',allowRetry=false){
    });
    status.appendChild(retry);
  }
+}
+function cameraError(message){
+ if(state.frame!=='AR3')return;
+ state.modelState='error';
+ state.guideSince=0;
+ trackingStatus(message==='NotAllowedError'?'CAMERA PERMISSION DENIED':
+   message==='NotFoundError'?'FRONT CAMERA NOT FOUND':
+   message==='CAMERA CONNECTION LOST'?'CAMERA CONNECTION LOST':
+   'CAMERA UNAVAILABLE',false);
 }
 function faceDisplayRect(points){
  // FaceLandmarker coordinates are relative to the SOURCE camera frame.
@@ -270,6 +282,25 @@ function observeHands(hands,now){
    if(state.maskCount===0)delay(()=>enter('AR8'),420);
  }
 }
+async function loadHandWhenNeeded(session){
+ if(!state.playing||session!==state.session||state.hand)return;
+ try{
+   const m=await import(SDK);
+   if(session!==state.session)return;
+   const vision=await m.FilesetResolver.forVisionTasks(WASM);
+   if(session!==state.session)return;
+   let model;
+   try{model=await m.HandLandmarker.createFromOptions(vision,{
+     baseOptions:{modelAssetPath:MODEL_ROOT+'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'GPU'},
+     runningMode:'VIDEO',numHands:2
+   });}
+   catch{model=await m.HandLandmarker.createFromOptions(vision,{
+     baseOptions:{modelAssetPath:MODEL_ROOT+'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'CPU'},
+     runningMode:'VIDEO',numHands:2
+   });}
+   if(session===state.session)state.hand=model;else model.close();
+ }catch(error){console.warn('[DCD AR] Hand tracker:',error);}
+}
 async function initModels(session){
  if(session!==state.session)return;
  state.modelState='loading';
@@ -294,7 +325,10 @@ async function initModels(session){
    if(session!==state.session)return;
    state.modelState=state.face?'ready':'error';
    trackingStatus(state.face?'POSITION YOUR FACE INSIDE THE GUIDE':'FACE TRACKING UNAVAILABLE',!state.face);
-   if(session===state.session)await load('hand',m.HandLandmarker,'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',{numHands:2});
+   // Loading the hand model concurrently consumes GPU/WASM resources that
+   // AR3 needs for initial face recognition. Start it only after moving on.
+   if(session===state.session&&state.frame!=='AR3')
+     await load('hand',m.HandLandmarker,'hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',{numHands:2});
  }catch(error){
    console.warn('[DCD AR] Vision models:',error);
    if(session===state.session){state.modelState='error';trackingStatus('FACE TRACKING UNAVAILABLE',true);}
@@ -385,7 +419,7 @@ function stop(){
  state.root=null;state.stage=null;state.video=null;
 }
 
-window.DCD_AR_FLOW={markup,mount,start,stop,frame:()=>state.frame,debugNext:()=>{
+window.DCD_AR_FLOW={markup,mount,start,stop,cameraError,frame:()=>state.frame,debugNext:()=>{
  const pos=frameNames.indexOf(state.frame);
  if(state.frame==='AR4'){for(let i=state.maskCount;i<5;i++)addFabric();enter('AR5');}
  else if(state.frame==='AR5'){enter('AR5-1');}
