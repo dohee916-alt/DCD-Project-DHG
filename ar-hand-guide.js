@@ -125,11 +125,9 @@ function create(root){
    action.clampWhenFinished=true;
    action.play();
    foldedThumbIndex=poseSnap(sourceEnd);
-   for(let n=0;n<foldedThumbIndex.length;n++){
-    if(foldedThumbIndex[n].node.name.startsWith('thumb_')){
-     foldedThumbIndex[n]=naturalPinch[n];
-    }
-   }
+   // Thumb and index must come from the SAME real fingertip-contact
+   // moment, otherwise mixing clips moves the index out of alignment.
+   foldedThumbIndex=naturalPinch;
    mixer.setTime(sourceEnd);
    // Restore the GLB's unmodified thumb from the early native pose.
    // Never rotate thumb_trapez by a guessed axis or maximize distance.
