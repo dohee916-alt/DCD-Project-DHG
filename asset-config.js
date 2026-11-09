@@ -1,9 +1,9 @@
 /* Swap approved visual exports here without changing interaction rules. */
 window.DCD_ASSETS = Object.freeze({
-  poster: "assets/figma-current/hd/web00-02-figma-original.png",
-  opening: "assets/figma-current/hd/web00-02-figma-original.png",
+  poster: "assets/figma-current/hd/posterA.png",
+  opening: "assets/figma-current/hd/posterA.png",
   posterAlternate: "assets/figma-current/hd/posterB.png",
-  posterResult: "assets/figma-current/hd/web00-02-figma-original.png",
+  posterResult: "assets/figma-current/hd/posterResult-updated.png",
   openingBreakVideo: null, // Set when the approved rupture motion file exists.
   openingLastFrame: null,
   workbenchBackground: "assets/figma-render/workbench-bg@2x.png",
