@@ -206,7 +206,7 @@ function enter(frame){
  case 'AR6':caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
  case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
  case 'AR8':
-   caption('FINALLY!');
+   // The unmasking flash itself is the transition; no FINALLY caption.
    delay(()=>enter('AR9'),1800);break;
  case 'AR9':
    typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1400);
