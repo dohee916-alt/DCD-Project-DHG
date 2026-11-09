@@ -739,10 +739,9 @@ canvas.figure{object-fit:contain!important}
 .ar-choice.no{background:linear-gradient(150deg,#c9c2be,#98949b)}
 .ar-gesture-guide{position:absolute;inset:0;z-index:6;display:none;opacity:0;pointer-events:none;overflow:hidden}
 .ar-gesture-guide canvas{display:block;width:100%;height:100%;pointer-events:none}
-.ar-final-color{position:absolute;z-index:5;inset:0;opacity:0;pointer-events:none;
- background:radial-gradient(ellipse at 54% 44%,rgba(230,79,29,.84),rgba(201,40,9,.88) 46%,rgba(255,180,143,.83) 74%,rgba(255,219,202,.92))}
-.ar-final-mode .ar-final-color{animation:arColorWash 1.8s ease-out both}
-@keyframes arColorWash{from{opacity:0;transform:scale(1.1)}to{opacity:.95;transform:scale(1)}}
+/* AR9/AR10 now reuse the AR5-1 Figma Group 3 tint + four gradients.
+   The older standalone radial color wash must never appear. */
+.ar-final-color{display:none!important;}
 .ar-final-mode .ar-portrait-camera,
 .ar-final-mode .ar-person-segment{filter:blur(23px) grayscale(.8) sepia(.7) saturate(2.4) brightness(.62)}
 .ar-final-mode .ar-copy{top:395px;color:white;font:700 29px/1.18 'Source Sans 3',Arial,sans-serif}
@@ -1208,13 +1207,13 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive[data-ar-frame="AR5-1"] .ar-choice-gradient{
   display:none!important;
 }
-.ar-immersive[data-ar-frame="AR5-1"] .ar5-figma-tint{
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-tint{
   display:block!important;
   position:absolute;left:-16px;top:26px;width:459px;height:883px;
   z-index:5;opacity:1;background:#d83a00;
   mix-blend-mode:color;pointer-events:none;
 }
-.ar-immersive[data-ar-frame="AR5-1"] .ar5-figma-gradient{
+.ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar5-figma-gradient{
   display:block!important;position:absolute;
   width:510px;height:942px;z-index:5;
   opacity:1;pointer-events:none;overflow:visible;
