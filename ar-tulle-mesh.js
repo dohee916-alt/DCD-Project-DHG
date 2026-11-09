@@ -58,7 +58,7 @@ void main(){
   // Give the photographic thread visible scattering while leaving the
   // spaces between woven fibers transparent. A faint organza body connects
   // the fabric even when individual thread pixels shrink at camera scale.
-  float netAlpha=0.030+0.31*strand+0.025*detail;
+  float netAlpha=0.070+0.52*strand+0.040*detail;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -216,36 +216,34 @@ function canvasCloth(root){
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
     // Keep generous margins around the face, but never let the cloth grow
     // into the heading or extend an entire face-height beyond the chin.
-    const cw=clamp(fw*1.32,fw+24,382);
-    const ch=clamp(fh*1.30,fh+35,540);
-    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2;
+    const cw=clamp(fw*1.72,fw+80,412);
+    const ch=clamp(fh*1.94,fh+145,690);
+    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2-fh*.24;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
     for(let pass=0;pass<2;pass++)for(const layer of layers){
       const age=(now-layer.start)/1000;
-      const progress=clamp(age/1.25,0,1);
-      const fly=Math.pow(1-progress,3);
-      const shiftX=(layer.index%2?1:-1)*56*fly,shiftY=-85*fly;
+      const progress=clamp(age/1.05,0,1);
+      const fly=1-ease(progress);
+      const shiftX=(layer.index%2?1:-1)*245*fly,shiftY=-165*fly;
       const exit=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
-      const alpha=layer.removing?1-ease(exit):clamp(age/.24,0,1);
+      const alpha=layer.removing?1-ease(exit):clamp(age/.14,0,1);
       if(alpha<=0)continue;
       ctx.save();ctx.globalAlpha=alpha;
       ctx.translate(cx+shiftX+exit*45,cy+shiftY-exit*155);
       ctx.rotate(angle);
-      const l=-cw/2,r=cw/2,t=-ch*.47,b=ch*.53;
+      const l=-cw/2,r=cw/2,t=-ch*.50,b=ch*.50;
       // One cloth with four continuous sides, softened top corners and
       // subtly tucked lower corners, rather than a face-shaped ellipse.
       ctx.beginPath();
       ctx.moveTo(0,t);
       ctx.bezierCurveTo(cw*.23,t-cw*.01,r-cw*.11,t+ch*.09,r-cw*.07,t+ch*.27);
       ctx.quadraticCurveTo(r,t+ch*.43,r-cw*.035,b-ch*.26);
-      // Raise and tuck the lower corners, allow the central hem to curl.
-      // Two unequal arcs prevent the sheet from ending in a straight edge.
-      ctx.quadraticCurveTo(r-cw*.035,b-ch*.11,r-cw*.21,b-ch*.075);
-      ctx.quadraticCurveTo(r-cw*.38,b-ch*.025,0,b-ch*.035);
-      ctx.quadraticCurveTo(l+cw*.40,b+ch*.015,l+cw*.21,b-ch*.085);
-      ctx.quadraticCurveTo(l+cw*.035,b-ch*.12,l,b-ch*.18);
+      // Broad, smooth sheet reaching past the chin; no tucked-up hem.
+      ctx.quadraticCurveTo(r-cw*.06,b-ch*.05,r-cw*.16,b);
+      ctx.quadraticCurveTo(0,b+ch*.02,l+cw*.16,b);
+      ctx.quadraticCurveTo(l+cw*.06,b-ch*.05,l,b-ch*.18);
       ctx.quadraticCurveTo(l+cw*.035,t+ch*.43,l+cw*.07,t+ch*.27);
       ctx.bezierCurveTo(l+cw*.11,t+ch*.09,l+cw*.23,t-cw*.01,0,t);
       ctx.closePath();ctx.clip();
@@ -473,8 +471,10 @@ function create(root){
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
     const angle=uprightFaceAngle(eyeA,eyeB),co=Math.cos(angle),si=Math.sin(angle);
-    const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2;
-    const cw=clamp(fw*1.32,fw+24,382),ch=clamp(fh*1.30,fh+35,540);
+    const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2-fh*.24;
+    // FaceLandmarker ends at the forehead skin, NOT at the hairline.
+    // This is an actual head-covering veil, extended above hair and ears.
+    const cw=clamp(fw*1.72,fw+80,412),ch=clamp(fh*1.94,fh+145,690);
     faceCenter={x:cx,y:cy,cw,ch,co,si,fw,fh};
     // Build the real tracked face surface in the same mirrored screen space.
     facePixels=new Float32Array(468*2);
@@ -520,23 +520,23 @@ function create(root){
       // rectangular corners beside the head. This smooth taper is spatial,
       // not a sinusoidal crease across the forehead.
       const sideFold=clamp((Math.abs(nx)-.72)/.28,0,1);
-      const upperCorner=clamp((.19-v)/.19,0,1)*clamp((Math.abs(nx)-.64)/.36,0,1);
-      const curl=tuck*(.065+.055*edgeX)+sideFold*.22+upperCorner*.09;
+      const upperCorner=clamp((.12-v)/.12,0,1)*clamp((Math.abs(nx)-.84)/.16,0,1);
+      const curl=tuck*(.015+.012*edgeX)+sideFold*.055+upperCorner*.015;
       // Round the forehead and contour the cheeks instead of retaining the
       // rectangular grid's top corners and perfectly vertical side rails.
       const topRegion=clamp((.29-v)/.29,0,1);
       const jawRegion=clamp((v-.61)/.39,0,1);
-      const faceContour=1-.25*topRegion*topRegion-.15*jawRegion*jawRegion;
+      const faceContour=1-.035*topRegion*topRegion-.045*jawRegion*jawRegion;
       const px=nx*cw*.5*(1-curl)*faceContour;
       const rolledEdge=Math.max(0,(v-.87)/.13);
       const curve=Math.pow(Math.abs(nx),1.5);
       // A curved forehead edge dips toward the temples. At the chin, pull
       // the outer corners up around the jaw to avoid a flat rectangular hem.
-      const foreheadRound=topRegion*topRegion*fh*.19*Math.pow(Math.abs(nx),2.3);
-      const jawRound=jawRegion*jawRegion*fh*.095*Math.pow(Math.abs(nx),1.6);
-      const hemLift=tuck*fh*(.025+.020*curve);
-      const hemScoop=tuck*fh*.015*(1-curve);
-      const py=(v-.47)*ch+foreheadRound-jawRound-
+      const foreheadRound=topRegion*topRegion*fh*.025*Math.pow(Math.abs(nx),2.3);
+      const jawRound=jawRegion*jawRegion*fh*.016*Math.pow(Math.abs(nx),1.6);
+      const hemLift=tuck*fh*.006;
+      const hemScoop=tuck*fh*.005*(1-curve);
+      const py=(v-.50)*ch+foreheadRound-jawRound-
         hemLift+hemScoop-rolledEdge*rolledEdge*fh*.012;
       const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
       const cheek=Math.exp(-(((Math.abs(nx)-.51)/.27)**2+((v-.51)/.31)**2));
@@ -585,7 +585,7 @@ function create(root){
     // One short, decisive approach with a softly decelerating landing.
     // The slow 65%-of-flight drift in the prior version is removed.
     t=clamp(t,0,1);
-    return 1-Math.pow(1-t,3);
+    return t*t*(3-2*t);
   }
   function render(now){
     if(!live)return;
@@ -644,27 +644,27 @@ function create(root){
           const tex=textures[layer.variant]?.[layer.index];
           if(!tex)continue;
           const seconds=(now-layer.start)/1000;
-          const progress=clamp(seconds/1.25,0,1);
+          const progress=clamp(seconds/1.05,0,1);
           const approach=layer.removing?1:arrival(progress);
           const fly=1-approach;
           const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
-          const opacity=layer.removing?1-ease(leave):clamp(seconds/.24,0,1);
+          const opacity=layer.removing?1-ease(leave):clamp(seconds/.14,0,1);
           if(opacity<=0)continue;
-          const shiftX=(layer.index%2?-1:1)*56*fly;
-          const shiftY=-85*fly;
+          const shiftX=(layer.index%2?-1:1)*245*fly;
+          const shiftY=-165*fly;
           const center=faceCenter;
           const clothWidth=center.cw,clothHeight=center.ch;
           const xCos=center.co,ySin=center.si;
           for(let at=0;at<mesh.length;at+=stride){
             const u=mesh[at+3],v=mesh[at+4],nx=2*u-1;
             const flatX=nx*clothWidth*.5;
-            const flatY=(v-.47)*clothHeight;
+            const flatY=(v-.50)*clothHeight;
             const startX=center.x+flatX*xCos-flatY*ySin;
             const startY=center.y+flatX*ySin+flatY*xCos;
             // Contact begins at the nose, spreads through the cheeks, and
             // reaches the free edges last. At the end all vertices settle.
             const radius=clamp(Math.hypot(nx*.7,(v-.48)*1.15),0,1);
-            const threshold=.48+.28*radius;
+            const threshold=.23+.24*radius;
             const contact=clamp((approach-threshold)/(1-threshold),0,1);
             const smooth=contact*contact*(3-2*contact);
             const pull=clamp((v-.73)/.27,0,1);
@@ -672,12 +672,12 @@ function create(root){
             const x=startX+(mesh[at]-startX)*smooth;
             const y=startY+(mesh[at+1]-startY)*smooth;
             const lift=ease(leave);
-            const scale=1-.28*fly;
+            const scale=1-.46*fly;
             vertices[at]=(center.x+(x-center.x)*scale+shiftX+flutter+lift*42)/W*2-1;
             vertices[at+1]=1-(center.y+(y-center.y)*scale+shiftY-lift*175)/H*2;
             // Before contact the textile approaches from in front of the
             // nose; final Z is the sampled face surface with jaw curl.
-            vertices[at+2]=clamp(-.65*fly+mesh[at+2]*approach,-.8,.8);
+            vertices[at+2]=clamp(-.72*fly+mesh[at+2]*approach-layer.index*.008,-.8,.8);
             for(let j=3;j<stride;j++)vertices[at+j]=mesh[at+j];
           }
           gl.bindBuffer(gl.ARRAY_BUFFER,vb);
@@ -686,7 +686,7 @@ function create(root){
           gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.thread);
           // Five stacked textile layers must stay translucent; embroidery
           // remains opaque enough to be read even across the older layers.
-          gl.uniform1f(opacityUniform,opacity*(pass===0?.62:1));
+          gl.uniform1f(opacityUniform,opacity*(pass===0?.84:0));
           gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
         }
       }
