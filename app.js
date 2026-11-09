@@ -1142,8 +1142,17 @@ function declineConsent(){
   later(()=>{if(s.page!=='16')return;if(copy){copy.innerHTML='Thank you<br>for Prescribing!';copy.style.opacity='1';}root.insertAdjacentHTML('beforeend',glassButton('TEST IT',669,241,134,'ar'));},720);
 }
 let physicalLandscape=false;
-function finishRotationIfReady(){if(s.page==='03'&&rotateGuideFinished&&(window.innerWidth>window.innerHeight||physicalLandscape))setPage('workbench');}
-function startRotateGuide(){rotateGuideFinished=false;setPage('03');later(()=>{if(s.page!=='03')return;rotateGuideFinished=true;s.phase='waiting';render();finishRotationIfReady();},M.rotateGuideMs);}
+function finishRotationIfReady(){
+ if(s.page==='03'&&rotateGuideFinished&&(phoneDevice()||window.innerWidth>window.innerHeight||physicalLandscape))setPage('workbench');
+}
+function startRotateGuide(){
+ // Mobile browsers already follow the user's chosen physical orientation.
+ // Do not gate the first syringe tutorial on orientation sensor permission
+ // or require the user to turn the phone to unlock WEB04.
+ if(phoneDevice()){rotateGuideFinished=true;setPage('workbench');return;}
+ rotateGuideFinished=false;setPage('03');
+ later(()=>{if(s.page!=='03')return;rotateGuideFinished=true;s.phase='waiting';render();finishRotationIfReady();},M.rotateGuideMs);
+}
 async function advanceNewPrescription(){
   if(s.phase==='transition')return;
   const from=s.page;
