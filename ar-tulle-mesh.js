@@ -458,7 +458,12 @@ function create(root){
       // square boundary. No creases or independent upper-layer offsets.
       // A rectangle never becomes a pointed triangular hem. Let only the
       // outer 15% of the cloth draw gently inward after the jaw line.
-      const curl=tuck*(.065+.055*edgeX);
+      // Fold free side edges behind the temples instead of displaying the
+      // rectangular corners beside the head. This smooth taper is spatial,
+      // not a sinusoidal crease across the forehead.
+      const sideFold=clamp((Math.abs(nx)-.72)/.28,0,1);
+      const upperCorner=clamp((.19-v)/.19,0,1)*clamp((Math.abs(nx)-.64)/.36,0,1);
+      const curl=tuck*(.065+.055*edgeX)+sideFold*.22+upperCorner*.09;
       const px=nx*cw*.5*(1-curl);
       const rolledEdge=Math.max(0,(v-.87)/.13);
       const curve=Math.pow(Math.abs(nx),1.5);
@@ -466,7 +471,8 @@ function create(root){
       // below ~3% of the face height rather than the previous 27.5%.
       const hemLift=tuck*fh*(.025+.020*curve);
       const hemScoop=tuck*fh*.015*(1-curve);
-      const py=(v-.47)*ch-hemLift+hemScoop-rolledEdge*rolledEdge*fh*.012;
+      const py=(v-.47)*ch-hemLift+hemScoop-rolledEdge*rolledEdge*fh*.012+
+        upperCorner*fh*.065;
       const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
       const cheek=Math.exp(-(((Math.abs(nx)-.51)/.27)**2+((v-.51)/.31)**2));
       const foldDepth=tuck*(.025+.055*edgeX)+rolledEdge*.03;
@@ -494,9 +500,9 @@ function create(root){
         weightedZ+=faceDepth[ids[k]]*weight;weightSum+=weight;
       }
       const trackedSurface=weightedZ/Math.max(weightSum,1e-6);
-      const sideWrap=tuck*Math.max(0,(Math.abs(nx)-.62)/.38);
+      const sideWrap=sideFold;
       const jawWrap=tuck*Math.max(0,(v-.74)/.26);
-      const behind=.17*Math.max(sideWrap,jawWrap);
+      const behind=.19*Math.max(sideWrap,jawWrap,upperCorner*.85);
       // Foreground fabric is just outside the face. Excess cloth moves
       // behind the side/jaw surface where depth occlusion can hide it.
       mesh[at+2]=clamp(trackedSurface-.032+behind+foldDepth*.16,-.79,.79);
