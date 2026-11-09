@@ -1507,3 +1507,29 @@ canvas.figure{object-fit:contain!important}
   -webkit-filter:blur(27px) grayscale(.35) sepia(.65) saturate(.82)!important;
   mix-blend-mode:multiply!important;
 }
+
+/* AR3: exact Figma face-guide SVG exported from node 554:353.
+   284×370 ellipse bounds plus 2.5px stroke extension; genuine round
+   cap dashed stroke 0.5 30 at 5px, no CSS dotted border or pulse. */
+#stage .ar-immersive .ar-face-guide{
+  position:absolute!important;
+  left:69.5px!important;top:267.5px!important;
+  width:289px!important;height:375px!important;
+  border:0!important;border-radius:0!important;
+  background:none!important;box-shadow:none!important;
+  padding:0!important;transform:none!important;translate:none!important;
+  animation:none!important;pointer-events:none!important;
+  z-index:5!important;opacity:0!important;overflow:visible!important;
+}
+#stage .ar-immersive.ar-align-gesture .ar-face-guide{
+  opacity:1!important;animation:none!important;
+}
+/* AR5-1 / AR9 / AR10: old Group 3 SVG Lighten shape began exactly
+   at the clipped top and made a horizontal seam. Source rectangle / tint
+   bleed had already been extended. Extend Lighten along both Y edges too;
+   remove the SECOND CSS mask that introduced a faded horizontal band.
+   The AR stage itself clips the overscan without a visible edge. */
+#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-group3-figma{
+  -webkit-mask-image:none!important;mask-image:none!important;
+  overflow:visible!important;
+}
