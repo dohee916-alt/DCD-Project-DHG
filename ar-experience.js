@@ -354,8 +354,16 @@ function track(frame,width,height,now=performance.now()){
      if(points?.length){
        let l=1,r=0,t=1,b=0;
        for(const p of points){const x=1-p.x;l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,p.y);b=Math.max(b,p.y);}
-       state.faceBox={l,r,t,b};
-     }else{state.faceBox=null;state.guideSince=0;}
+       state.faceBox={l,r,t,b};state.faceBoxSeenAt=now;
+     }else{
+       // A hand touching the face occludes FaceLandmarker for a few frames.
+       // Preserve its last REAL bounds briefly instead of losing the pinch
+       // precisely when the user's fingers arrive at their own face.
+       if(!['AR6','AR7'].includes(state.frame)||now-(state.faceBoxSeenAt||0)>1100){
+         state.faceBox=null;
+       }
+       state.guideSince=0;
+     }
    }
    if(handsDue(now)){
      state.lastHand=now;
@@ -393,7 +401,7 @@ function mount(stage,video){
  state.tulle=null;
  state.handGuide=null;
  state.sheets=[];state.variant='first';state.maskCount=0;state.analysisError=false;state.tulleWarning=false;
- state.faceBox=null;state.lastFace=0;state.lastHand=0;state.lastVideoTime=-1;
+ state.faceBox=null;state.faceBoxSeenAt=0;state.lastFace=0;state.lastHand=0;state.lastVideoTime=-1;
  state.modelState='idle';state.faceSeen=false;
  enter('AR3');
 }
