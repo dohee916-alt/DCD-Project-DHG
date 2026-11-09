@@ -308,13 +308,18 @@ function track(frame,width,height,now=performance.now()){
    if(state.face&&now-state.lastFace>=95){
      state.lastFace=now;
      const points=state.face.detectForVideo(frame,now).faceLandmarks?.[0];
-     state.tulle?.update(points,width,height);
+     // Do not let a WebGL/organza rendering failure block AR3 face
+     // recognition and progression. Face observation happens first.
+     observeFace(points,now);
+     try{state.tulle?.update(points,width,height);}
+     catch(error){
+       if(!state.tulleWarning){console.warn('[DCD AR] Cloth update:',error);state.tulleWarning=true;}
+     }
      if(points?.length){
        let l=1,r=0,t=1,b=0;
        for(const p of points){const x=1-p.x;l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,p.y);b=Math.max(b,p.y);}
        state.faceBox={l,r,t,b};
      }else{state.faceBox=null;state.guideSince=0;}
-     observeFace(points,now);
    }
    if(handsDue(now)){
      state.lastHand=now;
@@ -349,7 +354,7 @@ function mount(stage,video){
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
  state.tulle=window.DCD_TULLE?.create(root.querySelector('.ar-organza-stack'))||null;
  state.handGuide=window.DCD_AR_HAND_GUIDE?.create(root)||null;
- state.sheets=[];state.variant='first';state.maskCount=0;state.analysisError=false;
+ state.sheets=[];state.variant='first';state.maskCount=0;state.analysisError=false;state.tulleWarning=false;
  state.faceBox=null;state.lastFace=0;state.lastHand=0;state.lastVideoTime=-1;
  state.modelState='idle';state.faceSeen=false;
  enter('AR3');
