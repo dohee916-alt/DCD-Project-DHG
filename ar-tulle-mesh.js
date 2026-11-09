@@ -526,26 +526,29 @@ function create(root){
       mesh[at+1]=cy+px*si+py*co;
       // Clip-space Z: smaller is nearer. This measured, bounded relief is
       // deliberately retained through the vertex buffer (it was discarded).
-      // Sample the tracked 3D facial surface from nearby landmarks, not
-      // from an invented constant-depth nose bump. Closest four landmarks
-      // are blended so no hard transitions appear at triangle boundaries.
+      // Inside the face, use exact triangle interpolation. Outside its
+      // silhouette, use the four nearest vertices as an edge extension.
+      // Avoid 468x1015 distance scans for vertices already inside a face
+      // triangle: this matters on mobile during live camera inference.
       const xx=mesh[at],yy=mesh[at+1];
-      const nearest=[1e12,1e12,1e12,1e12],ids=[0,0,0,0];
-      for(let k=0;k<468;k++){
-        const dx=xx-facePixels[k*2],dy=yy-facePixels[k*2+1];
-        const d=dx*dx+dy*dy;
-        if(d>=nearest[3])continue;
-        let q=3;
-        while(q>0&&d<nearest[q-1]){nearest[q]=nearest[q-1];ids[q]=ids[q-1];q--;}
-        nearest[q]=d;ids[q]=k;
+      let trackedSurface=faceSurfaceAt(xx,yy);
+      if(trackedSurface===null){
+        const nearest=[1e12,1e12,1e12,1e12],ids=[0,0,0,0];
+        for(let k=0;k<468;k++){
+          const dx=xx-facePixels[k*2],dy=yy-facePixels[k*2+1];
+          const d=dx*dx+dy*dy;
+          if(d>=nearest[3])continue;
+          let q=3;
+          while(q>0&&d<nearest[q-1]){nearest[q]=nearest[q-1];ids[q]=ids[q-1];q--;}
+          nearest[q]=d;ids[q]=k;
+        }
+        let weightedZ=0,weightSum=0;
+        for(let k=0;k<4;k++){
+          const weight=1/(nearest[k]+160);
+          weightedZ+=faceDepth[ids[k]]*weight;weightSum+=weight;
+        }
+        trackedSurface=weightedZ/Math.max(weightSum,1e-6);
       }
-      let weightedZ=0,weightSum=0;
-      for(let k=0;k<4;k++){
-        const weight=1/(nearest[k]+160);
-        weightedZ+=faceDepth[ids[k]]*weight;weightSum+=weight;
-      }
-      const triangleSurface=faceSurfaceAt(xx,yy);
-      const trackedSurface=triangleSurface??(weightedZ/Math.max(weightSum,1e-6));
       const sideWrap=sideFold;
       const jawWrap=tuck*Math.max(0,(v-.74)/.26);
       const behind=.19*Math.max(sideWrap,jawWrap,upperCorner*.85);
