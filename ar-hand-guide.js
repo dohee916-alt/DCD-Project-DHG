@@ -3,8 +3,16 @@ const ease=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v)},mix=(a,b,t)=>a+(b
 function create(root){
 const el=root.querySelector('.ar-gesture-guide');let active=true,frame='',since=performance.now(),hiddenUntil=0,raf=0,last=0;
 let renderer,scene,camera,pivot,nodes,open,closed,scale=1;
-const setFrame=f=>{frame=f;since=performance.now();hiddenUntil=0;el.style.display=['AR6','AR7'].includes(f)?'block':'none'};
-const hideOnce=(ms=900)=>{hiddenUntil=performance.now()+ms;el.style.opacity='0'};
+let guidePlayed=false;
+const setFrame=f=>{
+ frame=f;since=performance.now();
+ // Show the original guide once on first AR6 entry only.
+ // Never repeat it for AR7 or for individual remaining fabrics.
+ if(f==='AR7')guidePlayed=true;
+ el.style.display=(f==='AR6'&&!guidePlayed)?'block':'none';
+ el.style.opacity='0';
+};
+const hideOnce=(ms=900)=>{guidePlayed=true;hiddenUntil=performance.now()+ms;el.style.opacity='0';el.style.display='none'};
 async function init(){
 try{
 const THREE=await import('three');
@@ -68,21 +76,14 @@ centered.position.set(-c.x,-c.y,-c.z);scale=195/Math.max(1,d.x,d.y);
 }
 function render(now){
 if(!active)return;raf=requestAnimationFrame(render);
-if(!renderer||!pivot||!['AR6','AR7'].includes(frame)||now<hiddenUntil){el.style.opacity='0';return}
+if(frame==='AR6'&&!guidePlayed&&now-since>=4600)guidePlayed=true;
+if(!renderer||!pivot||frame!=='AR6'||guidePlayed||now<hiddenUntil){el.style.opacity='0';el.style.display='none';return}
 if(now-last<33)return;last=now;el.style.display='block';el.style.opacity='1';el.style.transform='none';
 const t=(now-since)/1000;let x=0,y=0,z=1,p=0,ry=0;
-if(frame==='AR6'){
- const u=t%4.6,pull=ease((u-1.35)/.84)*(1-ease((u-2.85)/.38));
- p=ease((u-.68)/.52)*(1-ease((u-3.2)/.42));
- x=mix(-16,78,pull);y=mix(-135,-38,pull);z=mix(.87,1.23,pull);
-}else{
- ry=Math.PI*ease(t/.62);
- const u=Math.max(0,t-.62)%4.65,reach=ease(u/.78),pull=ease((u-1.47)/.78)*(1-ease((u-2.9)/.52)),back=ease((u-3.58)/.7);
- p=ease((u-.9)/.42)*(1-ease((u-2.62)/.36));
- x=mix(mix(90,22,reach)+108*pull,90,back);
- y=mix(mix(-188,22,reach)+105*pull,-188,back);
- z=mix(mix(.79,.94,reach)+.34*pull,.79,back);
-}
+const u=t%4.6,pull=ease((u-1.35)/.84)*(1-ease((u-2.85)/.38));
+p=ease((u-.68)/.52)*(1-ease((u-3.2)/.42));
+x=mix(-16,78,pull);y=mix(-135,-38,pull);z=mix(.87,1.23,pull);
+// Never rotate the user's hand sideways; approach the face head-on.
 for(let i=0;i<nodes.length;i++){const n=nodes[i],a=open[i],b=closed[i];n.position.copy(a.p).lerp(b.p,p);n.quaternion.copy(a.q).slerp(b.q,p);n.scale.copy(a.s).lerp(b.s,p)}
 pivot.position.set(x,y,0);pivot.rotation.set(0,ry,0);pivot.scale.setScalar(scale*z);renderer.render(scene,camera);
 }
