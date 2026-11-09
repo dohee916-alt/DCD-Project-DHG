@@ -418,27 +418,55 @@ function start(video){
  state.requestId=requestAnimationFrame(tick);
  initModels(state.session);
 }
-/* Use the matte's alpha, not its RGB. Repeated alpha-over draws make
-   the body a legible, dark shape even when hair/organza edges are soft.
-   This canvas is used only on AR5-1, AR9 and AR10. */
+/* Real-time subject silhouette from the actual portrait matte alpha.
+   Based on the documented confidence-mask/smooth-edge compositing approach:
+   discard low-confidence translucent background before edge softening.
+   Runs on a half-size alpha buffer, capped at ~12fps. Other AR frames and
+   face/hand inference keep using the untouched original portrait cutout. */
+let silhouetteWork=null,silhouetteLast=0;
 function renderDarkSilhouette(){
  const root=state.root;
  if(!root||!['AR5-1','AR9','AR10'].includes(state.frame))return;
+ const now=performance.now();
+ if(now-silhouetteLast<80)return;
+ silhouetteLast=now;
  const source=root.querySelector('.ar-person-segment');
  const target=root.querySelector('.ar-dark-silhouette');
  if(!source||!target)return;
  const ctx=target.getContext('2d',{alpha:true});
  if(!ctx)return;
- const w=target.width,h=target.height;
- ctx.globalCompositeOperation='source-over';
- ctx.clearRect(0,0,w,h);
- // Alpha reinforcement of the existing real-human cutout. No invented oval
- // or shape, and no modifications to the video used for gesture tracking.
- for(let i=0;i<5;i++)ctx.drawImage(source,0,0,w,h);
- ctx.globalCompositeOperation='source-in';
- ctx.fillStyle='#551b0c';
- ctx.fillRect(0,0,w,h);
- ctx.globalCompositeOperation='source-over';
+ const w=214,h=463;
+ if(!silhouetteWork){
+  const canvas=document.createElement('canvas');
+  canvas.width=w;canvas.height=h;
+  const workCtx=canvas.getContext('2d',{alpha:true,willReadFrequently:true});
+  if(!workCtx)return;
+  silhouetteWork={canvas,ctx:workCtx};
+ }
+ const work=silhouetteWork.ctx;
+ try{
+  work.clearRect(0,0,w,h);
+  work.drawImage(source,0,0,w,h);
+  const image=work.getImageData(0,0,w,h);
+  const px=image.data;
+  // Confidence threshold eliminates background haze; smoothstep retains
+  // antialiasing at hair/shoulder edges without 5x alpha overpainting.
+  for(let k=0;k<px.length;k+=4){
+   const alpha=px[k+3]/255;
+   const t=Math.max(0,Math.min(1,(alpha-.17)/.30));
+   const smooth=t*t*(3-2*t);
+   px[k]=179;px[k+1]=52;px[k+2]=16;
+   px[k+3]=Math.round(smooth*252);
+  }
+  work.putImageData(image,0,0);
+  ctx.clearRect(0,0,target.width,target.height);
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality='high';
+  ctx.drawImage(silhouetteWork.canvas,0,0,target.width,target.height);
+ }catch(error){
+  // A failed matte read must never interrupt face/hand tracking.
+  if(!silhouetteWork.warning){console.warn('[DCD AR] silhouette matte:',error);silhouetteWork.warning=true;}
+ }
 }
 function ensurePortraitMatte(){
  if(!state.playing||!state.root||state.matte)return;
