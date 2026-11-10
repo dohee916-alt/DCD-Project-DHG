@@ -117,20 +117,18 @@ function create(root){
    const size=box.getSize(new THREE.Vector3());
    centered.position.sub(center);
    poseScale=207/Math.max(1,size.x,size.y);
-   // Opaque double-sided material lets the original 3D skin keep its
-   // correct surface/depth without transparent self-overdraw.
-   // Gentle coral-to-apricot color is provided by the *actual* GLB
-   // local hand height, not procedural noisy texture or PNG.
-   const low=new THREE.Color('#ee8964');
-   const high=new THREE.Color('#ffbf99');
+   // Smooth translucent hand made from the original rigged geometry.
+   // The model's noisy color/normal textures are not sampled.
+   const low=new THREE.Color('#f4a693'),high=new THREE.Color('#ffe0cb');
    model.traverse(mesh=>{
     if(!mesh.isMesh)return;
     mesh.frustumCulled=false;
-    const material=new THREE.MeshStandardMaterial({
-     color:0xffffff,roughness:.9,metalness:0,flatShading:false,
-     side:THREE.DoubleSide,transparent:false,opacity:1,
-     depthTest:true,depthWrite:true
+    const material=new THREE.MeshPhysicalMaterial({
+     color:0xffffff,roughness:.72,metalness:0,clearcoat:.10,
+     flatShading:false,transparent:true,opacity:.68,
+     side:THREE.DoubleSide,depthTest:true,depthWrite:true
     });
+    material.forceSinglePass=true;
     material.onBeforeCompile=shader=>{
      shader.uniforms.dcdLow={value:low};
      shader.uniforms.dcdHigh={value:high};
@@ -142,10 +140,15 @@ function create(root){
      shader.fragmentShader=shader.fragmentShader
       .replace('#include <common>',
        '#include <common>\nvarying float vDcdLocalY;\nuniform vec3 dcdLow;\nuniform vec3 dcdHigh;')
-      .replace('#include <color_fragment>',
-       '#include <color_fragment>\nfloat dcdBlend=smoothstep(0.5,22.0,vDcdLocalY);\ndiffuseColor.rgb=mix(dcdLow,dcdHigh,dcdBlend);');
+      .replace('#include <color_fragment>',[
+       '#include <color_fragment>',
+       'float wristFade=smoothstep(0.25,6.5,vDcdLocalY);',
+       'float silkyTone=smoothstep(0.5,22.0,vDcdLocalY);',
+       'diffuseColor.rgb=mix(dcdLow,dcdHigh,silkyTone);',
+       'diffuseColor.a*=wristFade;'
+      ].join('\n'));
     };
-    material.customProgramCacheKey=()=> 'dcd-source-glb-coral-opaque-front-v1';
+    material.customProgramCacheKey=()=> 'dcd-translucent-silky-hand-wrist-gradient-v2';
     owned.push(material);
     mesh.material=material;
    });
