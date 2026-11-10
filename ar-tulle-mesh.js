@@ -93,15 +93,24 @@ void main(){
   float eRight=texture2D(embroideryMask,vUV+vec2(pixel.x,0.0)).a;
   float eUp=texture2D(embroideryMask,vUV-vec2(0.0,pixel.y)).a;
   float eDown=texture2D(embroideryMask,vUV+vec2(0.0,pixel.y)).a;
-  // Raised thread edge: light on one side and a narrow contact shadow
-  // on the other. No generated plaid/grid/false black stitch pattern.
-  float rim=clamp((eLeft-eRight+eUp-eDown)*0.24,-0.20,0.20);
-  float surface=clamp(0.82+0.12*fiber+0.13*(vLight-0.85)+rim,0.60,1.10);
-  // Satin-stitch ridges share the cloth UV and lighting, including peel.
-  float rib=0.5+0.5*sin((vUV.x+vUV.y*.36)*1024.0*2.1);
-  float filament=pow(rib,7.0);
-  vec3 threadColor=vec3(.075,.068,.061)*surface
-    +vec3(.14,.125,.105)*filament*clamp(vLight-.65,0.0,.6);
+  // RGB carries raised satin stitches, alpha carries the exact glyph.
+  // Sample the actual relief instead of a subpixel sine that vanishes
+  // when the 1024 atlas is reduced to face size.
+  float h=texture2D(embroideryMask,vUV).r;
+  vec2 stepUV=pixel*1.5;
+  float hx=texture2D(embroideryMask,vUV+vec2(stepUV.x,0.0)).r
+    -texture2D(embroideryMask,vUV-vec2(stepUV.x,0.0)).r;
+  float hy=texture2D(embroideryMask,vUV+vec2(0.0,stepUV.y)).r
+    -texture2D(embroideryMask,vUV-vec2(0.0,stepUV.y)).r;
+  vec3 threadNormal=normalize(vec3(-hx*2.8,-hy*2.8,1.0));
+  vec3 lamp=normalize(vec3(-.55,.65,1.0));
+  float diffuse=max(0.0,dot(threadNormal,lamp));
+  float shine=pow(max(0.0,dot(threadNormal,normalize(lamp+vec3(0.,0.,1.)))),24.0);
+  float rim=clamp((eLeft-eRight+eUp-eDown)*.16,-.10,.10);
+  vec3 threadColor=vec3(.055,.049,.043)
+    +vec3(.15,.135,.12)*diffuse*(.35+.65*h)
+    +vec3(.32,.30,.27)*shine+rim;
+  threadColor*=clamp(vLight,.75,1.15);
   float contact=clamp(max(max(eLeft,eRight),max(eUp,eDown))-stitch,0.0,1.0);
   float shade=contact*0.13;
   // Fabric and embroidery have independent draw passes. In particular the
@@ -111,7 +120,10 @@ void main(){
   // Geometry itself is the tracked face plus feathered outside margin.
   // Do not impose an additional screen-space oval clip on these vertices.
   float silhouette=1.0;
-  float edgeFade=1.0-smoothstep(0.18,0.99,vFringe);
+  // The edge is a narrow folded hem, not a broad blurred halo.
+  float edgeFade=1.0-smoothstep(.94,1.0,vFringe);
+  float hem=smoothstep(.82,.89,vFringe)*(1.0-smoothstep(.94,.99,vFringe));
+  netAlpha+=hem*(.10+.08*strand);
   if(embroideryPass>0.5){
     gl_FragColor=vec4(threadColor,stitch*opacity*edgeFade);
   }else{
@@ -200,6 +212,23 @@ function embroideredLetters(variant,index){
    ctx.strokeText(line,0,y);ctx.fillText(line,0,y);y+=lh[i];
  });
  ctx.restore();
+ const ink=ctx.getImageData(0,0,TEXTURE_SIZE,TEXTURE_SIZE);
+ const src=new Uint8ClampedArray(ink.data),n=TEXTURE_SIZE;
+ const coverage=(x,y)=>x<0||y<0||x>=n||y>=n?0:src[(y*n+x)*4+3]/255;
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+   const k=(y*n+x)*4,a=src[k+3]/255;
+   if(!a){ink.data[k]=ink.data[k+1]=ink.data[k+2]=0;continue;}
+   // Five atlas pixels per stitch remain visible at face scale. Rounded
+   // ridges plus a darker valley create distinct threads within each glyph.
+   const phase=(x+y*.42)*Math.PI*2/5.5;
+   const ridge=Math.pow(.5+.5*Math.cos(phase),.65);
+   const edge=Math.min(coverage(x-1,y),coverage(x+1,y),
+     coverage(x,y-1),coverage(x,y+1));
+   const height=a*(.18+.82*ridge)*(.40+.60*edge);
+   ink.data[k]=ink.data[k+1]=ink.data[k+2]=Math.round(height*255);
+   ink.data[k+3]=Math.round(src[k+3]*(.86+.14*ridge));
+ }
+ ctx.putImageData(ink,0,0);
  return c;
 }
 function faceOutline(connections){
@@ -605,6 +634,7 @@ function create(root){
       if(dz<0){dx=-dx;dy=-dy;dz=-dz;}
       for(const id of [a,b,c]){nxSum[id]+=dx;nySum[id]+=dy;nzSum[id]+=dz;}
     }
+    const faceLight=new Float32Array(faceVertexCount);
     for(let id=0;id<faceVertexCount;id++){
       const px=facePixels[id*2],py=facePixels[id*2+1],depth=faceDepth[id];
       const norm=Math.hypot(nxSum[id],nySum[id],nzSum[id])||1;
@@ -612,6 +642,7 @@ function create(root){
       // Soft upper-left light rakes across brow, nose bridge and cheek
       // without introducing separate lips/eyes or glued-on shadow sprites.
       const light=.87+.19*clamp(lx*(-.28)+ly*(-.38)+lz*.88,0,1);
+      faceLight[id]=light;
       writeClothVertex(id,px,py,depth-.048,light,0);
     }
     // A natural margin is attached to the real face OVAL in head-relative
@@ -632,9 +663,9 @@ function create(root){
         // Keep BOTH attachment rings in FRONT of the depth occluder.
         // Previously +.092*t put the outer ring BEHIND the face, so the
         // depth buffer clipped it into a visible dark curved seam.
-        const z=baseDepth-.048+.019*t;
+        const z=baseDepth-.048;
         writeClothVertex(faceVertexCount+band*ringSize+j,x,y,z,
-          .93-.09*t,band===0?.18:1.0);
+          faceLight[id]-.045*t*t,band===0?.40:1.0);
       }
     }
   }
