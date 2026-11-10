@@ -130,13 +130,17 @@ void main(){
   // fade fully away instead of retaining 15% alpha as square border rails.
   // Geometry itself is the tracked face plus feathered outside margin.
   // Do not impose an additional screen-space oval clip on these vertices.
-  float silhouette=1.0;
-  float edgeFade=1.0;
+  // Feather all four hanging edges, with no visible rectangular canvas.
+  float edgeX=smoothstep(0.0,.062,vUV.x)*
+    smoothstep(0.0,.062,1.0-vUV.x);
+  float edgeY=smoothstep(0.0,.065,vUV.y)*
+    smoothstep(0.0,.065,1.0-vUV.y);
+  float silhouette=edgeX*edgeY;
+  float edgeFade=silhouette;
   if(embroideryPass>0.5){
-    // Stitch texture is fixed to the same UVs as the deforming fabric.
-    // Only the forward falling panel carries text.
-    float frontPanel=1.0-smoothstep(.46,.50,vUV.y);
-    gl_FragColor=vec4(threadColor,stitch*opacity*edgeFade*frontPanel);
+    // One strictly frontal mesh keeps every embroidered phrase at a
+    // stationary authored UV position without inverted back-side copies.
+    gl_FragColor=vec4(threadColor,stitch*opacity*edgeFade);
   }else{
     gl_FragColor=vec4(whiteNet*(1.0-shade),
       clamp(netAlpha*opacity*edgeFade*silhouette,0.0,1.0));
@@ -187,16 +191,14 @@ function paintedFabric(height,index){
 // Figma label coordinates relative to a larger rectangular cloth.
 const CLOTH_REF={left:76,right:352,top:297,bottom:693};
 function embroiderySlot(c){
- const h=c.text.split('\n').reduce((a,_,i)=>a+(c.lh[i]||20),0);
- const centerY=c.y+h/2;
- // The front panel is the camera-facing half of the physical 3D cloth.
- // Move Figma's label centers onto that panel in the SAME physical UV space.
- // The y=0.5 center is the crown; smaller V descends toward the front hem.
- return {
-  u:clamp(.5+(c.x+c.w/2-214)/360,.22,.78),
-  v:clamp(.39-(centerY-345)*.00118,.105,.39),
-  max:clamp(c.w/276,.13,.48)
- };
+  const h=c.text.split('\n').reduce((a,_,i)=>a+(c.lh[i]||20),0);
+  const centerX=c.x+c.w/2,centerY=c.y+h/2;
+  // Reference layout is the front-facing 428x926 Figma artboard.
+  // Map its authored label centers to the same rigid, front curtain UVs.
+  // Unlike the old wrap-around solver this surface has no back-facing text.
+  const u=clamp(.5+(centerX-214)/425,.18,.82);
+  const frontV=clamp((centerY-155)/655,.12,.80);
+  return {u,v:1-frontV,max:clamp(c.w/276,.13,.48)};
 }
 function embroideredLetters(variant,index){
  const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
@@ -617,59 +619,41 @@ function create(root){
     // No 468-point face surface is ever copied into a cloth vertex.
   }
 
-  // A crown-fixed veil: a stationary drape in head-local coordinates.
-  // The old Verlet simulation allowed a single pinned vertex while all
-  // other vertices continued falling and pulling the embroidery around the
-  // face. The reference calls for a fixed crown and an almost still printed
-  // center, with only the hanging outer fabric gently fluttering.
+  // Crown-anchored front veil. Actual FaceLandmarker forehead/chin/cheeks
+  // define its scale and placement; no invented free-falling physics axis.
+  // A single facing surface prevents the reverse/backside doubled phrases.
   function drapedCloth(layer,now){
-    const head=faceCenter;
-    const fw=head.fw,fh=head.fh;
-    const radiusY=head.radiusY/fw;
-    const radiusX=head.radiusX/fw;
-    const radiusZ=head.radiusZ/fw;
-    const roll=head.si;
-    const cosRoll=head.co;
+    const head=faceCenter,fw=head.fw,fh=head.fh;
+    const crownY=head.y-fh*.72;
+    const hemY=head.y+fh*1.12;
+    const seconds=now*.001;
     for(let id=0;id<faceVertexCount;id++){
       const row=Math.floor(id/(GRID_COLS+1));
       const col=id%(GRID_COLS+1);
       const u=col/GRID_COLS,v=row/GRID_ROWS,at=id*stride;
-      const x=(u-.5)*3.34;
-      const z=(v-.5)*3.34;
-      const radius=Math.hypot(x/radiusX,z/radiusZ);
-      // The crown lies on the ellipsoid; fabric outside the skull hangs.
-      const dome=radius<1?
-        -radiusY*Math.sqrt(Math.max(0,1-radius*radius)):
-        (radius-1)*.48;
-      const curtain=Math.pow(Math.abs(v-.5)*2,1.7);
-      const side=clamp((Math.abs(x)-.50)/1.12,0,1);
-      const printedCenter=clamp((Math.abs(x)-.60)/.55,0,1);
-      // Permanent small folds at the sides, not a free-spinning sheet.
-      const pleat=.047*Math.sin(u*24+layer.index*1.7)*
-        Math.pow(side,1.5)*curtain;
-      const seconds=now*.001;
-      const breeze=Math.sin(seconds*1.65+u*10+layer.index*.75)*
-        .026*curtain*(.12+.88*side)*printedCenter;
-      const frontHem=v<.5?fh/fw*.32*Math.pow(1-2*v,1.6):0;
-      const y=dome+pleat+breeze+frontHem;
-      const xLocal=x+(.025*Math.sin(seconds*1.35+v*12+layer.index)*
-        side*curtain);
-      // Head moves under the fixed veil, but it never acquires its own
-      // unbounded yaw/rotation. Center embroidery moves rigidly with the head.
-      const screenX=head.x+fw*(xLocal*cosRoll-y*roll);
-      const screenY=head.y+fw*(xLocal*roll+y*cosRoll);
-      mesh[at]=screenX;mesh[at+1]=screenY;
-      // Front-half depth is closer to the viewer. Old front/rear vertices
-      // projected to almost identical places and multiplied the text.
-      mesh[at+2]=clamp(-.16+z*.19,-.74,.52);
-      mesh[at+3]=u;mesh[at+4]=v;
-      mesh[at+5]=clamp(.95+.07*Math.sin(u*22+layer.index)*side,.78,1.10);
+      const nx=(u-.5)*2;
+      // A stable dome sits above the tracked forehead, and an outward
+      // skirt reaches past the chin. Neither can spin away from the face.
+      const width=fw*.88*(.96+.12*v);
+      const arch=fh*.15*Math.pow(Math.abs(nx),1.7)*
+        Math.pow(1-v,2);
+      const fringe=clamp((Math.abs(nx)-.53)/.47,0,1)*
+        clamp((v-.35)/.65,0,1);
+      const sway=fringe*fw*.014*Math.sin(seconds*1.35+u*8+layer.index);
+      const swayY=fringe*fh*.009*Math.sin(seconds*1.1+u*11+layer.index);
+      const localX=nx*width+sway;
+      const localY=(crownY+(hemY-crownY)*v-head.y)+arch+swayY;
+      mesh[at]=head.x+localX*head.co-localY*head.si;
+      mesh[at+1]=head.y+localX*head.si+localY*head.co;
+      mesh[at+2]=clamp(-.18+Math.abs(nx)*.11+v*.06,-.6,.5);
+      // Top of cloth = atlas top; the canvas texture is UNPACK_FLIP_Y.
+      mesh[at+3]=u;mesh[at+4]=1-v;
+      mesh[at+5]=clamp(.95+.055*fringe*Math.sin(u*24+layer.index),.84,1.04);
       mesh[at+6]=Math.min(u,1-u,v,1-v);
       mesh[at+7]=0;
-      const nx=clamp(x/(radiusX*3),-.46,.46);
-      const ny=clamp(-z/(radiusZ*3),-.46,.46);
-      mesh[at+8]=nx;mesh[at+9]=ny;
-      mesh[at+10]=Math.sqrt(Math.max(.55,1-nx*nx-ny*ny));
+      mesh[at+8]=clamp(nx*.18,-.24,.24);
+      mesh[at+9]=clamp((.5-v)*.13,-.1,.1);
+      mesh[at+10]=.96;
     }
   }
   function arrival(t){
