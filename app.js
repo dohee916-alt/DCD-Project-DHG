@@ -17,6 +17,38 @@ const fresh=()=>({page:'00',phase:'intro',initialPresetVersion:5,figures:Array.f
 let s=fresh(),drag=null,gesture=new Map(),timers=[],scale=1,offset={x:0,y:0},videoEnded=false;
 let syringeInjectionAngle=45,rotateGuideFinished=false,signatureInk=null;
 let packingAssetsWarmed=false;
+// Fetch compressed GIF bytes during the opening, rather than after pulling.
+// A fresh blob URL then starts at frame zero without another network request.
+let ruptureWarmPromise=null,ruptureBuffer=null,rupturePlayUrl=null;
+function preloadRuptureGif(){
+  if(ruptureWarmPromise)return ruptureWarmPromise;
+  ruptureWarmPromise=fetch(A.blisterOneShot,{cache:'force-cache',priority:'low'})
+    .then(response=>{
+      if(!response.ok)throw new Error('GIF preload HTTP '+response.status);
+      return response.arrayBuffer();
+    })
+    .then(buffer=>{ruptureBuffer=buffer;return buffer;})
+    .catch(error=>{console.warn('[DCD] Rupture prefetch:',error);return null;});
+  return ruptureWarmPromise;
+}
+function beginRuptureGif(gif){
+  if(!gif||!gif.isConnected||s.page!=='01'||s.phase!=='rupture')return;
+  const source=ruptureBuffer?
+    URL.createObjectURL(new Blob([ruptureBuffer],{type:'image/gif'})):A.blisterOneShot;
+  if(ruptureBuffer)rupturePlayUrl=source;
+  let started=false;
+  const loaded=()=>{
+    if(started||!gif.isConnected||s.page!=='01'||s.phase!=='rupture')return;
+    started=true;
+    gif.classList.remove('opening-blister-awaiting');
+    later(finishRupture,M.blisterOneShotMs);
+  };
+  gif.onload=loaded;
+  gif.onerror=()=>{if(s.page==='01'&&s.phase==='rupture')finishRupture();};
+  gif.src=source;
+  if(gif.complete&&gif.naturalWidth)loaded();
+}
+if(s.page==='00'||s.page==='01')preloadRuptureGif();
 let arCameraStream=null,arDropFrame=0,arDropFinished=false,arCameraReady=false,arCameraError='';
 function warmPackingAssets(){
   if(packingAssetsWarmed)return;
@@ -196,7 +228,7 @@ function introMarkup(p){
   let h='<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+
     figmaGlassText('easiest',64.5,90.5,299,17,'assets/figma-current/hd/poster-tagline-base.svg','assets/figma-current/hd/poster-tagline.svg');
   if(p==='00')h+=blisterMotionLayer(A.blisterPingpong,'loop',A.blisterPingpongFirst);
-  else if(s.phase==='rupture')h+=blisterMotionLayer(A.blisterOneShot,'rupture',A.blisterOneShotFirst);
+  else if(s.phase==='rupture')h+=blisterMotionLayer(A.blisterOneShotFirst,'rupture',A.blisterOneShotFirst);
   else h+=blisterMotionLayer(A.blisterOneShotFirst,'ready');
   if(p==='00'||s.phase==='intro')h+=posterWords();
   if(p==='00'){
@@ -1009,28 +1041,24 @@ if(packHand){
  if(s.page==='arFace')attachArCamera();
  const animated=stage.querySelector('.opening-blister-motion');
  if(animated){
-   // Show the GIF only once decoded and ready, with its own first frame
-   // remaining underneath during the download. No stale artwork flashes.
-   let started=false;
-   const begin=()=>{
-     if(!animated.isConnected||started)return;
-     started=true;
-     animated.classList.remove('opening-blister-awaiting');
-     if(s.page==='01'&&s.phase==='rupture'){
-       later(finishRupture,M.blisterOneShotMs);
-     }
-   };
-   if(animated.complete&&animated.naturalWidth)begin();
-   else{
-     animated.addEventListener('load',begin,{once:true});
-     animated.addEventListener('error',()=>{
-       // Do not reveal a different scene if a download fails.
-       if(s.page==='01'&&s.phase==='rupture')finishRupture();
-     },{once:true});
+   if(s.page==='01'&&s.phase==='rupture'){
+     // Keep the first frame on screen until the prefetched GIF is decoded.
+     preloadRuptureGif().then(()=>beginRuptureGif(animated));
+   }else{
+     const ready=()=>{if(animated.isConnected)
+       animated.classList.remove('opening-blister-awaiting');};
+     if(animated.complete&&animated.naturalWidth)ready();
+     else animated.addEventListener('load',ready,{once:true});
    }
  }
 }
-function finishRupture(){if(s.page==='01'&&s.phase==='rupture'){videoEnded=true;setPage('02');}}
+function finishRupture(){
+ if(s.page==='01'&&s.phase==='rupture'){
+   videoEnded=true;
+   if(rupturePlayUrl){URL.revokeObjectURL(rupturePlayUrl);rupturePlayUrl=null;}
+   setPage('02');
+ }
+}
 function runIntro(p){setPage(p,'intro');later(()=>{
   if(s.page!==p||s.phase!=='intro')return;
   s.phase=p==='00'?'loop':'guide';
