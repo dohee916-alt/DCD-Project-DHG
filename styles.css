@@ -364,9 +364,9 @@
 .poster-result-art{object-fit:fill!important;object-position:center}
 .poster-result-wash{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(115deg,rgba(139,25,0,.65),transparent 60%);mix-blend-mode:multiply}
 .poster-gradient{position:absolute;width:510px;height:942px;z-index:2;pointer-events:none}
-.poster-gradient-a{left:-48px;top:0;mix-blend-mode:multiply;background:linear-gradient(206.26252277234065deg,#fff 13.526%,rgba(255,255,255,0) 37.155%,#c25100 93.712%)}
-.poster-gradient-b{left:-41px;top:-2px;mix-blend-mode:multiply;background:linear-gradient(264.6865816573264deg,#fff 21.631%,rgba(255,255,255,0) 42.094%,#cf4900 91.073%)}
-.poster-gradient-c{left:-34px;top:-8px;mix-blend-mode:multiply;background:linear-gradient(266.4413399504181deg,#fff 22.18%,rgba(255,255,255,0) 45.617%,#9e4f00 101.71%)}
+.poster-gradient-a{left:-48px;top:0;mix-blend-mode:multiply;background:linear-gradient(206.26252277234065deg,#fff 13.526%,rgba(255,255,255,0) 37.155%,#e9a67c 93.712%)}
+.poster-gradient-b{left:-41px;top:-2px;mix-blend-mode:multiply;background:linear-gradient(264.6865816573264deg,#fff 21.631%,rgba(255,255,255,0) 42.094%,#e59b73 91.073%)}
+.poster-gradient-c{display:none!important} /* New15 Group 4 omits the third MULTIPLY gradient. */
 .poster-gradient-d{left:-48px;top:0;mix-blend-mode:lighten;background:linear-gradient(206.26252277234065deg,rgba(255,255,255,.8) 13.526%,rgba(255,255,255,0) 37.155%,rgba(158,42,0,0) 93.712%)}
 .phase-loop .poster-primary{animation:none!important}
 .page-15 .new-prescription-title,.page-16 .new-prescription-title{color:#d83a00}
@@ -410,10 +410,10 @@ canvas.figure{object-fit:contain!important}
 .new-orange-gradient{z-index:1;pointer-events:none;opacity:1}
 .new-orange-gradient>div{position:absolute;left:216px;top:-216px;width:510px;height:942px;transform:rotate(90deg);transform-origin:center}
 .new-orange-gradient.grad-one{mix-blend-mode:multiply}
-.new-orange-gradient.grad-one>div{background:linear-gradient(206.26252277234065deg,#fff 13.526%,rgba(255,255,255,0) 37.155%,#c25100 93.712%)}
+.new-orange-gradient.grad-one>div{background:linear-gradient(206.26252277234065deg,#fff 13.526%,rgba(255,255,255,0) 37.155%,#e9a67c 93.712%)}
 .new-orange-gradient.grad-two{mix-blend-mode:multiply}
-.new-orange-gradient.grad-two>div{background:linear-gradient(264.6865816573264deg,#fff 21.631%,rgba(255,255,255,0) 42.094%,#cf4900 91.073%)}
-.new-orange-gradient.grad-three{mix-blend-mode:multiply}
+.new-orange-gradient.grad-two>div{background:linear-gradient(264.6865816573264deg,#fff 21.631%,rgba(255,255,255,0) 42.094%,#e59b73 91.073%)}
+.new-orange-gradient.grad-three{display:none!important} /* Omitted from New15 Group 4; preserve all other gradient directions. */
 .new-orange-gradient.grad-three>div{background:linear-gradient(266.4413399504181deg,#fff 22.18%,rgba(255,255,255,0) 45.617%,#9e4f00 101.71%)}
 .new-orange-gradient.grad-four{mix-blend-mode:lighten}
 .new-orange-gradient.grad-four>div{background:linear-gradient(206.26252277234065deg,rgba(255,255,255,.8) 13.526%,rgba(255,255,255,0) 37.155%,rgba(158,42,0,0) 93.712%)}
