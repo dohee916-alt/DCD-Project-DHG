@@ -13,7 +13,7 @@ const bottleLiquids={purple:{x:125,y:86,rx:39,ry:34},orange:{x:129,y:174,rx:39,r
 const key='DCD_IMPLEMENTATION_1';
 const signaturePath='M2.50021 39.3162C3.97397 25.5131 15.0272 6.78039 32.7124 3.08321C57.2822 -2.05324 36.3968 27.7477 15.0272 52.6265C3.31169 66.2659 29.4323 61.4999 52.6083 32.6614C71.0303 9.7382 81.3467 24.5272 52.6083 61.4999';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const fresh=()=>({page:'00',phase:'intro',initialPresetVersion:4,figures:Array.from({length:4},(_,i)=>({kind:i+1,value:[85,75,65,95][i],orange:0,purple:0,packed:false})),active:0,loaded:null,firstFill:false,firstInject:false,handGuideDismissed:false,packGuideDone:false,packGuideHandFinished:false,packGuideHandStartedAt:null,used:{orange:false,purple:false},expected:[],side:[],signed:false,arReturnPage:null,arPackOpened:false});
+const fresh=()=>({page:'00',phase:'intro',initialPresetVersion:5,figures:Array.from({length:4},(_,i)=>({kind:i+1,value:[85,75,65,95][i],orange:0,purple:0,packed:false})),active:0,loaded:null,firstFill:false,firstInject:false,handGuideDismissed:false,packGuideDone:false,packGuideHandFinished:false,packGuideHandStartedAt:null,used:{orange:false,purple:false},expected:[],side:[],signed:false,arReturnPage:null,arPackOpened:false});
 let s=fresh(),drag=null,gesture=new Map(),timers=[],scale=1,offset={x:0,y:0},videoEnded=false;
 let syringeInjectionAngle=45,rotateGuideFinished=false,signatureInk=null;
 let packingAssetsWarmed=false;
@@ -23,7 +23,7 @@ function warmPackingAssets(){
   packingAssetsWarmed=true;
   [A.conveyor,A.machine,A.packFoil,A.packClearFront].forEach(src=>{const image=new Image();image.src=src;});
 }
-try{let old=JSON.parse(sessionStorage.getItem(key));if(old&&Array.isArray(old.figures)&&old.figures.length===4){s={...fresh(),...old};if((old.initialPresetVersion||0)<4&&!s.figures.some(f=>f.orange||f.purple||f.packed)){s.figures.forEach((f,i)=>{f.value=[85,75,65,95][i];});s.initialPresetVersion=4;}s.firstInject=!!(old.firstInject||s.figures.some(f=>f.orange||f.purple));s.packGuideDone=!!(old.packGuideDone||s.figures.some(f=>f.packed));if(s.page==='14'||s.page==='14done'){s.page='14';s.signed=false;}if(['08a','08b','09','10','11'].includes(s.page)){s.page='12';s.phase='ready';}if(s.page==='ar'&&!s.arPackOpened){s.page=['15','16'].includes(s.arReturnPage)?s.arReturnPage:'15';s.phase='ready';}else if(s.page==='arFace'||s.page==='arOpen'){s.page='ar';s.phase='ready';}}}catch{}
+try{let old=JSON.parse(sessionStorage.getItem(key));if(old&&Array.isArray(old.figures)&&old.figures.length===4){s={...fresh(),...old};if((old.initialPresetVersion||0)<5&&!s.figures.some(f=>f.orange||f.purple||f.packed)){s.figures.forEach((f,i)=>{f.value=[85,75,65,95][i];});s.initialPresetVersion=5;}s.firstInject=!!(old.firstInject||s.figures.some(f=>f.orange||f.purple));s.packGuideDone=!!(old.packGuideDone||s.figures.some(f=>f.packed));if(s.page==='14'||s.page==='14done'){s.page='14';s.signed=false;}if(['08a','08b','09','10','11'].includes(s.page)){s.page='12';s.phase='ready';}if(s.page==='ar'&&!s.arPackOpened){s.page=['15','16'].includes(s.arReturnPage)?s.arReturnPage:'15';s.phase='ready';}else if(s.page==='arFace'||s.page==='arOpen'){s.page='ar';s.phase='ready';}}}catch{}
 // Desktop uses the native landscape pages. A portrait-locked mobile phone
 // gets a viewport-fitted VISUAL wrapper, never a fake WEB03 interaction state.
 // The same strategy applies to every WEB04–WEB16 screen.
