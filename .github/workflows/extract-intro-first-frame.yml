@@ -1,0 +1,34 @@
+name: Extract first frame of intro GIF for seamless loading
+on:
+  push:
+    paths:
+      - .github/workflows/extract-intro-first-frame.yml
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Save precisely matching first frame of looping GIF
+        run: |
+          python3 -m pip -q install Pillow
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          root=Path('assets/motion')
+          with Image.open(root/'blister_3_to_5_1_23_pingpong.gif') as gif:
+              assert gif.n_frames==44
+              gif.seek(0)
+              gif.convert('RGBA').save(root/'blister_3_to_5_1_23_pingpong_first.png')
+          print('Original GIF first frame saved unchanged')
+          PY
+      - name: Commit first-frame poster
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion/blister_3_to_5_1_23_pingpong_first.png
+          if ! git diff --cached --quiet; then
+            git commit -m 'Add frame-exact static poster for intro GIF loading'
+            git push origin HEAD:main
+          fi
