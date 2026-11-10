@@ -321,7 +321,7 @@
 .new-brand-name{z-index:5;font:700 15px/18px Arial,sans-serif;color:#2b333d}
 .new-ticker{z-index:6;overflow:hidden;color:#2b333d;pointer-events:none}
 .new-ticker-track{position:absolute;left:0;width:25px;will-change:translate}
-.new-ticker-track span{display:block;width:25px;height:max-content;writing-mode:vertical-rl;white-space:nowrap;font:700 15px/25px Arial,sans-serif}
+.new-ticker-track span{display:block;width:25px;height:max-content;writing-mode:vertical-rl;white-space:nowrap;font:700 12px/25px 'Source Sans 3',Arial,sans-serif}
 .new-ticker.reverse .new-ticker-track span{transform:rotate(180deg)}
 .new-prescription-dose{z-index:6;color:#d83a00;font:700 15px/18px Arial,sans-serif}
 .new-prescription-dose{white-space:nowrap}
@@ -336,6 +336,8 @@
 .new-ui-button{z-index:9;padding:0;border:0;background:transparent;pointer-events:auto}
 .new-ui-button img{display:block;width:100%;height:100%;object-fit:fill}
 .new-ui-button.disabled{filter:grayscale(1);opacity:.55;cursor:default}
+/* New14 uses an independently graded, editable Figma gray arrow before signing. */
+.new-ui-button.new-signature-next.disabled{filter:none;opacity:1;cursor:default}
 .new-signature-sample{z-index:5;opacity:.82;pointer-events:none}
 .new-signature-canvas,.new-signature-ink{z-index:8;touch-action:none;pointer-events:auto}
 .new-signature-guide{z-index:7;font-size:16px;line-height:25px;text-align:center}
