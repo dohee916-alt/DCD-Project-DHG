@@ -306,9 +306,9 @@ function canvasCloth(root){
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
     // Fallback also uses a larger head-covering sheet.
-    const cw=fw*1.67;
-    const ch=fh*1.78;
-    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2-fh*.075;
+    const cw=fw*1.98;
+    const ch=fh*2.35;
+    const cx=(left.x+right.x)/2,cy=head.y+fh*.255;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
@@ -570,12 +570,12 @@ function create(root){
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2+fh*.035;
     // Head proportions are estimated from tracked forehead, jaw and cheeks;
     // no unobserved skull landmarks are presented as camera measurements.
-    const cw=fw*1.67,ch=fh*1.78,nose=p(1);
-    const veilCenterY=(forehead.y+chin.y)/2-fh*.075;
+    const cw=fw*1.98,ch=fh*2.35;
+    const veilCenterY=forehead.y+fh*.255;
     const textWidth=clamp(cw,fw+80,412);
     const textHeight=clamp(ch,fh+85,585);
     faceCenter={x:cx,y:veilCenterY,cw,ch,co,si,fw,fh,
-      noseX:nose.x,noseY:nose.y,noseRelief,textWidth,textHeight,textY:veilCenterY};
+      textWidth,textHeight,textY:veilCenterY};
     // Build the real tracked face surface in the same mirrored screen space.
     facePixels=new Float32Array(468*2);
     faceDepth=new Float32Array(468);
@@ -592,37 +592,33 @@ function create(root){
       gl.bindBuffer(gl.ARRAY_BUFFER,occBuffer);
       gl.bufferSubData(gl.ARRAY_BUFFER,0,depthVerts);
     }
-    // Draped skull-covering veil, NOT a duplicate of the face skin.
-    // Nose, upper forehead and chin are only broad contact guides.
-    const halfW=cw*.5,halfH=ch*.5;
-    const noseDx=(nose.x-cx)/halfW,noseDy=(nose.y-veilCenterY)/halfH;
+    // Independent canopy. Face tracking positions the entire cloth, not its
+    // relief: no sampled skin vertices, eyes, lips, cheeks or fake nose.
+    const halfW=cw*.5;
     for(let r=0;r<=GRID_ROWS;r++){
-      const q=r/GRID_ROWS,top=ease(clamp(q/.30,0,1));
+      const q=r/GRID_ROWS,top=ease(clamp(q/.34,0,1));
       const bottom=ease(clamp((q-.78)/.22,0,1));
-      const widthRatio=.79+.21*top-.06*bottom;
+      const widthRatio=.67+.33*top-.10*bottom;
       for(let c=0;c<=GRID_COLS;c++){
         const u=c/GRID_COLS,nx=2*u-1,at=(r*(GRID_COLS+1)+c)*stride;
-        const dome=(1-top)*Math.pow(Math.abs(nx),2)*fh*.16;
+        const dome=(1-top)*Math.pow(Math.abs(nx),2)*fh*.24;
         const folds=Math.sin(u*Math.PI*7+q*3.1)*Math.pow(Math.abs(nx),1.45)*fw*.013
           +Math.sin(u*Math.PI*3-q*5)*fw*.008;
         const spread=Math.sign(nx)*Math.pow(Math.abs(nx),1.8)*bottom*fw*.035;
         const lx=nx*halfW*widthRatio+folds+spread;
         const ly=(q-.5)*ch+dome;
         const px=cx+lx*co-ly*si,py=veilCenterY+lx*si+ly*co;
-        const dx=(nx-noseDx)/.28,dy=((q-.5)*ch/halfH-noseDy)/.24;
-        const bridge=Math.exp(-.5*(dx*dx+dy*dy));
-        const brow=Math.exp(-Math.pow((q-.24)/.12,2))*Math.exp(-nx*nx*2);
-        const chinCurve=Math.exp(-Math.pow((q-.72)/.14,2))*Math.exp(-nx*nx*3);
-        const relief=.34+clamp(noseRelief*1.8,.04,.29)*bridge
-          +.065*brow+.045*chinCurve;
-        const ripple=Math.sin(nx*11+q*8)*.012*Math.pow(Math.abs(nx),1.3);
-        mesh[at]=px;mesh[at+1]=py;mesh[at+2]=clamp(-relief+ripple,-.75,-.22);
+        // Suspended over the actual head; fabric folds are lateral only.
+        const outer=Math.pow(Math.abs(nx),1.65);
+        const foldDepth=.035*Math.sin(u*Math.PI*8+q*5)*outer;
+        mesh[at]=px;mesh[at+1]=py;
+        mesh[at+2]=clamp(-.64+foldDepth,-.74,-.54);
         mesh[at+3]=u;mesh[at+4]=1-q;
         const slope=Math.sin(nx*10+q*5)*.16*Math.pow(Math.abs(nx),1.2);
         mesh[at+5]=clamp(.94+.10*Math.cos(nx*12+q*3),.75,1.12);
         mesh[at+6]=Math.abs(nx);mesh[at+7]=0;
         mesh[at+8]=clamp(slope,-.32,.32);
-        mesh[at+9]=clamp((bridge-.2)*.2,-.2,.2);
+        mesh[at+9]=clamp(Math.sin(u*20+q*7)*outer*.10,-.12,.12);
         mesh[at+10]=Math.sqrt(Math.max(.15,1-mesh[at+8]**2-mesh[at+9]**2));
       }
     }
@@ -653,20 +649,8 @@ function create(root){
       for(let i=0;i<8&&gl.getError()!==gl.NO_ERROR;i++){}
       gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
       gl.disable(gl.CULL_FACE);
-      // Occluder is depth-only: the tracked camera remains visible, while
-      // draped corners that travel behind the face disappear naturally.
-      if(occProgram&&occBuffer&&faceDepth?.length===468){
-        gl.disable(gl.BLEND);
-        gl.colorMask(false,false,false,false);gl.depthMask(true);
-        gl.useProgram(occProgram);
-        gl.bindBuffer(gl.ARRAY_BUFFER,occBuffer);
-        gl.enableVertexAttribArray(occPosition);
-        gl.vertexAttribPointer(occPosition,3,gl.FLOAT,false,12,0);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,occIndex);
-        gl.drawElements(gl.TRIANGLES,occIndices,gl.UNSIGNED_SHORT,0);
-        gl.disableVertexAttribArray(occPosition);
-        gl.colorMask(true,true,true,true);
-      }
+      // Do not depth-clip the loose cloth with the tracked face:
+      // that prepass produced the forehead cut and glued-on mask shape.
       gl.depthMask(false);
       gl.enable(gl.BLEND);
       gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
