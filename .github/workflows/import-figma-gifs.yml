@@ -1,0 +1,58 @@
+name: Import approved Figma GIF animation assets
+on:
+  push:
+    paths:
+      - .github/workflows/import-figma-gifs.yml
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download actual animated source GIFs from approved Figma fills
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/motion
+          curl --fail --location --retry 4 --retry-delay 2 'https://www.figma.com/api/mcp/asset/2a46af47-17a1-4a69-a5c6-ca49512da1d7' -o assets/motion/blister_3_to_5_1_23_pingpong.gif
+          curl --fail --location --retry 4 --retry-delay 2 'https://www.figma.com/api/mcp/asset/2c12cf98-a779-4485-a9d6-95b9481a276e' -o assets/motion/blister_3_to_5_one_shot.gif
+          file assets/motion/*.gif
+          test "$(head -c 3 assets/motion/blister_3_to_5_1_23_pingpong.gif)" = GIF
+          test "$(head -c 3 assets/motion/blister_3_to_5_one_shot.gif)" = GIF
+      - name: Extract the actual first and last frames of the one-shot
+        shell: bash
+        run: |
+          python3 -m pip -q install Pillow
+          python3 - <<'PY'
+          import json
+          from PIL import Image, ImageSequence
+          root='assets/motion/'
+          meta={}
+          for stem in ('blister_3_to_5_1_23_pingpong','blister_3_to_5_one_shot'):
+              image=Image.open(root+stem+'.gif')
+              total=0
+              for frame in ImageSequence.Iterator(image):
+                  total+=frame.info.get('duration',100)
+              meta[stem]={'frames':image.n_frames,'duration_ms':total,'size':[image.width,image.height]}
+              if stem.endswith('one_shot'):
+                  image.seek(0)
+                  image.convert('RGBA').save(root+'blister_3_to_5_one_shot_first.png')
+                  image.seek(image.n_frames-1)
+                  image.convert('RGBA').save(root+'blister_3_to_5_one_shot_last.png')
+          assert all(v['frames']>1 for v in meta.values()), meta
+          with open(root+'motion-metadata.json','w') as f:json.dump(meta,f)
+          print(meta)
+          PY
+      - name: Commit exact GIF source plus still endpoints
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion
+          if ! git diff --cached --quiet; then
+            git commit -m 'Import two original animated Figma blister GIFs and their endpoint frames'
+            git push origin HEAD:main
+          fi
