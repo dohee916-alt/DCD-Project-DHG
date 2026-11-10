@@ -1565,8 +1565,15 @@ canvas.figure{object-fit:contain!important}
 /* AR4–AR7 top guidance: orange on the blue field, never black. */
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{color:#d83a00!important;}
 
-/* DCD: all Doto guidance uses solid black and tighter leading. */
-.doto{color:#111!important;line-height:1.08!important;}
-#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{color:#111!important;line-height:1.08!important;}
+/* Verified against actual Figma text fills:
+   WEB normal Doto + AR3/AR6/AR7: #2e2924 (node 334:1734, 640:922).
+   Guide / poster pack CTA: #f9f6f2 (nodes 607:405 and 607:472).
+   AR initial pack prompt: #f9f6f2 (node 636:402).
+   Do not globally force black over the original ivory CTA. */
+.doto{color:#2e2924!important;line-height:1.08!important;}
+#stage .poster-click-guide,
+#stage.page-01 .guide-copy,
+#stage .ar-press-copy{color:#f9f6f2!important;}
+#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{color:#2e2924!important;line-height:1.08!important;}
 /* Tighter two-line AR heading while keeping existing size and position. */
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"]) .ar-copy{line-height:28px!important;}
