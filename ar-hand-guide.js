@@ -117,38 +117,49 @@ function create(root){
    const size=box.getSize(new THREE.Vector3());
    centered.position.sub(center);
    poseScale=207/Math.max(1,size.x,size.y);
-   // Smooth translucent hand made from the original rigged geometry.
-   // The model's noisy color/normal textures are not sampled.
-   const low=new THREE.Color('#f4a693'),high=new THREE.Color('#ffe0cb');
+   // Soft, clean translucent guide hand using the original animated rig.
+   // All supplied roughness, normal, bump and color maps are intentionally
+   // replaced so the render never inherits gritty skin texture.
+   const peach=new THREE.Color('#f4ac9d');
+   const ivory=new THREE.Color('#ffe8d9');
    model.traverse(mesh=>{
     if(!mesh.isMesh)return;
     mesh.frustumCulled=false;
+    // Smooth the actual rig's vertex normals without changing its shape,
+    // skin attributes, bone weights or animation.
+    if(mesh.geometry?.attributes?.normal){
+     mesh.geometry=mesh.geometry.clone();
+     mesh.geometry.computeVertexNormals();
+     owned.push(mesh.geometry);
+    }
     const material=new THREE.MeshPhysicalMaterial({
-     color:0xffffff,roughness:.72,metalness:0,clearcoat:.10,
-     flatShading:false,transparent:true,opacity:.68,
-     side:THREE.DoubleSide,depthTest:true,depthWrite:true
+     color:0xffffff,roughness:.79,metalness:0,clearcoat:.08,
+     clearcoatRoughness:.86,flatShading:false,
+     transparent:true,opacity:.64,side:THREE.FrontSide,
+     depthTest:true,depthWrite:false
     });
-    material.forceSinglePass=true;
     material.onBeforeCompile=shader=>{
-     shader.uniforms.dcdLow={value:low};
-     shader.uniforms.dcdHigh={value:high};
+     shader.uniforms.dcdPeach={value:peach};
+     shader.uniforms.dcdIvory={value:ivory};
      shader.vertexShader=shader.vertexShader
       .replace('#include <common>',
-       '#include <common>\nvarying float vDcdLocalY;')
+       '#include <common>\\nvarying float vDcdLocalY;')
       .replace('#include <begin_vertex>',
-       '#include <begin_vertex>\nvDcdLocalY=position.y;');
+       '#include <begin_vertex>\\nvDcdLocalY=position.y;');
      shader.fragmentShader=shader.fragmentShader
       .replace('#include <common>',
-       '#include <common>\nvarying float vDcdLocalY;\nuniform vec3 dcdLow;\nuniform vec3 dcdHigh;')
+       '#include <common>\\nvarying float vDcdLocalY;\\nuniform vec3 dcdPeach;\\nuniform vec3 dcdIvory;')
       .replace('#include <color_fragment>',[
        '#include <color_fragment>',
-       'float wristFade=smoothstep(0.25,6.5,vDcdLocalY);',
-       'float silkyTone=smoothstep(0.5,22.0,vDcdLocalY);',
-       'diffuseColor.rgb=mix(dcdLow,dcdHigh,silkyTone);',
-       'diffuseColor.a*=wristFade;'
-      ].join('\n'));
+       '// The supplied hand extends from Y=-0.18 at the wrist to Y=23.',
+       '// Keep palm and fingertips defined, soften only the wrist cut.',
+       'float wristAlpha=smoothstep(0.15,7.4,vDcdLocalY);',
+       'float blush=smoothstep(1.0,22.0,vDcdLocalY);',
+       'diffuseColor.rgb=mix(dcdPeach,dcdIvory,blush);',
+       'diffuseColor.a*=wristAlpha;'
+      ].join('\\n'));
     };
-    material.customProgramCacheKey=()=> 'dcd-translucent-silky-hand-wrist-gradient-v2';
+    material.customProgramCacheKey=()=> 'dcd-soft-translucent-hand-feathered-wrist-v3';
     owned.push(material);
     mesh.material=material;
    });
