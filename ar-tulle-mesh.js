@@ -80,7 +80,7 @@ void main(){
   // the fabric even when individual thread pixels shrink at camera scale.
   // Fine, thin organza filament with a faint continuous translucent body.
   // Avoid the coarse opaque mesh effect from the earlier yarn intensity.
-  float netAlpha=0.045+0.36*strand+0.022*detail;
+  float netAlpha=0.105+0.53*strand+0.034*detail;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -253,8 +253,8 @@ function canvasCloth(root){
     // Keep generous margins around the face, but never let the cloth grow
     // into the heading or extend an entire face-height beyond the chin.
     const cw=clamp(fw*1.96,fw+104,424);
-    const ch=clamp(fh*1.78,fh+125,654);
-    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2-fh*.085;
+    const ch=clamp(fh*1.63,fh+116,610);
+    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2+fh*.035;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
@@ -452,7 +452,7 @@ function create(root){
       printCtx.font='700 '+fs+'px "Turret Road",sans-serif';
       printCtx.textAlign='center';printCtx.textBaseline='middle';
       // Original clean orange type: never add dark outline/shadow.
-      printCtx.fillStyle='#ff6b23';
+      printCtx.fillStyle='#151515';
       for(let j=0;j<lines.length;j++){
         const yy=(j-(lines.length-1)/2)*lineHeight;
         printCtx.fillText(lines[j],0,yy);
@@ -562,10 +562,10 @@ function create(root){
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
     const angle=uprightFaceAngle(eyeA,eyeB),co=Math.cos(angle),si=Math.sin(angle);
-    const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2-fh*.085;
+    const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2+fh*.035;
     // Expand the physical veil around the whole head (hair and temples).
     // Keep the text in its PREVIOUS independent screen-space positions.
-    const cw=clamp(fw*1.96,fw+104,424),ch=clamp(fh*1.78,fh+125,654);
+    const cw=clamp(fw*1.96,fw+104,424),ch=clamp(fh*1.63,fh+116,610);
     const textWidth=clamp(fw*1.72,fw+80,412);
     const textHeight=clamp(fh*1.53,fh+85,585);
     const textY=(forehead.y+chin.y)/2-fh*.015;
@@ -621,13 +621,13 @@ function create(root){
       // rectangular grid's top corners and perfectly vertical side rails.
       const topRegion=clamp((.29-v)/.29,0,1);
       const jawRegion=clamp((v-.61)/.39,0,1);
-      const faceContour=1-.045*topRegion*topRegion-.075*jawRegion*jawRegion;
+      const faceContour=1-.12*topRegion*topRegion-.16*jawRegion*jawRegion;
       const px=nx*cw*.5*(1-curl)*faceContour;
       const rolledEdge=Math.max(0,(v-.87)/.13);
       const curve=Math.pow(Math.abs(nx),1.5);
       // A curved forehead edge dips toward the temples. At the chin, pull
       // the outer corners up around the jaw to avoid a flat rectangular hem.
-      const foreheadRound=topRegion*topRegion*fh*.045*Math.pow(Math.abs(nx),2.3);
+      const foreheadRound=topRegion*topRegion*fh*.10*Math.pow(Math.abs(nx),2.3);
       const jawRound=jawRegion*jawRegion*fh*.07*Math.pow(Math.abs(nx),1.6);
       const hemLift=tuck*fh*.026;
       const hemScoop=tuck*fh*.025*(1-curve);
@@ -667,14 +667,14 @@ function create(root){
       // Keep the lower mask in front of the face surface: forcing the
       // lower edge behind the face created a sharp exposed chin-shaped hole.
       // Only the extreme outer side edges may wrap subtly behind the cheeks.
-      const behind=.035*sideFold*sideFold;
+      const behind=.075*sideFold*sideFold;
       // Follow the face, but give the outer cloth a subtle 3D volume
       // so it reads as draped over hair, rather than printed on camera.
       const crownVolume=Math.exp(-((nx/.82)**2+((v-.23)/.24)**2))*.014;
-      mesh[at+2]=clamp(trackedSurface-.065+behind+foldDepth*.08-crownVolume,-.79,.79);
+      mesh[at+2]=clamp(trackedSurface-.047+behind+foldDepth*.18-crownVolume,-.79,.79);
       mesh[at+3]=u;mesh[at+4]=v;
       const foldShade=tuck*(.055*edgeX+.012*curve);
-      mesh[at+5]=clamp(.94+.10*bump+.035*cheek-foldShade-rolledEdge*.13,.68,1.10);
+      mesh[at+5]=clamp(.89+.22*bump+.11*cheek-foldShade*1.5-rolledEdge*.17-.035*sideFold,.65,1.15);
       const border=Math.min(u,1-u,v,1-v);
       mesh[at+6]=clamp((.115-border)/.115,0,1);
     }
@@ -789,7 +789,7 @@ function create(root){
           gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.thread);
           // Five stacked textile layers must stay translucent; embroidery
           // remains opaque enough to be read even across the older layers.
-          gl.uniform1f(opacityUniform,opacity*(pass===0?.84:0));
+          gl.uniform1f(opacityUniform,opacity*(pass===0?.96:0));
           gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
         }
       }
