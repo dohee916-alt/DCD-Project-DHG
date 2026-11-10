@@ -615,12 +615,36 @@ function create(root){
       mesh[at+5]=clamp(light,.64,1.24);
       mesh[at+6]=fringe;
     }
+    // Estimate continuous cloth lighting from the LOCAL 3D face surface.
+    // The old single nose-depth brightness term made the fabric look flat.
+    // Derive a tangent-normal field from the official face triangles instead.
+    const nxSum=new Float32Array(faceVertexCount);
+    const nySum=new Float32Array(faceVertexCount);
+    const nzSum=new Float32Array(faceVertexCount);
+    const tris=faceData.triangles;
+    for(let t=0;t<tris.length;t+=3){
+      const a=tris[t],b=tris[t+1],c=tris[t+2];
+      const ax=facePixels[a*2],ay=facePixels[a*2+1];
+      const bx=facePixels[b*2],by=facePixels[b*2+1];
+      const cx2=facePixels[c*2],cy2=facePixels[c*2+1];
+      const abx=bx-ax,aby=by-ay,abz=(faceDepth[b]-faceDepth[a])*fw*.85;
+      const acx=cx2-ax,acy=cy2-ay,acz=(faceDepth[c]-faceDepth[a])*fw*.85;
+      let dx=aby*acz-abz*acy,dy=abz*acx-abx*acz,dz=abx*acy-aby*acx;
+      const len=Math.hypot(dx,dy,dz)||1;
+      dx/=len;dy/=len;dz/=len;
+      // Triangle winding differs between mirrored camera coordinates;
+      // keep facing direction consistent per triangle.
+      if(dz<0){dx=-dx;dy=-dy;dz=-dz;}
+      for(const id of [a,b,c]){nxSum[id]+=dx;nySum[id]+=dy;nzSum[id]+=dz;}
+    }
     for(let id=0;id<faceVertexCount;id++){
       const px=facePixels[id*2],py=facePixels[id*2+1],depth=faceDepth[id];
-      // Shading is driven by the landmark surface relief itself.
-      const convex=clamp((rawCheek-points[id].z)*2.5,-.15,.22);
-      const light=.91+convex*.78-(px-cx)/Math.max(1,fw)*.035;
-      writeClothVertex(id,px,py,depth-.055,light,0);
+      const norm=Math.hypot(nxSum[id],nySum[id],nzSum[id])||1;
+      const lx=nxSum[id]/norm,ly=nySum[id]/norm,lz=nzSum[id]/norm;
+      // Soft upper-left light rakes across brow, nose bridge and cheek
+      // without introducing separate lips/eyes or glued-on shadow sprites.
+      const light=.87+.19*clamp(lx*(-.28)+ly*(-.38)+lz*.88,0,1);
+      writeClothVertex(id,px,py,depth-.048,light,0);
     }
     // A natural margin is attached to the real face OVAL in head-relative
     // coordinates, so it moves and rotates with the user's head instead of
@@ -637,10 +661,12 @@ function create(root){
         // Headdress margin grows with the person's measured face size.
         const x=ax+relX*.36*t;
         const y=ay+relY*.24*t-top*fh*.12*t+bottom*fh*.035*t;
-        // The skirt of the fabric wraps back toward the ears/hair.
-        const z=baseDepth-.052+.092*t;
+        // Keep BOTH attachment rings in FRONT of the depth occluder.
+        // Previously +.092*t put the outer ring BEHIND the face, so the
+        // depth buffer clipped it into a visible dark curved seam.
+        const z=baseDepth-.048+.019*t;
         writeClothVertex(faceVertexCount+band*ringSize+j,x,y,z,
-          .90-.055*t,band===0?.12:1.0);
+          .93-.09*t,band===0?.18:1.0);
       }
     }
   }
