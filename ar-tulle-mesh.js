@@ -793,10 +793,10 @@ function create(root){
             // occluder. Hide fabric on the far side of the head/itself.
             // Reset only depth for this layer so earlier translucent sheets
             // remain visible in the color buffer.
+            gl.depthMask(true);
             gl.clear(gl.DEPTH_BUFFER_BIT);
             gl.disable(gl.BLEND);
             gl.colorMask(false,false,false,false);
-            gl.depthMask(true);
             gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
             gl.depthMask(false);
             gl.colorMask(true,true,true,true);
