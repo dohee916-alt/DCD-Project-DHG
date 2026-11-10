@@ -1,0 +1,55 @@
+name: Retime intro looping blister GIF to 2.5 seconds
+on:
+  push:
+    paths:
+      - .github/workflows/retime-pingpong-2500ms.yml
+permissions:
+  contents: write
+jobs:
+  retime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Losslessly update only pingpong GIF delays and verify every frame
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip -q install Pillow
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          from PIL import Image,ImageSequence
+          p=pathlib.Path('assets/motion/blister_3_to_5_1_23_pingpong.gif')
+          data=bytearray(p.read_bytes())
+          with Image.open(p) as gif:
+              assert gif.n_frames==44
+              before=[hashlib.sha256(fr.convert('RGBA').tobytes()).digest() for fr in ImageSequence.Iterator(gif)]
+          controls=[i for i in range(len(data)-7) if data[i:i+3]==bytes((0x21,0xF9,0x04)) and data[i+7]==0]
+          assert len(controls)==44,('GCE count',len(controls))
+          for frame,i in enumerate(controls):
+              # 30 frames x 60ms + 14 frames x 50ms = 2500ms
+              data[i+4]=6 if frame<30 else 5
+              data[i+5]=0
+          p.write_bytes(data)
+          with Image.open(p) as gif:
+              assert gif.n_frames==44 and (gif.width,gif.height)==(540,1080)
+              durations=[fr.info.get('duration',0) for fr in ImageSequence.Iterator(gif)]
+              after=[hashlib.sha256(fr.convert('RGBA').tobytes()).digest() for fr in ImageSequence.Iterator(gif)]
+              assert sum(durations)==2500,('duration',sum(durations))
+              assert before==after,'Frame pixels changed'
+          path=pathlib.Path('assets/motion/motion-metadata.json')
+          meta=json.loads(path.read_text())
+          assert meta['blister_3_to_5_one_shot']['duration_ms']==1500
+          meta['blister_3_to_5_1_23_pingpong']['duration_ms']=2500
+          path.write_text(json.dumps(meta))
+          print('Verified: loop GIF exactly 2500ms, 44 unchanged frames, 540x1080. Rupture still 1500ms.')
+          PY
+      - name: Commit re-timed source loop GIF
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion/blister_3_to_5_1_23_pingpong.gif assets/motion/motion-metadata.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Set introductory blister squeeze loop to 2.5 seconds'
+            git push origin HEAD:main
+          fi
