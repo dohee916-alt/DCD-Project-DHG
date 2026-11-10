@@ -5,7 +5,11 @@ window.DCD_ASSETS = Object.freeze({
   posterAlternate: "assets/figma-current/hd/posterB.png",
   posterResult: "assets/figma-current/hd/posterResult-updated.png",
   openingBreakVideo: null, // Set when the approved rupture motion file exists.
-  openingLastFrame: null,
+  openingLastFrame: "assets/motion/blister_3_to_5_one_shot_last.png",
+  blisterPingpong: "assets/motion/blister_3_to_5_1_23_pingpong.gif",
+  blisterOneShot: "assets/motion/blister_3_to_5_one_shot.gif",
+  blisterOneShotFirst: "assets/motion/blister_3_to_5_one_shot_first.png",
+  blisterOneShotLast: "assets/motion/blister_3_to_5_one_shot_last.png",
   workbenchBackground: "assets/figma-render/workbench-bg@2x.png",
   workbenchPack: "assets/figma-current/hd/web04-visible-figma-graded-crop-2x.png",
   workbenchTray: "assets/figma-current/hd/web04-tray-figma-adjusted-2x.png",
@@ -38,6 +42,8 @@ window.DCD_ASSETS = Object.freeze({
 });
 window.DCD_MOTION = Object.freeze({
   introMs: 1550,
+  blisterPingpongMs: 3520, // Figma source GIF: 44 frames
+  blisterOneShotMs: 5010, // Figma source GIF: 44 frames, exact duration
   rotateGuideMs: 3000,
   injectionMs: 1450,
   packingSlideMs: 860,
