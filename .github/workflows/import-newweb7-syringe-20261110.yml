@@ -1,0 +1,49 @@
+name: Import approved NEW WEB 7 syringe retouch
+on:
+  push:
+    paths:
+      - .github/workflows/import-newweb7-syringe-20261110.yml
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Figma-native graded syringe exports
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 3 "https://www.figma.com/api/mcp/asset/413eea8f-ed21-49c9-af4e-f406a5396120.png" -o /tmp/figma-plunger.png
+          curl -fLsS --retry 3 "https://www.figma.com/api/mcp/asset/85e930af-41b4-4230-accb-9c35c1309050.png" -o /tmp/figma-barrel.png
+          python3 -m pip -q install pillow
+          python3 - <<'PY'
+          from PIL import Image,ImageChops,ImageStat
+          from pathlib import Path
+          target=Path('assets/figma-current/hd')
+          for name in ('plunger','barrel'):
+              source=Image.open('/tmp/figma-'+name+'.png').convert('RGBA')
+              old=Image.open(target/('syringe-'+name+'-newweb7-graded-3x.png')).convert('RGBA')
+              # Figma designs the syringe horizontally. Website uses it
+              # vertically; choose the direction matching the earlier
+              # correctly oriented 3x artwork.
+              candidates=[source.rotate(90,expand=True),source.rotate(270,expand=True)]
+              def score(image):
+                  cmp=image.resize(old.size,Image.Resampling.LANCZOS)
+                  # Compare only the old image's actual colored pixels.
+                  a=cmp.convert('RGB')
+                  b=old.convert('RGB')
+                  return sum(ImageStat.Stat(ImageChops.difference(a,b)).mean)
+              chosen=min(candidates,key=score)
+              output=chosen.resize(old.size,Image.Resampling.LANCZOS)
+              assert output.size==old.size,(name,output.size,old.size)
+              output.save(target/('syringe-'+name+'-newweb7-graded-20261110.png'),optimize=True)
+              print(name,'Figma',source.size,'Web',output.size,'old PNG',old.size)
+          PY
+      - name: Commit exact Figma image adjustments to website assets
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/figma-current/hd/syringe-plunger-newweb7-graded-20261110.png assets/figma-current/hd/syringe-barrel-newweb7-graded-20261110.png
+          git commit -m 'Import native NEW WEB 7 saturation and temperature retouch for both syringe layers'
+          git push origin HEAD:main
