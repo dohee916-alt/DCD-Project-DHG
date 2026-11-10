@@ -61,10 +61,10 @@ function create(root){
    renderer.toneMapping=THREE.NoToneMapping;
    el.replaceChildren(renderer.domElement);
    renderer.domElement.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none';
-   scene.add(new THREE.HemisphereLight(0xffe9dd,0xd3a99b,1.4));
-   const key=new THREE.DirectionalLight(0xffffff,1.45);
+   scene.add(new THREE.HemisphereLight(0xffeee6,0xe7a18d,1.05));
+   const key=new THREE.DirectionalLight(0xffffff,.78);
    key.position.set(-6,10,16);scene.add(key);
-   const fill=new THREE.DirectionalLight(0xffc8ad,.48);
+   const fill=new THREE.DirectionalLight(0xffc8ad,.32);
    fill.position.set(7,2,-5);scene.add(fill);
    // Exact pre-regression *closed* gesture from the old working
    // 2026-11-09 Pose_OK implementation (a314b99e28a1).
@@ -120,8 +120,8 @@ function create(root){
    // Soft, clean translucent guide hand using the original animated rig.
    // All supplied roughness, normal, bump and color maps are intentionally
    // replaced so the render never inherits gritty skin texture.
-   const peach=new THREE.Color('#f4ac9d');
-   const ivory=new THREE.Color('#ffe8d9');
+   const peach=new THREE.Color('#ec744c');
+   const ivory=new THREE.Color('#ffc5a7');
    model.traverse(mesh=>{
     if(!mesh.isMesh)return;
     mesh.frustumCulled=false;
@@ -133,9 +133,9 @@ function create(root){
      owned.push(mesh.geometry);
     }
     const material=new THREE.MeshPhysicalMaterial({
-     color:0xffffff,roughness:.79,metalness:0,clearcoat:.08,
-     clearcoatRoughness:.86,flatShading:false,
-     transparent:true,opacity:.64,side:THREE.FrontSide,
+     color:0xffffff,roughness:1,metalness:0,clearcoat:0,
+     clearcoatRoughness:1,flatShading:false,
+     transparent:true,opacity:.70,side:THREE.FrontSide,
      depthTest:true,depthWrite:false
     });
     material.onBeforeCompile=shader=>{
@@ -153,13 +153,13 @@ function create(root){
        '#include <color_fragment>',
        '// The supplied hand extends from Y=-0.18 at the wrist to Y=23.',
        '// Keep palm and fingertips defined, soften only the wrist cut.',
-       'float wristAlpha=smoothstep(0.15,7.4,vDcdLocalY);',
-       'float blush=smoothstep(1.0,22.0,vDcdLocalY);',
+       'float wristAlpha=smoothstep(-0.10,8.6,vDcdLocalY);',
+       'float blush=smoothstep(0.0,24.0,vDcdLocalY);',
        'diffuseColor.rgb=mix(dcdPeach,dcdIvory,blush);',
        'diffuseColor.a*=wristAlpha;'
       ].join('\n'));
     };
-    material.customProgramCacheKey=()=> 'dcd-soft-translucent-hand-feathered-wrist-v3';
+    material.customProgramCacheKey=()=> 'dcd-web-guide-matched-orange-soft-hand-v4';
     owned.push(material);
     mesh.material=material;
    });
