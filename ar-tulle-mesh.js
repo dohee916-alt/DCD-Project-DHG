@@ -305,10 +305,10 @@ function canvasCloth(root){
     const eyeL=positions[33],eyeR=positions[263];
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
-    // Compatibility rendering also ends at the observed face silhouette.
-    const cw=fw;
-    const ch=fh;
-    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2+fh*.035;
+    // Fallback also uses a larger head-covering sheet.
+    const cw=fw*1.67;
+    const ch=fh*1.78;
+    const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2-fh*.075;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
@@ -459,7 +459,8 @@ function create(root){
   const canvasBackup=canvasCloth(root);
   // Cloth uses only the observed facial mesh and its canonical material UVs.
   const oval=FACE_RIM;
-  const faceVertexCount=468;
+  const GRID_COLS=30,GRID_ROWS=42;
+  const faceVertexCount=(GRID_COLS+1)*(GRID_ROWS+1);
   // Face and tulle share the same 428x926 screen projection and relative
   // MediaPipe depth. An occluder cannot work if they use different spaces.
   function initOccluder(){
@@ -484,9 +485,13 @@ function create(root){
     return true;
   }
   function setConnections(){
-    if(!faceData?.triangles?.length)throw Error('Official facial triangles unavailable');
-    // Only observed facial geometry. No screen-space hair expansion.
-    const indices=[...faceData.triangles];
+    if(!faceData?.triangles?.length)throw Error('Face geometry unavailable');
+    // A separate fabric mesh, independent of the tracked skin triangles.
+    const indices=[];
+    for(let r=0;r<GRID_ROWS;r++)for(let c=0;c<GRID_COLS;c++){
+      const a=r*(GRID_COLS+1)+c,b=a+1,d=a+GRID_COLS+1,e=d+1;
+      indices.push(a,d,b,b,d,e);
+    }
     indexCount=indices.length;
     mesh=new Float32Array(faceVertexCount*stride);
     vertices=new Float32Array(mesh.length);
@@ -563,14 +568,14 @@ function create(root){
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
     const angle=uprightFaceAngle(eyeA,eyeB),co=Math.cos(angle),si=Math.sin(angle);
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2+fh*.035;
-    // The cloth ends at the tracked forehead, cheeks and chin.
-    // The lettering now shares the cloth surface and head-relative UVs.
-    const cw=fw,ch=fh;
-    const textWidth=clamp(fw*1.72,fw+80,412);
-    const textHeight=clamp(fh*1.53,fh+85,585);
-    const textY=(forehead.y+chin.y)/2-fh*.015;
-    faceCenter={x:cx,y:cy,cw,ch,co,si,fw,fh,
-      textWidth,textHeight,textY};
+    // Head proportions are estimated from tracked forehead, jaw and cheeks;
+    // no unobserved skull landmarks are presented as camera measurements.
+    const cw=fw*1.67,ch=fh*1.78,nose=p(1);
+    const veilCenterY=(forehead.y+chin.y)/2-fh*.075;
+    const textWidth=clamp(cw,fw+80,412);
+    const textHeight=clamp(ch,fh+85,585);
+    faceCenter={x:cx,y:veilCenterY,cw,ch,co,si,fw,fh,
+      noseX:nose.x,noseY:nose.y,noseRelief,textWidth,textHeight,textY:veilCenterY};
     // Build the real tracked face surface in the same mirrored screen space.
     facePixels=new Float32Array(468*2);
     faceDepth=new Float32Array(468);
@@ -587,54 +592,39 @@ function create(root){
       gl.bindBuffer(gl.ARRAY_BUFFER,occBuffer);
       gl.bufferSubData(gl.ARRAY_BUFFER,0,depthVerts);
     }
-    // Direct face-conforming cloth: every vertex follows its corresponding
-    // actual FaceLandmarker position and 3D depth on every video frame.
-    // This preserves cheeks, nose bridge, brow and jaw as one CONTINUOUS
-    // 468-vertex surface (no separate lip/eyelid overlay).
-    function writeClothVertex(id,px,py,pz,light,fringe){
-      const at=id*stride;
-      mesh[at]=px;mesh[at+1]=py;
-      mesh[at+2]=clamp(pz,-.79,.79);
-      // Canonical UVs are stable for every head pose; mirror geometry and
-      // atlas coordinates once together, keeping the printed glyphs upright.
-      mesh[at+3]=1-faceData.uv[id][0];
-      mesh[at+4]=1-faceData.uv[id][1];
-      mesh[at+5]=clamp(light,.64,1.24);
-      mesh[at+6]=fringe;mesh[at+7]=0;
-    }
-    // Estimate continuous cloth lighting from the LOCAL 3D face surface.
-    // The old single nose-depth brightness term made the fabric look flat.
-    // Derive a tangent-normal field from the official face triangles instead.
-    const nxSum=new Float32Array(faceVertexCount);
-    const nySum=new Float32Array(faceVertexCount);
-    const nzSum=new Float32Array(faceVertexCount);
-    const tris=faceData.triangles;
-    for(let t=0;t<tris.length;t+=3){
-      const a=tris[t],b=tris[t+1],c=tris[t+2];
-      const ax=facePixels[a*2],ay=facePixels[a*2+1];
-      const bx=facePixels[b*2],by=facePixels[b*2+1];
-      const cx2=facePixels[c*2],cy2=facePixels[c*2+1];
-      const abx=bx-ax,aby=by-ay,abz=(faceDepth[b]-faceDepth[a])*dw/1.8;
-      const acx=cx2-ax,acy=cy2-ay,acz=(faceDepth[c]-faceDepth[a])*dw/1.8;
-      let dx=aby*acz-abz*acy,dy=abz*acx-abx*acz,dz=abx*acy-aby*acx;
-      const len=Math.hypot(dx,dy,dz)||1;
-      dx/=len;dy/=len;dz/=len;
-      // Triangle winding differs between mirrored camera coordinates;
-      // keep facing direction consistent per triangle.
-      if(dz<0){dx=-dx;dy=-dy;dz=-dz;}
-      for(const id of [a,b,c]){nxSum[id]+=dx;nySum[id]+=dy;nzSum[id]+=dz;}
-    }
-    const faceLight=new Float32Array(faceVertexCount);
-    for(let id=0;id<faceVertexCount;id++){
-      const px=facePixels[id*2],py=facePixels[id*2+1],depth=faceDepth[id];
-      const norm=Math.hypot(nxSum[id],nySum[id],nzSum[id])||1;
-      const lx=nxSum[id]/norm,ly=nySum[id]/norm,lz=nzSum[id]/norm;
-      // Soft upper-left light rakes across brow, nose bridge and cheek
-      // without introducing separate lips/eyes or glued-on shadow sprites.
-      const light=.87+.19*clamp(lx*(-.28)+ly*(-.38)+lz*.88,0,1);
-      faceLight[id]=light;
-      writeClothVertex(id,px,py,depth-.006,light,0);
-      mesh[id*stride+8]=-lx;mesh[id*stride+9]=ly;mesh[id*stride+10]=lz;
+    // Draped skull-covering veil, NOT a duplicate of the face skin.
+    // Nose, upper forehead and chin are only broad contact guides.
+    const halfW=cw*.5,halfH=ch*.5;
+    const noseDx=(nose.x-cx)/halfW,noseDy=(nose.y-veilCenterY)/halfH;
+    for(let r=0;r<=GRID_ROWS;r++){
+      const q=r/GRID_ROWS,top=ease(clamp(q/.30,0,1));
+      const bottom=ease(clamp((q-.78)/.22,0,1));
+      const widthRatio=.79+.21*top-.06*bottom;
+      for(let c=0;c<=GRID_COLS;c++){
+        const u=c/GRID_COLS,nx=2*u-1,at=(r*(GRID_COLS+1)+c)*stride;
+        const dome=(1-top)*Math.pow(Math.abs(nx),2)*fh*.16;
+        const folds=Math.sin(u*Math.PI*7+q*3.1)*Math.pow(Math.abs(nx),1.45)*fw*.013
+          +Math.sin(u*Math.PI*3-q*5)*fw*.008;
+        const spread=Math.sign(nx)*Math.pow(Math.abs(nx),1.8)*bottom*fw*.035;
+        const lx=nx*halfW*widthRatio+folds+spread;
+        const ly=(q-.5)*ch+dome;
+        const px=cx+lx*co-ly*si,py=veilCenterY+lx*si+ly*co;
+        const dx=(nx-noseDx)/.28,dy=((q-.5)*ch/halfH-noseDy)/.24;
+        const bridge=Math.exp(-.5*(dx*dx+dy*dy));
+        const brow=Math.exp(-Math.pow((q-.24)/.12,2))*Math.exp(-nx*nx*2);
+        const chinCurve=Math.exp(-Math.pow((q-.72)/.14,2))*Math.exp(-nx*nx*3);
+        const relief=.34+clamp(noseRelief*1.8,.04,.29)*bridge
+          +.065*brow+.045*chinCurve;
+        const ripple=Math.sin(nx*11+q*8)*.012*Math.pow(Math.abs(nx),1.3);
+        mesh[at]=px;mesh[at+1]=py;mesh[at+2]=clamp(-relief+ripple,-.75,-.22);
+        mesh[at+3]=u;mesh[at+4]=1-q;
+        const slope=Math.sin(nx*10+q*5)*.16*Math.pow(Math.abs(nx),1.2);
+        mesh[at+5]=clamp(.94+.10*Math.cos(nx*12+q*3),.75,1.12);
+        mesh[at+6]=Math.abs(nx);mesh[at+7]=0;
+        mesh[at+8]=clamp(slope,-.32,.32);
+        mesh[at+9]=clamp((bridge-.2)*.2,-.2,.2);
+        mesh[at+10]=Math.sqrt(Math.max(.15,1-mesh[at+8]**2-mesh[at+9]**2));
+      }
     }
   }
 
@@ -720,14 +710,14 @@ function create(root){
           for(let at=0;at<mesh.length;at+=stride){
             const u=mesh[at+3],v=mesh[at+4],nx=2*u-1;
             const flatX=nx*clothWidth*.5;
-            const flatY=(v-.50)*clothHeight;
+            const flatY=(.50-v)*clothHeight;
             const startX=center.x+flatX*xCos-flatY*ySin;
             const startY=center.y+flatX*ySin+flatY*xCos;
             // Contact begins at the nose, spreads through the cheeks, and
             // reaches the free edges last. At the end all vertices settle.
             const radius=clamp(Math.hypot(nx*.7,(v-.48)*1.15),0,1);
-            const threshold=.23+.24*radius;
-            const contact=clamp((approach-.65-threshold*.25)/(1-.65-threshold*.25),0,1);
+            const threshold=.10+.36*radius;
+            const contact=clamp((approach-.43-threshold*.28)/(1-.43-threshold*.28),0,1);
             const smooth=contact*contact*(3-2*contact);
             const pull=clamp((v-.73)/.27,0,1);
             const flutter=fly*pull*pull*Math.sin(now*.003+nx*9+layer.index*.3)*1.5;
