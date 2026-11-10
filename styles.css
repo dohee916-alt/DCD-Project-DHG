@@ -1580,3 +1580,19 @@ canvas.figure{object-fit:contain!important}
 
 /* WEB04: orange syringe liquid layer only, 60% opacity */
 .syringe-2d .syringe-drug.orange{opacity:.6}
+
+/* WEB00–02: approved GIF placement, Figma 'gif 화면비율 배치' 984:115.
+   The image has a native 1:2 ratio (540x1080), placed at -16,0,467x934.
+   Titles, hand guidance and click targets remain in their original layers. */
+#stage .opening-blister-motion{
+  position:absolute!important;
+  z-index:1!important;
+  display:block!important;
+  opacity:1!important;
+  object-fit:fill!important;
+  transform:none!important;
+  animation:none!important;
+  filter:none!important;
+  mix-blend-mode:normal!important;
+  pointer-events:none!important;
+}
