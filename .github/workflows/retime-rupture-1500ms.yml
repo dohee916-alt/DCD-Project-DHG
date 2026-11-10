@@ -14,6 +14,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -m pip -q install Pillow
           python3 - <<'PY'
           import hashlib, json, pathlib
           from PIL import Image, ImageSequence
@@ -27,7 +28,7 @@ jobs:
           # frames, disposal flags and transparent pixels entirely untouched.
           indices=[]
           for i in range(len(data)-7):
-              if data[i:i+3]!=b'\\x21\\xf9\\x04':continue
+              if data[i:i+3]!=bytes((0x21,0xF9,0x04)):continue
               if data[i+7]!=0:continue
               indices.append(i)
           assert len(indices)==44,('unexpected frame-control extensions',len(indices))
