@@ -1,0 +1,61 @@
+name: Retiming 44-frame rupture GIF to exactly 1.5 seconds
+on:
+  push:
+    paths:
+      - .github/workflows/retime-rupture-1500ms.yml
+permissions:
+  contents: write
+jobs:
+  retime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Change GIF frame delays losslessly without re-encoding image frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib
+          from PIL import Image, ImageSequence
+          p=pathlib.Path('assets/motion/blister_3_to_5_one_shot.gif')
+          data=bytearray(p.read_bytes())
+          with Image.open(p) as gif:
+              assert gif.n_frames==44,(gif.n_frames,'unexpected source frames')
+              before=[hashlib.sha256(frame.convert('RGBA').tobytes()).digest() for frame in ImageSequence.Iterator(gif)]
+          # All 44 source frames use the same standard GIF Graphics Control
+          # Extension. Changing only its 2-byte delay leaves palette, LZW
+          # frames, disposal flags and transparent pixels entirely untouched.
+          indices=[]
+          for i in range(len(data)-7):
+              if data[i:i+3]!=b'\\x21\\xf9\\x04':continue
+              if data[i+7]!=0:continue
+              indices.append(i)
+          assert len(indices)==44,('unexpected frame-control extensions',len(indices))
+          for frame,index in enumerate(indices):
+              delay=4 if frame<18 else 3
+              data[index+4]=delay
+              data[index+5]=0
+          p.write_bytes(data)
+          with Image.open(p) as gif:
+              assert gif.n_frames==44
+              durations=[frame.info.get('duration',0) for frame in ImageSequence.Iterator(gif)]
+              after=[hashlib.sha256(frame.convert('RGBA').tobytes()).digest() for frame in ImageSequence.Iterator(gif)]
+              assert sum(durations)==1500,('wrong GIF duration',sum(durations))
+              assert before==after,'A decoded frame changed; abort'
+              assert (gif.width,gif.height)==(540,1080)
+          meta=pathlib.Path('assets/motion/motion-metadata.json')
+          obj=json.loads(meta.read_text())
+          obj['blister_3_to_5_one_shot']['duration_ms']=1500
+          meta.write_text(json.dumps(obj))
+          print('Verified exact 1.500s, 44 visually identical frames and unmodified 540x1080 pixels')
+          PY
+      - name: Commit exact-speed original-animation GIF
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion/blister_3_to_5_one_shot.gif assets/motion/motion-metadata.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Retime one-shot blister tear GIF to exactly 1500ms losslessly'
+            git push origin HEAD:main
+          fi
