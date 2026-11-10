@@ -1564,3 +1564,9 @@ canvas.figure{object-fit:contain!important}
 
 /* AR4–AR7 top guidance: orange on the blue field, never black. */
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{color:#d83a00!important;}
+
+/* DCD: all Doto guidance uses solid black and tighter leading. */
+.doto{color:#111!important;line-height:1.08!important;}
+#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{color:#111!important;line-height:1.08!important;}
+/* Tighter two-line AR heading while keeping existing size and position. */
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"]) .ar-copy{line-height:28px!important;}
