@@ -98,8 +98,10 @@ void main(){
   // last fabric layer must not erase the letters from earlier layers.
   // The fabric is real and semi-transparent through the center. The hems
   // fade fully away instead of retaining 15% alpha as square border rails.
-  float silhouette=smoothVeilSilhouette(vUV);
-  float edgeFade=1.0-smoothstep(0.60,0.99,vFringe);
+  // Geometry itself is the tracked face plus feathered outside margin.
+  // Do not impose an additional screen-space oval clip on these vertices.
+  float silhouette=1.0;
+  float edgeFade=1.0-smoothstep(0.18,0.99,vFringe);
   if(embroideryPass>0.5){
     gl_FragColor=vec4(orangeThread,0.0);
   }else{
@@ -460,7 +462,12 @@ function create(root){
       printCtx.restore();
     }
   }
-  const columns=28,rows=34;
+  // Cloth follows the actual FaceLandmarker mesh, not a rectangle
+  // estimated from face width/height. A separate, feathered ring extends
+  // beyond MediaPipe's skin outline to softly cover the temples and hair.
+  const oval=FACE_RIM;
+  const faceVertexCount=468;
+  const ringSize=oval.length;
   // Face and tulle share the same 428x926 screen projection and relative
   // MediaPipe depth. An occluder cannot work if they use different spaces.
   function initOccluder(){
@@ -485,13 +492,21 @@ function create(root){
     return true;
   }
   function setConnections(){
-    const indices=[];
-    for(let y=0;y<rows;y++)for(let x=0;x<columns;x++){
-      const a=y*(columns+1)+x,b=a+1,c=a+columns+1,d=c+1;
-      indices.push(a,c,b,b,c,d);
+    if(!faceData?.triangles?.length)throw Error('Official facial triangles unavailable');
+    // Match all 468 real face vertices, then bridge to two concentric
+    // softness rings. No independent square grid survives.
+    const indices=[...faceData.triangles];
+    for(let i=0;i<ringSize;i++){
+      const j=(i+1)%ringSize;
+      const a=oval[i],b=oval[j];
+      const inner=faceVertexCount+i,innerNext=faceVertexCount+j;
+      const outer=faceVertexCount+ringSize+i;
+      const outerNext=faceVertexCount+ringSize+j;
+      indices.push(a,inner,innerNext,a,innerNext,b);
+      indices.push(inner,outer,outerNext,inner,outerNext,innerNext);
     }
     indexCount=indices.length;
-    mesh=new Float32Array((columns+1)*(rows+1)*stride);
+    mesh=new Float32Array((faceVertexCount+ringSize*2)*stride);
     vertices=new Float32Array(mesh.length);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);
@@ -587,96 +602,46 @@ function create(root){
       gl.bindBuffer(gl.ARRAY_BUFFER,occBuffer);
       gl.bufferSubData(gl.ARRAY_BUFFER,0,depthVerts);
     }
-    // Spatial bins make ray-to-face triangle interpolation inexpensive.
-    triangleBins=Array.from({length:BIN_W*BIN_H},()=>[]);
-    for(let t=0;t<faceData.triangles.length/3;t++){
-      const a=faceData.triangles[t*3]*2,b=faceData.triangles[t*3+1]*2,c=faceData.triangles[t*3+2]*2;
-      const x0=Math.max(0,Math.floor(Math.min(facePixels[a],facePixels[b],facePixels[c])/W*BIN_W));
-      const x1=Math.min(BIN_W-1,Math.floor(Math.max(facePixels[a],facePixels[b],facePixels[c])/W*BIN_W));
-      const y0=Math.max(0,Math.floor(Math.min(facePixels[a+1],facePixels[b+1],facePixels[c+1])/H*BIN_H));
-      const y1=Math.min(BIN_H-1,Math.floor(Math.max(facePixels[a+1],facePixels[b+1],facePixels[c+1])/H*BIN_H));
-      for(let gy=y0;gy<=y1;gy++)for(let gx=x0;gx<=x1;gx++)
-        triangleBins[gy*BIN_W+gx].push(t);
+    // Direct face-conforming cloth: every vertex follows its corresponding
+    // actual FaceLandmarker position and 3D depth on every video frame.
+    // This preserves cheeks, nose bridge, brow and jaw as one CONTINUOUS
+    // 468-vertex surface (no separate lip/eyelid overlay).
+    function writeClothVertex(id,px,py,pz,light,fringe){
+      const at=id*stride;
+      mesh[at]=px;mesh[at+1]=py;
+      mesh[at+2]=clamp(pz,-.79,.79);
+      mesh[at+3]=clamp((px-(cx-cw*.5))/cw,.004,.996);
+      mesh[at+4]=clamp((py-(cy-ch*.5))/ch,.004,.996);
+      mesh[at+5]=clamp(light,.64,1.24);
+      mesh[at+6]=fringe;
     }
-    for(let y=0;y<=rows;y++)for(let x=0;x<=columns;x++){
-      const u=x/columns,v=y/rows,nx=u*2-1;
-      const edgeX=Math.max(0,(Math.abs(nx)-.68)/.32);
-      const lower=Math.max(0,(v-.69)/.31);
-      // Lower fabric is not a flat screen-facing rectangle. Below the jaw
-      // the cloth falls forward, folds under the chin and tucks around the
-      // left/right sides of the neck. Keep its boundary irregular and soft.
-      const tuck=lower*lower*(3-2*lower);
-      // Upper 70% remains smoothly stretched across the face. Drape only
-      // the excess BELOW the jaw, with a curled hem instead of a straight
-      // square boundary. No creases or independent upper-layer offsets.
-      // A rectangle never becomes a pointed triangular hem. Let only the
-      // outer 15% of the cloth draw gently inward after the jaw line.
-      // Fold free side edges behind the temples instead of displaying the
-      // rectangular corners beside the head. This smooth taper is spatial,
-      // not a sinusoidal crease across the forehead.
-      const sideFold=clamp((Math.abs(nx)-.72)/.28,0,1);
-      const upperCorner=clamp((.12-v)/.12,0,1)*clamp((Math.abs(nx)-.84)/.16,0,1);
-      const curl=tuck*(.022+.015*edgeX)+sideFold*.042+upperCorner*.018;
-      // Round the forehead and contour the cheeks instead of retaining the
-      // rectangular grid's top corners and perfectly vertical side rails.
-      const topRegion=clamp((.29-v)/.29,0,1);
-      const jawRegion=clamp((v-.61)/.39,0,1);
-      const faceContour=1-.12*topRegion*topRegion-.16*jawRegion*jawRegion;
-      const px=nx*cw*.5*(1-curl)*faceContour;
-      const rolledEdge=Math.max(0,(v-.87)/.13);
-      const curve=Math.pow(Math.abs(nx),1.5);
-      // A curved forehead edge dips toward the temples. At the chin, pull
-      // the outer corners up around the jaw to avoid a flat rectangular hem.
-      const foreheadRound=topRegion*topRegion*fh*.10*Math.pow(Math.abs(nx),2.3);
-      const jawRound=jawRegion*jawRegion*fh*.07*Math.pow(Math.abs(nx),1.6);
-      const hemLift=tuck*fh*.026;
-      const hemScoop=tuck*fh*.025*(1-curve);
-      const py=(v-.50)*ch+foreheadRound-jawRound-
-        hemLift+hemScoop-rolledEdge*rolledEdge*fh*.012;
-      const bump=Math.exp(-((nx/.35)**2+((v-.42)/.35)**2));
-      const cheek=Math.exp(-(((Math.abs(nx)-.51)/.27)**2+((v-.51)/.31)**2));
-      const foldDepth=tuck*(.025+.055*edgeX)+rolledEdge*.03;
-      const at=(y*(columns+1)+x)*stride;
-      mesh[at]=cx+px*co-py*si;
-      mesh[at+1]=cy+px*si+py*co;
-      // Clip-space Z: smaller is nearer. This measured, bounded relief is
-      // deliberately retained through the vertex buffer (it was discarded).
-      // Inside the face, use exact triangle interpolation. Outside its
-      // silhouette, use the four nearest vertices as an edge extension.
-      // Avoid 468x1015 distance scans for vertices already inside a face
-      // triangle: this matters on mobile during live camera inference.
-      const xx=mesh[at],yy=mesh[at+1];
-      let trackedSurface=faceSurfaceAt(xx,yy);
-      if(trackedSurface===null){
-        const nearest=[1e12,1e12,1e12,1e12],ids=[0,0,0,0];
-        for(let k=0;k<468;k++){
-          const dx=xx-facePixels[k*2],dy=yy-facePixels[k*2+1];
-          const d=dx*dx+dy*dy;
-          if(d>=nearest[3])continue;
-          let q=3;
-          while(q>0&&d<nearest[q-1]){nearest[q]=nearest[q-1];ids[q]=ids[q-1];q--;}
-          nearest[q]=d;ids[q]=k;
-        }
-        let weightedZ=0,weightSum=0;
-        for(let k=0;k<4;k++){
-          const weight=1/(nearest[k]+160);
-          weightedZ+=faceDepth[ids[k]]*weight;weightSum+=weight;
-        }
-        trackedSurface=weightedZ/Math.max(weightSum,1e-6);
+    for(let id=0;id<faceVertexCount;id++){
+      const px=facePixels[id*2],py=facePixels[id*2+1],depth=faceDepth[id];
+      // Shading is driven by the landmark surface relief itself.
+      const convex=clamp((rawCheek-points[id].z)*2.5,-.15,.22);
+      const light=.91+convex*.78-(px-cx)/Math.max(1,fw)*.035;
+      writeClothVertex(id,px,py,depth-.055,light,0);
+    }
+    // A natural margin is attached to the real face OVAL in head-relative
+    // coordinates, so it moves and rotates with the user's head instead of
+    // preserving a screen-space oval. No landmark detector includes hair;
+    // the softly fading outermost strip approximates the hair coverage.
+    for(let j=0;j<ringSize;j++){
+      const id=oval[j],ax=facePixels[id*2],ay=facePixels[id*2+1];
+      const relX=ax-cx,relY=ay-cy;
+      const top=Math.max(0,(cy-ay)/Math.max(1,fh*.5));
+      const bottom=Math.max(0,(ay-cy)/Math.max(1,fh*.5));
+      const baseDepth=faceDepth[id];
+      for(let band=0;band<2;band++){
+        const t=band===0?.40:1.0;
+        // Headdress margin grows with the person's measured face size.
+        const x=ax+relX*.36*t;
+        const y=ay+relY*.24*t-top*fh*.12*t+bottom*fh*.035*t;
+        // The skirt of the fabric wraps back toward the ears/hair.
+        const z=baseDepth-.052+.092*t;
+        writeClothVertex(faceVertexCount+band*ringSize+j,x,y,z,
+          .90-.055*t,band===0?.12:1.0);
       }
-      // Keep the lower mask in front of the face surface: forcing the
-      // lower edge behind the face created a sharp exposed chin-shaped hole.
-      // Only the extreme outer side edges may wrap subtly behind the cheeks.
-      const behind=.075*sideFold*sideFold;
-      // Follow the face, but give the outer cloth a subtle 3D volume
-      // so it reads as draped over hair, rather than printed on camera.
-      const crownVolume=Math.exp(-((nx/.82)**2+((v-.23)/.24)**2))*.014;
-      mesh[at+2]=clamp(trackedSurface-.047+behind+foldDepth*.18-crownVolume,-.79,.79);
-      mesh[at+3]=u;mesh[at+4]=v;
-      const foldShade=tuck*(.055*edgeX+.012*curve);
-      mesh[at+5]=clamp(.89+.22*bump+.11*cheek-foldShade*1.5-rolledEdge*.17-.035*sideFold,.65,1.15);
-      const border=Math.min(u,1-u,v,1-v);
-      mesh[at+6]=clamp((.115-border)/.115,0,1);
     }
   }
   function arrival(t){
