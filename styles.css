@@ -1578,5 +1578,5 @@ canvas.figure{object-fit:contain!important}
 /* Tighter two-line AR heading while keeping existing size and position. */
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"]) .ar-copy{line-height:28px!important;}
 
-/* WEB04: orange syringe liquid layer only, 80% opacity */
-.syringe-2d .syringe-drug.orange{opacity:.8}
+/* WEB04: orange syringe liquid layer only, 60% opacity */
+.syringe-2d .syringe-drug.orange{opacity:.6}
