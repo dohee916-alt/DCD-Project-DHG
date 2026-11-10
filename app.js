@@ -53,7 +53,7 @@ let arCameraStream=null,arDropFrame=0,arDropFinished=false,arCameraReady=false,a
 function warmPackingAssets(){
   if(packingAssetsWarmed)return;
   packingAssetsWarmed=true;
-  [A.conveyor,A.machine,A.packFoil,A.packClearFront].forEach(src=>{const image=new Image();image.src=src;});
+  [A.conveyor,A.machine,A.packFoil,A.packClearFront,A.syringeLiquidOrange,A.syringeLiquidPurple].forEach(src=>{const image=new Image();image.src=src;});
 }
 try{let old=JSON.parse(sessionStorage.getItem(key));if(old&&Array.isArray(old.figures)&&old.figures.length===4){s={...fresh(),...old};if((old.initialPresetVersion||0)<5&&!s.figures.some(f=>f.orange||f.purple||f.packed)){s.figures.forEach((f,i)=>{f.value=[85,75,65,95][i];});s.initialPresetVersion=5;}s.firstInject=!!(old.firstInject||s.figures.some(f=>f.orange||f.purple));s.packGuideDone=!!(old.packGuideDone||s.figures.some(f=>f.packed));if(s.page==='14'||s.page==='14done'){s.page='14';s.signed=false;}if(['08a','08b','09','10','11'].includes(s.page)){s.page='12';s.phase='ready';}if(s.page==='ar'&&!s.arPackOpened){s.page=['15','16'].includes(s.arReturnPage)?s.arReturnPage:'15';s.phase='ready';}else if(s.page==='arFace'||s.page==='arOpen'){s.page='ar';s.phase='ready';}}}catch{}
 // Desktop uses the native landscape pages. A portrait-locked mobile phone
@@ -1208,6 +1208,31 @@ function abdomenTouched(tip){
   }
 }
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+// One clock controls both the visible liquid boundary and piston travel.
+// Before this, separate clip-path and translate WAAPI animations could get
+// painted/composited on different frames, making the liquid appear faster.
+function animateSyringeVolume(windowEl,plunger,mode,duration){
+  if(!windowEl||!plunger)return Promise.resolve(false);
+  const filling=mode==='fill',start=performance.now();
+  const needleTravel=69;
+  return new Promise(resolve=>{
+    function frame(now){
+      if(!windowEl.isConnected||!plunger.isConnected||!workbenchActive()){
+        resolve(false);return;
+      }
+      const progress=clamp((now-start)/duration,0,1);
+      // Same linear progress, same 69-pixel distance, same animation frame.
+      const filled=filling?progress:1-progress;
+      const pistonY=filling?-needleTravel*(1-progress):-needleTravel*progress;
+      windowEl.style.clipPath='inset(0 0 '+((1-filled)*100)+'% 0)';
+      plunger.style.translate='0 '+pistonY+'px';
+      if(progress<1)requestAnimationFrame(frame);
+      else resolve(true);
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
 function moveSyringe(host,x,y,angle=0,ms=240){if(!host)return;host.style.transition='translate '+ms+'ms ease, transform '+ms+'ms ease';host.style.translate=x+'px '+y+'px';host.style.transform='rotate('+angle+'deg)';}
 async function fillSyringe(color,host){
   if(!workbenchReady()||s.loaded)return;
@@ -1226,13 +1251,17 @@ async function fillSyringe(color,host){
   const liquid=host.querySelector('.syringe-drug'),liquidWindow=host.querySelector('.syringe-drug-window');
   liquid.src=color==='orange'?A.syringeLiquidOrange:A.syringeLiquidPurple;
   liquid.className='syringe-drug '+color;
-  const fillTiming={duration:M.fillMs||1200,easing:'linear',fill:'forwards'};
-  await Promise.allSettled([
-    liquidWindow.animate([{clipPath:'inset(0 0 100% 0)'},{clipPath:'inset(0 0 0 0)'}],fillTiming).finished,
-    plunger.animate([{translate:'0 -69px'},{translate:'0 0'}],fillTiming).finished
-  ]);
-  plunger.style.translate='0 0';
+  // Wait for the selected image to be ready before revealing the fluid.
+  // The opposite color is already prefetched when the workbench opens.
+  if(!liquid.complete||!liquid.naturalWidth){
+    try{await liquid.decode();}catch{}
+  }
+  if(!workbenchActive()||s.phase!=='filling')return;
+  const filled=await animateSyringeVolume(liquidWindow,plunger,'fill',M.fillMs||1200);
+  if(!filled||!workbenchActive()||s.phase!=='filling')return;
   liquidWindow.classList.add('filled');
+  liquidWindow.style.clipPath='inset(0 0 0% 0)';
+  plunger.style.translate='0 0px';
   if(!workbenchActive()||s.phase!=='filling')return;
   moveSyringe(host,0,0,0,320);await pause(350);
   if(workbenchActive()&&s.phase==='filling')resumeWorkbench();
@@ -1244,11 +1273,8 @@ async function inject(host){
   stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());
   // Keep the exact pose the user is holding when the needle touches the doll.
   const liquidWindow=host.querySelector('.syringe-drug-window'),plunger=host.querySelector('.syringe-plunger');
-  const injectionTiming={duration:M.injectionMs,easing:'linear',fill:'forwards'};
-  await Promise.allSettled([
-    liquidWindow.animate([{clipPath:'inset(0 0 0 0)'},{clipPath:'inset(0 0 100% 0)'}],injectionTiming).finished,
-    plunger.animate([{translate:'0 0'},{translate:'0 -69px'}],injectionTiming).finished
-  ]);
+  const emptied=await animateSyringeVolume(liquidWindow,plunger,'inject',M.injectionMs);
+  if(!emptied||!workbenchActive()||s.phase!=='injecting')return;
   if(!workbenchActive()||s.phase!=='injecting')return;
   const f=s.figures[s.active],before=f.value,target=clamp(before+(color==='orange'?-7:10),0,100);
   await animateFigureValue(s.active,before,target,510);
