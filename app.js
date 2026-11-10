@@ -183,27 +183,42 @@ function figmaGlassText(kind,x,y,w,h,base,glass){
 }
 function posterWords(){const words=[['poster-the.svg',147.828,354.73,131,67],['poster-brand.svg',109.344,422.73,212,67],['poster-new.svg',143.188,492.73,147,67],['poster-glp.svg',123.235,561.962,181,68]];return words.map(([file,x,y,w,h])=>img('assets/figma-current/hd/'+file,x,y,w,h,'poster-word')).join('');}
 // Figma frame 984:115: GIF image box is x=-16,y=0,467x934 in 428x926.
-function blisterMotionLayer(source,mode){
-  return img(source,-16,0,467,934,'opening-blister-motion opening-blister-'+mode);
+function blisterMotionLayer(source,mode,still){
+  // Keep the SAME approved first frame visible behind the GIF until it
+  // finishes loading: never fall back to the old poster/alternate images.
+  const fallback=still?img(still,-16,0,467,934,'opening-blister-still'):'';
+  const cls=(still?'opening-blister-motion opening-blister-awaiting ':'opening-blister-still ')+'opening-blister-'+mode;
+  return fallback+img(source,-16,0,467,934,cls);
 }
-function introMarkup(p){let h=img(A.opening,0,0,428,926,'poster-art poster-primary')+img(A.posterAlternate,0,0,428,926,'poster-art poster-alternate')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+figmaGlassText('easiest',64.5,90.5,299,17,'assets/figma-current/hd/poster-tagline-base.svg','assets/figma-current/hd/poster-tagline.svg');// WEB00 continuously loops the approved squeeze animation.
- // WEB01 keeps frame 1 of the rupture GIF until the pull gesture succeeds.
- // Its own animated GIF is then mounted only once for the 5.01s rupture.
- h+=blisterMotionLayer(p==='00'?A.blisterPingpong:
-   s.phase==='rupture'?A.blisterOneShot:A.blisterOneShotFirst,
-   p==='00'?'loop':s.phase==='rupture'?'rupture':'ready');
- if(p==='00'||s.phase==='intro')h+=posterWords();
-if(p==='00'){h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';}
-else if(s.phase==='guide'){h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
-// Actual Figma try-webguide (607:336): start hands are 164x185,
-// upper mirrored at 152,370 -> target 70,257; lower at 252,564
-// -> target 353,676. Target guide nodes are NOT rendered.
-h+=img(A.gestureHand,152,420,164,185,'gesture gesture-upper');
-h+=img(A.gestureHand,252,564,164,185,'gesture gesture-lower');
-h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';}
-// The rupture GIF has been mounted above; its last frame is held on WEB02.
-return h;}
-function resultMarkup(){const root='assets/figma-current/hd/';return img(A.posterResult,0,0,428,926,'poster-art poster-result-art')+blisterMotionLayer(A.blisterOneShotLast,'last')+'<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+figmaGlassText('easiest',64.5,90.5,299,17,root+'poster-tagline-base.svg',root+'poster-tagline.svg')+text('CLICK THE PACK TO START',26,808,376,96,'doto guide-blink poster-click-guide')+'<button class="full-hit" data-action="start" aria-label="Start"></button>';}
+function introMarkup(p){
+  // Approved GIFs entirely replace the superseded pair of alternating
+  // poster photos. No old poster is allowed to flash behind a new GIF.
+  let h='<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+
+    figmaGlassText('easiest',64.5,90.5,299,17,'assets/figma-current/hd/poster-tagline-base.svg','assets/figma-current/hd/poster-tagline.svg');
+  if(p==='00')h+=blisterMotionLayer(A.blisterPingpong,'loop',A.blisterPingpongFirst);
+  else if(s.phase==='rupture')h+=blisterMotionLayer(A.blisterOneShot,'rupture',A.blisterOneShotFirst);
+  else h+=blisterMotionLayer(A.blisterOneShotFirst,'ready');
+  if(p==='00'||s.phase==='intro')h+=posterWords();
+  if(p==='00'){
+    h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');
+    h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';
+  }else if(s.phase==='guide'){
+    h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
+    // WEB01 approved guide; left hand Y=415, all other guides unchanged.
+    h+=img(A.gestureHand,152,415,164,185,'gesture gesture-upper');
+    h+=img(A.gestureHand,252,564,164,185,'gesture gesture-lower');
+    h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';
+  }
+  return h;
+}
+function resultMarkup(){
+  const root='assets/figma-current/hd/';
+  return blisterMotionLayer(A.blisterOneShotLast,'last')+
+    '<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+
+    figmaGlassText('easiest',64.5,90.5,299,17,root+'poster-tagline-base.svg',root+'poster-tagline.svg')+
+    text('CLICK THE PACK TO START',26,808,376,96,'doto guide-blink poster-click-guide')+
+    '<button class="full-hit" data-action="start" aria-label="Start"></button>';
+}
 function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.workbenchPack,0,0,337,224,'pack pack-image pack-clear-back workbench-native-export');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack',packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,88,141,110,85,'bottle');if(!s.used.purple&&s.loaded!=='purple')h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label bottle-label-purple');if(!s.used.orange&&s.loaded!=='orange')h+=text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label bottle-label-orange');
 if(!f.packed)h+=canvasFigure(s.active,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h,'active-figure');h+=syringeMarkup();
 if(showTutorial&&!s.handGuideDismissed&&!s.firstFill&&(s.phase==='ready'||(s.page==='03'&&s.phase==='waiting')))h+=handGuide();
@@ -989,27 +1004,42 @@ if(packHand){
   };
   packHand.addEventListener('animationend',endHand,{once:true});
   setTimeout(endHand,Math.max(0,PACK_HAND_TOTAL_MS-elapsed)+40);
-}if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){
-  // Start the verified 5.01-second playback clock only after the actual
-  // 44-frame GIF has loaded. Large GIFs must not get cut off on slow phones.
-  const gif=stage.querySelector('.opening-blister-rupture');
-  if(!gif){finishRupture();}
-  else{
-    let started=false;
-    const begin=()=>{
-      if(started||s.page!=='01'||s.phase!=='rupture')return;
-      started=true;
-      later(finishRupture,M.blisterOneShotMs);
-    };
-    if(gif.complete&&gif.naturalWidth)begin();
-    else{
-      gif.addEventListener('load',begin,{once:true});
-      gif.addEventListener('error',finishRupture,{once:true});
-    }
-  }
-}}
+}
+ if(s.page==='14')bindNewSignature();
+ if(s.page==='arFace')attachArCamera();
+ const animated=stage.querySelector('.opening-blister-motion');
+ if(animated){
+   // Show the GIF only once decoded and ready, with its own first frame
+   // remaining underneath during the download. No stale artwork flashes.
+   let started=false;
+   const begin=()=>{
+     if(!animated.isConnected||started)return;
+     started=true;
+     animated.classList.remove('opening-blister-awaiting');
+     if(s.page==='01'&&s.phase==='rupture'){
+       later(finishRupture,M.blisterOneShotMs);
+     }
+   };
+   if(animated.complete&&animated.naturalWidth)begin();
+   else{
+     animated.addEventListener('load',begin,{once:true});
+     animated.addEventListener('error',()=>{
+       // Do not reveal a different scene if a download fails.
+       if(s.page==='01'&&s.phase==='rupture')finishRupture();
+     },{once:true});
+   }
+ }
+}
 function finishRupture(){if(s.page==='01'&&s.phase==='rupture'){videoEnded=true;setPage('02');}}
-function runIntro(p){setPage(p,'intro');later(()=>{if(s.page===p&&s.phase==='intro'){s.phase=p==='00'?'loop':'guide';render();}},M.introMs);}
+function runIntro(p){setPage(p,'intro');later(()=>{
+  if(s.page!==p||s.phase!=='intro')return;
+  s.phase=p==='00'?'loop':'guide';
+  if(p==='00'){
+    // Page 00 only changes its phase styling. Rebuilding the full DOM
+    // was restarting the GIF and briefly showing an unrelated frame.
+    stage.className='stage page-00 phase-loop';
+  }else render();
+},M.introMs);}
 async function animatePackIntoPrescription(){
   // The same WEB09 foil remains on screen at the ejection endpoint (277,121).
   // Only the transitional overlay is new. All original art and WEB12 geometry
