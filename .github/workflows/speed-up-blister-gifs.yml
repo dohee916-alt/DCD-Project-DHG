@@ -1,0 +1,52 @@
+name: Speed up approved blister GIF motions
+on:
+  push:
+    paths:
+      - .github/workflows/speed-up-blister-gifs.yml
+permissions:
+  contents: write
+jobs:
+  retime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Retime actual frames without redrawing or resizing
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get -qq update
+          sudo apt-get -qq install -y gifsicle
+          gifsicle --batch --delay=4 assets/motion/blister_3_to_5_1_23_pingpong.gif
+          gifsicle --batch --delay=6 assets/motion/blister_3_to_5_one_shot.gif
+          python3 -m pip -q install Pillow
+          python3 - <<'PY'
+          import json
+          from PIL import Image,ImageSequence
+          base='assets/motion/'
+          expectations={'blister_3_to_5_1_23_pingpong':1760,'blister_3_to_5_one_shot':2640}
+          meta={}
+          for stem,expected in expectations.items():
+              with Image.open(base+stem+'.gif') as gif:
+                  durations=[frame.info.get('duration',0) for frame in ImageSequence.Iterator(gif)]
+                  assert gif.n_frames==44,(stem,gif.n_frames)
+                  assert sum(durations)==expected,(stem,durations)
+                  meta[stem]={'frames':gif.n_frames,'duration_ms':sum(durations),'size':[gif.width,gif.height]}
+                  if stem.endswith('one_shot'):
+                      gif.seek(0)
+                      gif.convert('RGBA').save(base+stem+'_first.png')
+                      gif.seek(gif.n_frames-1)
+                      gif.convert('RGBA').save(base+stem+'_last.png')
+          with open(base+'motion-metadata.json','w') as f:json.dump(meta,f)
+          print(meta)
+          PY
+      - name: Commit faster same-frame GIFs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion
+          if ! git diff --cached --quiet; then
+            git commit -m 'Speed up both opening blister GIFs without changing 44 frames'
+            git push origin HEAD:main
+          fi
