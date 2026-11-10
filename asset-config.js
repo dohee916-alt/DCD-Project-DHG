@@ -42,8 +42,8 @@ window.DCD_ASSETS = Object.freeze({
 });
 window.DCD_MOTION = Object.freeze({
   introMs: 1550,
-  blisterPingpongMs: 3520, // Figma source GIF: 44 frames
-  blisterOneShotMs: 5010, // Figma source GIF: 44 frames, exact duration
+  blisterPingpongMs: 1760, // Retimed 44-frame GIF: 40ms each
+  blisterOneShotMs: 2640, // Retimed 44-frame GIF: 60ms each
   rotateGuideMs: 3000,
   injectionMs: 1450,
   packingSlideMs: 860,
