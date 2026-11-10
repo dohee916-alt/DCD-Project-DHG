@@ -32,7 +32,7 @@ varying float vFringe;
 void main(){
   // Canvas textures otherwise land upside-down on the WebGL face UVs.
   // Flip only the sampled atlas, not the geometry or head tracking.
-  vUV=vec2(uv.x,1.0-uv.y);vLight=lighting;vFringe=fringe;vNormal=surfaceNormal;
+  vUV=uv;vLight=lighting;vFringe=fringe;vNormal=surfaceNormal;
   // Homogeneous perspective during approach/peel; w=1 at contact keeps
   // the calibrated screen-space face and its depth occluder registered.
   float w=max(0.28,1.0+travel);
@@ -130,8 +130,8 @@ void main(){
   // fade fully away instead of retaining 15% alpha as square border rails.
   // Geometry itself is the tracked face plus feathered outside margin.
   // Do not impose an additional screen-space oval clip on these vertices.
-  float silhouette=1.0;
-  float edgeFade=1.0;
+  float silhouette=smoothVeilSilhouette(vUV);
+  float edgeFade=silhouette;
   if(embroideryPass>0.5){
     gl_FragColor=vec4(threadColor,stitch*opacity*edgeFade);
   }else{
@@ -306,9 +306,9 @@ function canvasCloth(root){
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
     // Fallback also uses a larger head-covering sheet.
-    const cw=fw*1.98;
-    const ch=fh*2.35;
-    const cx=(left.x+right.x)/2,cy=head.y+fh*.255;
+    const cw=fw*1.90;
+    const ch=fh*1.75;
+    const cx=(left.x+right.x)/2,cy=head.y+fh*.62;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
@@ -570,8 +570,8 @@ function create(root){
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2+fh*.035;
     // Head proportions are estimated from tracked forehead, jaw and cheeks;
     // no unobserved skull landmarks are presented as camera measurements.
-    const cw=fw*1.98,ch=fh*2.35;
-    const veilCenterY=forehead.y+fh*.255;
+    const cw=fw*1.90,ch=fh*1.75;
+    const veilCenterY=forehead.y+fh*.62;
     const textWidth=clamp(cw,fw+80,412);
     const textHeight=clamp(ch,fh+85,585);
     faceCenter={x:cx,y:veilCenterY,cw,ch,co,si,fw,fh,
