@@ -205,7 +205,7 @@ function introMarkup(p){
   }else if(s.phase==='guide'){
     h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
     // WEB01 approved guide; left hand Y=415, all other guides unchanged.
-    h+=img(A.gestureHand,152,415,164,185,'gesture gesture-upper');
+    h+=img(A.gestureHand,152,412,164,185,'gesture gesture-upper');
     h+=img(A.gestureHand,252,564,164,185,'gesture gesture-lower');
     h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';
   }
