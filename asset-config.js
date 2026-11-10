@@ -7,7 +7,7 @@ window.DCD_ASSETS = Object.freeze({
   openingBreakVideo: null, // Set when the approved rupture motion file exists.
   openingLastFrame: "assets/motion/blister_3_to_5_one_shot_last.png",
   blisterPingpong: "assets/motion/blister_3_to_5_1_23_pingpong.gif",
-  blisterOneShot: "assets/motion/blister_3_to_5_one_shot.gif",
+  blisterOneShot: "assets/motion/blister_3_to_5_one_shot.gif?v=fast-1500ms-20261110",
   blisterOneShotFirst: "assets/motion/blister_3_to_5_one_shot_first.png",
   blisterOneShotLast: "assets/motion/blister_3_to_5_one_shot_last.png",
   workbenchBackground: "assets/figma-render/workbench-bg@2x.png",
@@ -43,7 +43,7 @@ window.DCD_ASSETS = Object.freeze({
 window.DCD_MOTION = Object.freeze({
   introMs: 1550,
   blisterPingpongMs: 1760, // Retimed 44-frame GIF: 40ms each
-  blisterOneShotMs: 2640, // Retimed 44-frame GIF: 60ms each
+  blisterOneShotMs: 1500, // Same 44 frames; 18 x 40ms + 26 x 30ms
   rotateGuideMs: 3000,
   injectionMs: 1450,
   packingSlideMs: 860,
