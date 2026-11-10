@@ -457,6 +457,52 @@ function create(root){
   }
   const textures={},layers=[];
   const canvasBackup=canvasCloth(root);
+  // Foreground embroidery uses approved Figma phrase coordinates. Keeping
+  // it in front prevents rear folds from hiding or reversing the writing.
+  const embroideryCanvas=document.createElement('canvas');
+  embroideryCanvas.className='ar-embroidery-front';
+  embroideryCanvas.width=W;embroideryCanvas.height=H;
+  embroideryCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:6;pointer-events:none';
+  root.parentElement.appendChild(embroideryCanvas);
+  const embroideryCtx=embroideryCanvas.getContext('2d',{alpha:true});
+  function paintFrontEmbroidery(now){
+    const ctx=embroideryCtx;
+    if(!ctx)return;
+    ctx.clearRect(0,0,W,H);
+    if(!faceCenter)return;
+    const f=faceCenter,sc=clamp(f.fw/240,.83,1.24);
+    for(const layer of layers){
+      const cfg=FIGMA_MASK_TEXT[layer.variant]?.[layer.index];
+      if(!cfg)continue;
+      const elapsed=(now-layer.start)/1000;
+      const landing=ease(clamp((elapsed-.12)/.75,0,1));
+      const leaving=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
+      const alpha=clamp(elapsed/.15,0,1)*(1-ease(clamp((leaving-.65)/.35,0,1)));
+      if(alpha<=0)continue;
+      const lines=cfg.text.split('\n');
+      const height=lines.reduce((v,_,i)=>v+(cfg.lh[i]||20),0);
+      const lx=(cfg.x+cfg.w*.5-214)*sc;
+      const ly=(cfg.y+height*.5-495)*sc;
+      const px=f.x+lx*f.co-ly*f.si;
+      const py=f.y+lx*f.si+ly*f.co+f.fh*.20;
+      ctx.save();ctx.globalAlpha=alpha*landing;
+      ctx.translate(px,py);
+      ctx.rotate(Math.atan2(f.si,f.co)+cfg.r*Math.PI/180);
+      ctx.scale(sc,sc);
+      ctx.fillStyle='#302b28';ctx.strokeStyle='rgba(249,242,229,.22)';
+      ctx.lineWidth=.55;ctx.lineJoin='round';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      let yy=-height*.5;
+      lines.forEach((line,i)=>{
+        const lh=cfg.lh[i]||20,fs=cfg.fs[i]||18;
+        ctx.font='700 '+fs+'px "Turret Road",sans-serif';
+        ctx.strokeText(line,0,yy+lh*.5);
+        ctx.fillText(line,0,yy+lh*.5);
+        yy+=lh;
+      });
+      ctx.restore();
+    }
+  }
   // Cloth uses only the observed facial mesh and its canonical material UVs.
   const oval=FACE_RIM;
   const GRID_COLS=24,GRID_ROWS=24;
@@ -601,7 +647,7 @@ function create(root){
   // ellipsoid collider. A single crown contact prevents the fabric sliding
   // off while the rest of the material falls and folds freely.
   function makeDrape(layer){
-    const N=GRID_COLS+1,side=3.0,step=side/GRID_COLS;
+    const N=GRID_COLS+1,side=3.34,step=side/GRID_COLS;
     const nodes=[],links=[];
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
@@ -679,7 +725,10 @@ function create(root){
       const x=p.x*cosYaw+p.z*sinYaw;
       const z=p.z*cosYaw-p.x*sinYaw;
       const screenX=head.x+scale*(x*head.co-p.y*head.si);
-      const screenY=head.y+scale*(x*head.si+p.y*head.co-z*head.pitch*.32);
+      // Front panel drapes below the chin instead of stopping at face height.
+      const frontHem=Math.pow(Math.max(0,(.5-r/GRID_ROWS)*2),1.6);
+      const screenY=head.y+scale*(x*head.si+p.y*head.co-z*head.pitch*.32)
+        +head.fh*.32*frontHem;
       const prevL=c>0?nodes[id-1]:p,nextR=c<GRID_COLS?nodes[id+1]:p;
       const prevT=r>0?nodes[id-(GRID_COLS+1)]:p,nextB=r<GRID_ROWS?nodes[id+(GRID_COLS+1)]:p;
       const dx=nextR.x-prevL.x,dz=nextR.z-prevL.z;
@@ -714,6 +763,7 @@ function create(root){
       reportState(gl.isContextLost()?'context-lost':(!faceCenter?'no-face':(!textures.first?'no-texture':'not-ready')),now);
       root.classList.remove('ar-tulle-ready');
       canvasBackup.draw(layers,now);
+      paintFrontEmbroidery(now);
       return;
     }
     try{
@@ -746,7 +796,7 @@ function create(root){
       // Composite each physical sheet with its own embroidery. A new sheet
       // veils both the face and the older embroidery beneath it.
       for(const layer of layers){
-        for(let pass=0;pass<2;pass++){
+        for(let pass=0;pass<1;pass++){
           gl.uniform1f(passUniform,pass);
           const tex=textures[layer.variant]?.[layer.index];
           if(!tex)continue;
@@ -814,12 +864,14 @@ function create(root){
       if(err!==gl.NO_ERROR)throw new Error('WebGL cloth/face draw error '+err);
       root.classList.add('ar-tulle-ready');
       canvasBackup.draw([],now);
+      paintFrontEmbroidery(now);
       reportState('rendering',now);
       renderErrorReported=false;
     }catch(error){
       gl.colorMask(true,true,true,true);gl.depthMask(true);
       root.classList.remove('ar-tulle-ready');
       canvasBackup.draw(layers,now);
+      paintFrontEmbroidery(now);
       reportState('draw-error',now);
       if(!renderErrorReported){
         console.error('[DCD AR] face/cloth pipeline:',error);
@@ -850,6 +902,7 @@ function create(root){
       for(const t of [pair.fabric,pair.thread])if(!seen.has(t)){gl.deleteTexture(t);seen.add(t);}
     }
     canvasBackup.destroy();
+    embroideryCanvas.remove();
     if(occBuffer)gl.deleteBuffer(occBuffer);
     if(occIndex)gl.deleteBuffer(occIndex);
     if(occProgram)gl.deleteProgram(occProgram);
