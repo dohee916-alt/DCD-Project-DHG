@@ -325,13 +325,13 @@ function canvasCloth(root){
       ctx.rotate(angle);
       const l=-cw/2,r=cw/2,t=-ch*.50,b=ch*.50;
       ctx.beginPath();
-      FACE_RIM.forEach((id,i)=>{
-        const dx=positions[id].x-cx,dy=positions[id].y-cy;
-        const x=dx*Math.cos(angle)+dy*Math.sin(angle);
-        const y=-dx*Math.sin(angle)+dy*Math.cos(angle);
-        if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-      });
-      ctx.closePath();ctx.clip();
+      ctx.moveTo(0,-ch*.5);
+       ctx.bezierCurveTo(cw*.37,-ch*.53,cw*.48,-ch*.37,cw*.47,-ch*.22);
+       ctx.bezierCurveTo(cw*.58,ch*.10,cw*.53,ch*.37,cw*.43,ch*.48);
+       ctx.quadraticCurveTo(0,ch*.54,-cw*.43,ch*.48);
+       ctx.bezierCurveTo(-cw*.53,ch*.37,-cw*.58,ch*.10,-cw*.47,-ch*.22);
+       ctx.bezierCurveTo(-cw*.48,-ch*.37,-cw*.37,-ch*.53,0,-ch*.5);
+       ctx.closePath();ctx.clip();
       if(pass===0){
       ctx.fillStyle='rgba(250,248,243,.12)';
       ctx.fillRect(l,t,cw,ch+fh*.06);
