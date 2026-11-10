@@ -23,6 +23,8 @@ attribute vec2 uv;
 attribute float lighting;
 attribute float fringe;
 attribute float travel;
+attribute vec3 surfaceNormal;
+varying vec3 vNormal;
 uniform vec2 projectionCenter;
 varying vec2 vUV;
 varying float vLight;
@@ -30,10 +32,10 @@ varying float vFringe;
 void main(){
   // Canvas textures otherwise land upside-down on the WebGL face UVs.
   // Flip only the sampled atlas, not the geometry or head tracking.
-  vUV=vec2(uv.x,1.0-uv.y);vLight=lighting;vFringe=fringe;
+  vUV=vec2(uv.x,1.0-uv.y);vLight=lighting;vFringe=fringe;vNormal=surfaceNormal;
   // Homogeneous perspective during approach/peel; w=1 at contact keeps
   // the calibrated screen-space face and its depth occluder registered.
-  float w=max(0.4,1.0+travel);
+  float w=max(0.28,1.0+travel);
   gl_Position=vec4(projectionCenter*w+(position.xy-projectionCenter),
     clamp(position.z,-0.8,0.8)*w,w);
 }`;
@@ -43,6 +45,7 @@ uniform sampler2D fabric;
 uniform sampler2D embroideryMask;
 uniform float opacity;
 uniform float embroideryPass;
+varying vec3 vNormal;
 varying vec2 vUV;
 varying float vLight;
 varying float vFringe;
@@ -66,7 +69,7 @@ float smoothVeilSilhouette(vec2 uv){
 }
 void main(){
   vec4 cloth=texture2D(fabric,vUV);
-  vec2 pixel=vec2(1.0/1024.0);
+  vec2 pixel=vec2(1.0/1010.0);
   float fiber=cloth.a;
   float left=texture2D(fabric,vUV-vec2(pixel.x,0.0)).a;
   float right=texture2D(fabric,vUV+vec2(pixel.x,0.0)).a;
@@ -77,7 +80,11 @@ void main(){
   // when sampled through mipmaps at phone resolution.
   float strand=smoothstep(0.008,0.33,fiber);
   float detail=clamp(abs(left-right)+abs(up-down),0.0,1.0);
-  float fiberLight=clamp(vLight+0.17*(left-right+up-down),0.76,1.17);
+  vec3 N=normalize(vNormal);
+  vec3 L=normalize(vec3(-.55,.65,1.0));
+  float faceDiffuse=max(0.0,dot(N,L));
+  float grazing=pow(1.0-clamp(N.z,0.0,1.0),3.0);
+  float fiberLight=clamp(.54+.48*faceDiffuse+.10*(left-right+up-down),.48,1.12);
   // Slight pearlescent warm/cool scatter, not an opaque grid.
   float sheen=clamp(0.5+0.5*(vLight-0.9)*3.0,0.0,1.0);
   vec3 whiteNet=mix(vec3(.957,.966,.982),vec3(1.0,.982,.955),sheen)*fiberLight;
@@ -86,7 +93,9 @@ void main(){
   // the fabric even when individual thread pixels shrink at camera scale.
   // Fine, thin organza filament with a faint continuous translucent body.
   // Avoid the coarse opaque mesh effect from the earlier yarn intensity.
-  float netAlpha=0.028+0.23*strand+0.018*detail;
+  // Physical alpha compositing accumulates each sheet. A continuous
+  // 12% body makes 1/3/5 layers distinguishable, even between fibers.
+  float netAlpha=.12+.19*strand+.025*detail+.025*grazing;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -102,14 +111,16 @@ void main(){
     -texture2D(embroideryMask,vUV-vec2(stepUV.x,0.0)).r;
   float hy=texture2D(embroideryMask,vUV+vec2(0.0,stepUV.y)).r
     -texture2D(embroideryMask,vUV-vec2(0.0,stepUV.y)).r;
-  vec3 threadNormal=normalize(vec3(-hx*2.8,-hy*2.8,1.0));
+  vec3 T=normalize(vec3(N.z,0.,-N.x));
+  vec3 B=normalize(cross(N,T));
+  vec3 threadNormal=normalize(N+T*(-hx*1.65)+B*(-hy*1.65));
   vec3 lamp=normalize(vec3(-.55,.65,1.0));
   float diffuse=max(0.0,dot(threadNormal,lamp));
-  float shine=pow(max(0.0,dot(threadNormal,normalize(lamp+vec3(0.,0.,1.)))),24.0);
+  float shine=pow(max(0.0,dot(threadNormal,normalize(lamp+vec3(0.,0.,1.)))),10.0);
   float rim=clamp((eLeft-eRight+eUp-eDown)*.16,-.10,.10);
   vec3 threadColor=vec3(.055,.049,.043)
     +vec3(.15,.135,.12)*diffuse*(.35+.65*h)
-    +vec3(.32,.30,.27)*shine+rim;
+    +vec3(.16,.145,.13)*shine+rim*.45;
   threadColor*=clamp(vLight,.75,1.15);
   float contact=clamp(max(max(eLeft,eRight),max(eUp,eDown))-stitch,0.0,1.0);
   float shade=contact*0.13;
@@ -120,10 +131,7 @@ void main(){
   // Geometry itself is the tracked face plus feathered outside margin.
   // Do not impose an additional screen-space oval clip on these vertices.
   float silhouette=1.0;
-  // The edge is a narrow folded hem, not a broad blurred halo.
-  float edgeFade=1.0-smoothstep(.94,1.0,vFringe);
-  float hem=smoothstep(.82,.89,vFringe)*(1.0-smoothstep(.94,.99,vFringe));
-  netAlpha+=hem*(.10+.08*strand);
+  float edgeFade=1.0;
   if(embroideryPass>0.5){
     gl_FragColor=vec4(threadColor,stitch*opacity*edgeFade);
   }else{
@@ -177,8 +185,8 @@ function paintedFabric(height,index){
 const CLOTH_REF={left:76,right:352,top:297,bottom:693};
 function embroiderySlot(c){
  const h=c.text.split('\n').reduce((a,_,i)=>a+(c.lh[i]||20),0);
- return {u:clamp((c.x+c.w/2-CLOTH_REF.left)/276,.13,.87),
- v:clamp(1-(c.y+h/2-CLOTH_REF.top)/396,.13,.87),
+ return {u:.5+(clamp((c.x+c.w/2-CLOTH_REF.left)/276,.13,.87)-.5)*.88,
+ v:.5+(clamp(1-(c.y+h/2-CLOTH_REF.top)/396,.13,.87)-.5)*.78,
  max:clamp(c.w/276,.13,.48)};
 }
 function embroideredLetters(variant,index){
@@ -220,13 +228,19 @@ function embroideredLetters(variant,index){
    if(!a){ink.data[k]=ink.data[k+1]=ink.data[k+2]=0;continue;}
    // Five atlas pixels per stitch remain visible at face scale. Rounded
    // ridges plus a darker valley create distinct threads within each glyph.
-   const phase=(x+y*.42)*Math.PI*2/5.5;
+   const dx=coverage(x+2,y)-coverage(x-2,y);
+   const dy=coverage(x,y+2)-coverage(x,y-2);
+   const horizontal=Math.abs(dy)>Math.abs(dx);
+   const along=horizontal?x:y;
+   const across=horizontal?y:x;
+   const phase=(along+Math.floor(across/8)*.7)*Math.PI*2/4.8;
    const ridge=Math.pow(.5+.5*Math.cos(phase),.65);
    const edge=Math.min(coverage(x-1,y),coverage(x+1,y),
      coverage(x,y-1),coverage(x,y+1));
-   const height=a*(.18+.82*ridge)*(.40+.60*edge);
+   const filaments=.85+.15*Math.cos(across*Math.PI*2/1.7);
+   const height=a*(.08+.92*ridge)*(.65+.35*edge)*filaments;
    ink.data[k]=ink.data[k+1]=ink.data[k+2]=Math.round(height*255);
-   ink.data[k+3]=Math.round(src[k+3]*(.86+.14*ridge));
+   ink.data[k+3]=Math.round(src[k+3]*(.72+.28*ridge));
  }
  ctx.putImageData(ink,0,0);
  return c;
@@ -291,19 +305,18 @@ function canvasCloth(root){
     const eyeL=positions[33],eyeR=positions[263];
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
-    // Keep generous margins around the face, but never let the cloth grow
-    // into the heading or extend an entire face-height beyond the chin.
-    const cw=clamp(fw*1.96,fw+104,424);
-    const ch=clamp(fh*1.63,fh+116,610);
+    // Compatibility rendering also ends at the observed face silhouette.
+    const cw=fw;
+    const ch=fh;
     const cx=(left.x+right.x)/2,cy=(head.y+jaw.y)/2+fh*.035;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
     for(let pass=0;pass<2;pass++)for(const layer of layers){
       const age=(now-layer.start)/1000;
-      const progress=clamp(age/1.05,0,1);
-      const fly=1-ease(progress);
-      const shiftX=(layer.index%2?1:-1)*245*fly,shiftY=-165*fly;
+      const progress=clamp(age/.36,0,1);
+      const fly=1-progress*progress*progress;
+      const shiftX=(layer.index%2?1:-1)*24*fly,shiftY=-55*fly;
       const exit=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
       const alpha=layer.removing?1-ease(exit):clamp(age/.14,0,1);
       if(alpha<=0)continue;
@@ -311,21 +324,16 @@ function canvasCloth(root){
       ctx.translate(cx+shiftX+exit*45,cy+shiftY-exit*155);
       ctx.rotate(angle);
       const l=-cw/2,r=cw/2,t=-ch*.50,b=ch*.50;
-      // One cloth with four continuous sides, softened top corners and
-      // subtly tucked lower corners, rather than a face-shaped ellipse.
       ctx.beginPath();
-      ctx.moveTo(0,t);
-      ctx.bezierCurveTo(cw*.23,t-cw*.01,r-cw*.11,t+ch*.09,r-cw*.07,t+ch*.27);
-      ctx.quadraticCurveTo(r,t+ch*.43,r-cw*.035,b-ch*.26);
-      // Broad, smooth sheet reaching past the chin; no tucked-up hem.
-      ctx.quadraticCurveTo(r-cw*.06,b-ch*.05,r-cw*.16,b);
-      ctx.quadraticCurveTo(0,b+ch*.02,l+cw*.16,b);
-      ctx.quadraticCurveTo(l+cw*.06,b-ch*.05,l,b-ch*.18);
-      ctx.quadraticCurveTo(l+cw*.035,t+ch*.43,l+cw*.07,t+ch*.27);
-      ctx.bezierCurveTo(l+cw*.11,t+ch*.09,l+cw*.23,t-cw*.01,0,t);
+      FACE_RIM.forEach((id,i)=>{
+        const dx=positions[id].x-cx,dy=positions[id].y-cy;
+        const x=dx*Math.cos(angle)+dy*Math.sin(angle);
+        const y=-dx*Math.sin(angle)+dy*Math.cos(angle);
+        if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+      });
       ctx.closePath();ctx.clip();
       if(pass===0){
-      ctx.fillStyle='rgba(250,248,243,.065)';
+      ctx.fillStyle='rgba(250,248,243,.12)';
       ctx.fillRect(l,t,cw,ch+fh*.06);
       ctx.fillStyle=pattern;ctx.globalAlpha=alpha*.43;
       ctx.fillRect(l,t,cw,ch+fh*.06);
@@ -343,7 +351,7 @@ function canvasCloth(root){
         const x=l+slot.u*cw,y=t+(1-slot.v)*ch;
         ctx.globalAlpha=alpha;
         ctx.translate(x,y);ctx.rotate(config.r*Math.PI/180);
-        ctx.fillStyle='#fb5511';ctx.textBaseline='top';ctx.textAlign='center';
+        ctx.fillStyle='#29251f';ctx.textBaseline='top';ctx.textAlign='center';
         const lines=config.text.split('\n');
         const scale=Math.min(1.35,Math.max(.94,cw/276));
         ctx.scale(scale,scale);
@@ -394,10 +402,11 @@ function create(root){
   // Suppress the old flat CSS oval when the tracked 3D cloth is available.
   root.classList.add('ar-tulle-gpu');
   const vb=gl.createBuffer(),ib=gl.createBuffer();
-  const stride=8,positionAttr=gl.getAttribLocation(program,'position');
+  const stride=11,positionAttr=gl.getAttribLocation(program,'position');
   const uvAttr=gl.getAttribLocation(program,'uv'),lightAttr=gl.getAttribLocation(program,'lighting');
   const fringeAttr=gl.getAttribLocation(program,'fringe');
   const travelAttr=gl.getAttribLocation(program,'travel');
+  const normalAttr=gl.getAttribLocation(program,'surfaceNormal');
   const projectionUniform=gl.getUniformLocation(program,'projectionCenter');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
   const stitchUniform=gl.getUniformLocation(program,'embroideryMask');
@@ -405,7 +414,6 @@ function create(root){
   let outline=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let facePixels=null,faceDepth=null,faceBounds=null,frameLast=0;
   let triangleBins=null;
-  let clothUV=null;
   const BIN_W=20,BIN_H=32;
   function faceSurfaceAt(x,y){
     if(!triangleBins||!facePixels)return null;
@@ -449,12 +457,9 @@ function create(root){
   }
   const textures={},layers=[];
   const canvasBackup=canvasCloth(root);
-  // Cloth follows the actual FaceLandmarker mesh, not a rectangle
-  // estimated from face width/height. A separate, feathered ring extends
-  // beyond MediaPipe's skin outline to softly cover the temples and hair.
+  // Cloth uses only the observed facial mesh and its canonical material UVs.
   const oval=FACE_RIM;
   const faceVertexCount=468;
-  const ringSize=oval.length;
   // Face and tulle share the same 428x926 screen projection and relative
   // MediaPipe depth. An occluder cannot work if they use different spaces.
   function initOccluder(){
@@ -480,20 +485,10 @@ function create(root){
   }
   function setConnections(){
     if(!faceData?.triangles?.length)throw Error('Official facial triangles unavailable');
-    // Match all 468 real face vertices, then bridge to two concentric
-    // softness rings. No independent square grid survives.
+    // Only observed facial geometry. No screen-space hair expansion.
     const indices=[...faceData.triangles];
-    for(let i=0;i<ringSize;i++){
-      const j=(i+1)%ringSize;
-      const a=oval[i],b=oval[j];
-      const inner=faceVertexCount+i,innerNext=faceVertexCount+j;
-      const outer=faceVertexCount+ringSize+i;
-      const outerNext=faceVertexCount+ringSize+j;
-      indices.push(a,inner,innerNext,a,innerNext,b);
-      indices.push(inner,outer,outerNext,inner,outerNext,innerNext);
-    }
     indexCount=indices.length;
-    mesh=new Float32Array((faceVertexCount+ringSize*2)*stride);
+    mesh=new Float32Array(faceVertexCount*stride);
     vertices=new Float32Array(mesh.length);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);
@@ -568,9 +563,9 @@ function create(root){
     const fh=Math.max(90,Math.hypot(forehead.x-chin.x,forehead.y-chin.y));
     const angle=uprightFaceAngle(eyeA,eyeB),co=Math.cos(angle),si=Math.sin(angle);
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2+fh*.035;
-    // Expand the physical veil around the whole head (hair and temples).
+    // The cloth ends at the tracked forehead, cheeks and chin.
     // The lettering now shares the cloth surface and head-relative UVs.
-    const cw=clamp(fw*1.96,fw+104,424),ch=clamp(fh*1.63,fh+116,610);
+    const cw=fw,ch=fh;
     const textWidth=clamp(fw*1.72,fw+80,412);
     const textHeight=clamp(fh*1.53,fh+85,585);
     const textY=(forehead.y+chin.y)/2-fh*.015;
@@ -596,19 +591,14 @@ function create(root){
     // actual FaceLandmarker position and 3D depth on every video frame.
     // This preserves cheeks, nose bridge, brow and jaw as one CONTINUOUS
     // 468-vertex surface (no separate lip/eyelid overlay).
-    if(!clothUV)clothUV=[];
     function writeClothVertex(id,px,py,pz,light,fringe){
       const at=id*stride;
       mesh[at]=px;mesh[at+1]=py;
       mesh[at+2]=clamp(pz,-.79,.79);
-      // Freeze material coordinates on the first tracked surface. They must
-      // not slide through the face as landmarks move or the head rotates.
-      if(!clothUV[id]){
-        const dx=px-cx,dy=py-cy;
-        clothUV[id]=[clamp(.5+(dx*co+dy*si)/cw,.004,.996),
-          clamp(.5+(-dx*si+dy*co)/ch,.004,.996)];
-      }
-      mesh[at+3]=clothUV[id][0];mesh[at+4]=clothUV[id][1];
+      // Canonical UVs are stable for every head pose; mirror geometry and
+      // atlas coordinates once together, keeping the printed glyphs upright.
+      mesh[at+3]=1-faceData.uv[id][0];
+      mesh[at+4]=1-faceData.uv[id][1];
       mesh[at+5]=clamp(light,.64,1.24);
       mesh[at+6]=fringe;mesh[at+7]=0;
     }
@@ -624,8 +614,8 @@ function create(root){
       const ax=facePixels[a*2],ay=facePixels[a*2+1];
       const bx=facePixels[b*2],by=facePixels[b*2+1];
       const cx2=facePixels[c*2],cy2=facePixels[c*2+1];
-      const abx=bx-ax,aby=by-ay,abz=(faceDepth[b]-faceDepth[a])*fw*.85;
-      const acx=cx2-ax,acy=cy2-ay,acz=(faceDepth[c]-faceDepth[a])*fw*.85;
+      const abx=bx-ax,aby=by-ay,abz=(faceDepth[b]-faceDepth[a])*dw/1.8;
+      const acx=cx2-ax,acy=cy2-ay,acz=(faceDepth[c]-faceDepth[a])*dw/1.8;
       let dx=aby*acz-abz*acy,dy=abz*acx-abx*acz,dz=abx*acy-aby*acx;
       const len=Math.hypot(dx,dy,dz)||1;
       dx/=len;dy/=len;dz/=len;
@@ -643,37 +633,16 @@ function create(root){
       // without introducing separate lips/eyes or glued-on shadow sprites.
       const light=.87+.19*clamp(lx*(-.28)+ly*(-.38)+lz*.88,0,1);
       faceLight[id]=light;
-      writeClothVertex(id,px,py,depth-.048,light,0);
-    }
-    // A natural margin is attached to the real face OVAL in head-relative
-    // coordinates, so it moves and rotates with the user's head instead of
-    // preserving a screen-space oval. No landmark detector includes hair;
-    // the softly fading outermost strip approximates the hair coverage.
-    for(let j=0;j<ringSize;j++){
-      const id=oval[j],ax=facePixels[id*2],ay=facePixels[id*2+1];
-      const relX=ax-cx,relY=ay-cy;
-      const top=Math.max(0,(cy-ay)/Math.max(1,fh*.5));
-      const bottom=Math.max(0,(ay-cy)/Math.max(1,fh*.5));
-      const baseDepth=faceDepth[id];
-      for(let band=0;band<2;band++){
-        const t=band===0?.40:1.0;
-        // Headdress margin grows with the person's measured face size.
-        const x=ax+relX*.36*t;
-        const y=ay+relY*.24*t-top*fh*.12*t+bottom*fh*.035*t;
-        // Keep BOTH attachment rings in FRONT of the depth occluder.
-        // Previously +.092*t put the outer ring BEHIND the face, so the
-        // depth buffer clipped it into a visible dark curved seam.
-        const z=baseDepth-.048;
-        writeClothVertex(faceVertexCount+band*ringSize+j,x,y,z,
-          faceLight[id]-.045*t*t,band===0?.40:1.0);
-      }
+      writeClothVertex(id,px,py,depth-.006,light,0);
+      mesh[id*stride+8]=-lx;mesh[id*stride+9]=ly;mesh[id*stride+10]=lz;
     }
   }
+
   function arrival(t){
     // One short, decisive approach with a softly decelerating landing.
     // The slow 65%-of-flight drift in the prior version is removed.
     t=clamp(t,0,1);
-    return t*t*(3-2*t);
+    return t*t*t;
   }
   function render(now){
     if(!live)return;
@@ -723,26 +692,28 @@ function create(root){
       gl.vertexAttribPointer(fringeAttr,1,gl.FLOAT,false,stride*4,6*4);
       gl.enableVertexAttribArray(travelAttr);
       gl.vertexAttribPointer(travelAttr,1,gl.FLOAT,false,stride*4,7*4);
+      gl.enableVertexAttribArray(normalAttr);
+      gl.vertexAttribPointer(normalAttr,3,gl.FLOAT,false,stride*4,8*4);
       gl.uniform2f(projectionUniform,faceCenter.x/W*2-1,1-faceCenter.y/H*2);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
       gl.uniform1i(texUniform,0);gl.uniform1i(stitchUniform,1);
 
-      // Two separate passes: every membrane is drawn first, then all five
-      // embroidered phrases above the yarn. Later tulle may not erase words.
-      for(let pass=0;pass<2;pass++){
-        gl.uniform1f(passUniform,pass);
-        for(const layer of layers){
+      // Composite each physical sheet with its own embroidery. A new sheet
+      // veils both the face and the older embroidery beneath it.
+      for(const layer of layers){
+        for(let pass=0;pass<2;pass++){
+          gl.uniform1f(passUniform,pass);
           const tex=textures[layer.variant]?.[layer.index];
           if(!tex)continue;
           const seconds=(now-layer.start)/1000;
-          const progress=clamp(seconds/.82,0,1);
+          const progress=clamp(seconds/.36,0,1);
           const approach=layer.removing?1:arrival(progress);
           const fly=1-approach;
           const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
           const opacity=layer.removing?1-ease(clamp((leave-.82)/.18,0,1)):clamp(seconds/.10,0,1);
           if(opacity<=0)continue;
           const shiftX=(layer.index%2?-1:1)*24*fly;
-          const shiftY=-30*fly;
+          const shiftY=-55*fly;
           const center=faceCenter;
           const clothWidth=center.cw,clothHeight=center.ch;
           const xCos=center.co,ySin=center.si;
@@ -756,12 +727,16 @@ function create(root){
             // reaches the free edges last. At the end all vertices settle.
             const radius=clamp(Math.hypot(nx*.7,(v-.48)*1.15),0,1);
             const threshold=.23+.24*radius;
-            const contact=clamp((approach-threshold)/(1-threshold),0,1);
+            const contact=clamp((approach-.65-threshold*.25)/(1-.65-threshold*.25),0,1);
             const smooth=contact*contact*(3-2*contact);
             const pull=clamp((v-.73)/.27,0,1);
             const flutter=fly*pull*pull*Math.sin(now*.003+nx*9+layer.index*.3)*1.5;
-            const x=startX+(mesh[at]-startX)*smooth;
-            const y=startY+(mesh[at+1]-startY)*smooth;
+            const impactTime=seconds-.36;
+            const impact=impactTime>0&&impactTime<.22?
+              Math.sin(impactTime/.22*Math.PI)*Math.exp(-impactTime*12):0;
+            const pulse=impact*Math.sin(radius*10-impactTime*45)*1.8;
+            const x=startX+(mesh[at]-startX)*smooth+nx*pulse;
+            const y=startY+(mesh[at+1]-startY)*smooth+(v-.5)*pulse;
             // Peel from the upper-right corner. The release front travels
             // across the sheet; attached vertices stay on the face until
             // reached, then curl toward the camera as a continuous surface.
@@ -778,7 +753,11 @@ function create(root){
               -layer.index*.002-lift*.24,-.8,.8);
             for(let j=3;j<stride;j++)vertices[at+j]=mesh[at+j];
             vertices[at+5]*=1-.20*curl;
-            vertices[at+7]=-.42*fly-.16*curl;
+            vertices[at+7]=-.68*fly-.16*curl;
+            const tilt=lift*.85;
+            vertices[at+8]=mesh[at+8]*approach;
+            vertices[at+9]=mesh[at+9]*approach*Math.cos(tilt)+Math.sin(tilt);
+            vertices[at+10]=1-approach+mesh[at+10]*approach*Math.cos(tilt);
 
           }
           gl.bindBuffer(gl.ARRAY_BUFFER,vb);
