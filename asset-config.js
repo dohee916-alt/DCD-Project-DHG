@@ -7,6 +7,7 @@ window.DCD_ASSETS = Object.freeze({
   openingBreakVideo: null, // Set when the approved rupture motion file exists.
   openingLastFrame: "assets/motion/blister_3_to_5_one_shot_last.png",
   blisterPingpong: "assets/motion/blister_3_to_5_1_23_pingpong.gif?v=2500ms-20261110",
+  blisterPingpongFirst: "assets/motion/blister_3_to_5_1_23_pingpong_first.png",
   blisterOneShot: "assets/motion/blister_3_to_5_one_shot.gif?v=fast-1500ms-20261110",
   blisterOneShotFirst: "assets/motion/blister_3_to_5_one_shot_first.png",
   blisterOneShotLast: "assets/motion/blister_3_to_5_one_shot_last.png",
