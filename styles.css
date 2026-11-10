@@ -1572,8 +1572,8 @@ canvas.figure{object-fit:contain!important}
    Do not globally force black over the original ivory CTA. */
 .doto{color:#2e2924!important;line-height:1.08!important;}
 #stage .poster-click-guide,
-#stage.page-01 .guide-copy,
-#stage .ar-press-copy{color:#f9f6f2!important;}
+#stage.page-01 .guide-copy{color:#f9f6f2!important;line-height:32px!important;}
+#stage .ar-press-copy{color:#f9f6f2!important;line-height:29px!important;}
 #stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{color:#2e2924!important;line-height:1.08!important;}
 /* Tighter two-line AR heading while keeping existing size and position. */
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"]) .ar-copy{line-height:28px!important;}
