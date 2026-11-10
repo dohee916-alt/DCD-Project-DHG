@@ -1,0 +1,48 @@
+name: Losslessly optimize rupture GIF transfer size
+on:
+  push:
+    paths:
+      - .github/workflows/optimize-rupture-gif.yml
+permissions:
+  contents: write
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lossless GIF optimization with pixel and timing verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get -qq update
+          sudo apt-get -qq install -y gifsicle
+          python3 -m pip -q install Pillow
+          gifsicle -O3 assets/motion/blister_3_to_5_one_shot.gif -o /tmp/rupture-optimized.gif
+          python3 - <<'PY'
+          from PIL import Image,ImageSequence
+          from pathlib import Path
+          import hashlib,shutil
+          a=Path('assets/motion/blister_3_to_5_one_shot.gif')
+          b=Path('/tmp/rupture-optimized.gif')
+          def inspect(path):
+              with Image.open(path) as im:
+                  signatures=[hashlib.sha256(frame.convert('RGBA').tobytes()).digest() for frame in ImageSequence.Iterator(im)]
+                  durations=[frame.info.get('duration',0) for frame in ImageSequence.Iterator(im)]
+                  return im.size,im.n_frames,signatures,durations
+          baseline=inspect(a)
+          candidate=inspect(b)
+          assert baseline==candidate,'Optimization altered pixels, frame count, timing or geometry'
+          assert baseline[1]==44 and sum(baseline[3])==1500
+          print('Source bytes:',a.stat().st_size,'Optimized bytes:',b.stat().st_size)
+          if b.stat().st_size<a.stat().st_size:
+              shutil.copy2(b,a)
+          PY
+      - name: Commit optimized unchanged motion if smaller
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion/blister_3_to_5_one_shot.gif
+          if ! git diff --cached --quiet; then
+            git commit -m 'Reduce rupture GIF download bytes without changing frames or duration'
+            git push origin HEAD:main
+          fi
