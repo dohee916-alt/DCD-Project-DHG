@@ -1561,3 +1561,6 @@ canvas.figure{object-fit:contain!important}
   -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 68%,rgba(0,0,0,.94) 77%,rgba(0,0,0,.67) 85%,rgba(0,0,0,.28) 93%,transparent 100%)!important;
   mask-image:linear-gradient(to bottom,#000 0%,#000 68%,rgba(0,0,0,.94) 77%,rgba(0,0,0,.67) 85%,rgba(0,0,0,.28) 93%,transparent 100%)!important;
 }
+
+/* AR4–AR7 top guidance: orange on the blue field, never black. */
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{color:#d83a00!important;}
