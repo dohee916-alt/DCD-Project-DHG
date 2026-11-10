@@ -653,8 +653,9 @@ function create(root){
     const radiusZ=faceCenter.radiusZ/faceCenter.fw;
     const anchorY=-radiusY-.025,headY=0;
     const contactAge=clamp((now-layer.start-250)/1000,0,1);
-    // Once the original physical veil has settled, keep its achieved drape.
-    // Continuing gravity forever let the sheet rotate around the crown.
+    // Freeze only the accumulating gravity/constraint solver after the
+    // approved three-dimensional form settles. The render projection adds
+    // bounded non-accumulating air movement; crown orientation stays fixed.
     const locked=now-layer.start>1700;
     if(contactAge>0&&!layer.removing&&!locked){
       const slices=Math.max(1,Math.ceil(frameStep));
@@ -706,10 +707,25 @@ function create(root){
       const u=c/GRID_COLS,v=r/GRID_ROWS,at=id*stride;
       const x=p.x*cosYaw+p.z*sinYaw;
       const z=p.z*cosYaw-p.x*sinYaw;
-      const screenX=head.x+scale*(x*head.co-p.y*head.si);
+      // Wind is a bounded displacement of the ORIGINAL rested 3D cloth.
+      // It cannot accumulate or rotate the sheet. The crown stays anchored;
+      // hanging panels and folds breathe slowly so embroidery is glimpsed,
+      // not nailed in one central cluster.
+      const t=now*.001;
+      const crownDistance=Math.hypot((u-.5)*2,(v-.5)*2);
+      const looseness=ease(clamp((crownDistance-.12)/.68,0,1));
+      const front=clamp((.54-v)/.54,0,1);
+      const edge=clamp((Math.abs(u-.5)-.11)/.39,0,1);
+      const wave=Math.sin(t*1.55+u*7.2+v*4.4+layer.index*.72);
+      const fold=Math.sin(t*.92-u*5.1+v*8.4+layer.index*1.09);
+      const windX=looseness*(.046*wave+.034*fold)*(0.32+.68*edge);
+      const windY=looseness*(.023*wave-.016*fold)*(.4+.6*front);
+      const windZ=looseness*(.045*wave+.025*fold)*(0.4+.6*front);
+      const screenX=head.x+scale*((x+windX)*head.co-(p.y+windY)*head.si);
       // Front panel drapes below the chin instead of stopping at face height.
       const frontHem=Math.pow(Math.max(0,(.5-r/GRID_ROWS)*2),1.6);
-      const screenY=head.y+scale*(x*head.si+p.y*head.co-z*head.pitch*.32)
+      const screenY=head.y+scale*((x+windX)*head.si+
+        (p.y+windY)*head.co-(z+windZ)*head.pitch*.32)
         +head.fh*.32*frontHem;
       const prevL=c>0?nodes[id-1]:p,nextR=c<GRID_COLS?nodes[id+1]:p;
       const prevT=r>0?nodes[id-(GRID_COLS+1)]:p,nextB=r<GRID_ROWS?nodes[id+(GRID_COLS+1)]:p;
@@ -718,7 +734,7 @@ function create(root){
       const nX=clamp(-dySide/(Math.abs(dx)+.3),-.7,.7);
       const nY=clamp(-dy/(Math.abs(nextB.z-prevT.z)+.3),-.7,.7);
       mesh[at]=screenX;mesh[at+1]=screenY;
-      mesh[at+2]=clamp(-.24+z*.18,-.76,.62);
+      mesh[at+2]=clamp(-.24+(z+windZ)*.18,-.76,.62);
       mesh[at+3]=u;mesh[at+4]=v;
       mesh[at+5]=clamp(.89+.16*Math.abs(nX)+.09*Math.cos(u*35+p.y*3),.68,1.18);
       mesh[at+6]=Math.min(u,1-u,v,1-v);mesh[at+7]=0;
