@@ -203,14 +203,13 @@ function observeFace(points,now){
  const face=faceDisplayRect(points);
  // The real, mirrored face must be centered within the existing AR3 guide.
  // Require stable alignment, not merely a face anywhere in the camera.
- const centered=face.x>.34&&face.x<.66&&face.y>.34&&face.y<.66;
- const appropriateSize=face.w>.22&&face.w<.76&&face.h>.23&&face.h<.70;
+ const centered=face.x>.27&&face.x<.73&&face.y>.27&&face.y<.73;
+ const appropriateSize=face.w>.16&&face.w<.92&&face.h>.17&&face.h<.88;
  if(!centered||!appropriateSize){state.guideSince=0;return;}
  if(!state.guideSince)state.guideSince=now;
- // Begin the portrait engine only after face tracking has locked, but never
- // advance to the masked scene before a genuine processed frame is visible.
- ensurePortraitMatte();
- if(now-state.guideSince>=1350&&state.matte?.visible)enter('AR4');
+ // Real FaceLandmarker alignment advances AR3. The optional portrait
+ // segmentation is never required for recognition or the next step.
+ if(now-state.guideSince>=650)enter('AR4');
 }
 function observeHands(hands,now){
  if(!['AR6','AR7'].includes(state.frame))return;
