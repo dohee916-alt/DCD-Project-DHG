@@ -130,17 +130,13 @@ void main(){
   // fade fully away instead of retaining 15% alpha as square border rails.
   // Geometry itself is the tracked face plus feathered outside margin.
   // Do not impose an additional screen-space oval clip on these vertices.
-  // Feather all four hanging edges, with no visible rectangular canvas.
-  float edgeX=smoothstep(0.0,.062,vUV.x)*
-    smoothstep(0.0,.062,1.0-vUV.x);
-  float edgeY=smoothstep(0.0,.065,vUV.y)*
-    smoothstep(0.0,.065,1.0-vUV.y);
-  float silhouette=edgeX*edgeY;
-  float edgeFade=silhouette;
+  float silhouette=1.0;
+  float edgeFade=1.0;
   if(embroideryPass>0.5){
-    // One strictly frontal mesh keeps every embroidered phrase at a
-    // stationary authored UV position without inverted back-side copies.
-    gl_FragColor=vec4(threadColor,stitch*opacity*edgeFade);
+    // Stitch texture is fixed to the same UVs as the deforming fabric.
+    // Only the forward falling panel carries text.
+    float frontPanel=1.0-smoothstep(.46,.50,vUV.y);
+    gl_FragColor=vec4(threadColor,stitch*opacity*edgeFade*frontPanel);
   }else{
     gl_FragColor=vec4(whiteNet*(1.0-shade),
       clamp(netAlpha*opacity*edgeFade*silhouette,0.0,1.0));
@@ -191,14 +187,16 @@ function paintedFabric(height,index){
 // Figma label coordinates relative to a larger rectangular cloth.
 const CLOTH_REF={left:76,right:352,top:297,bottom:693};
 function embroiderySlot(c){
-  const h=c.text.split('\n').reduce((a,_,i)=>a+(c.lh[i]||20),0);
-  const centerX=c.x+c.w/2,centerY=c.y+h/2;
-  // Reference layout is the front-facing 428x926 Figma artboard.
-  // Map its authored label centers to the same rigid, front curtain UVs.
-  // Unlike the old wrap-around solver this surface has no back-facing text.
-  const u=clamp(.5+(centerX-214)/425,.18,.82);
-  const frontV=clamp((centerY-155)/655,.12,.80);
-  return {u,v:1-frontV,max:clamp(c.w/276,.13,.48)};
+ const h=c.text.split('\n').reduce((a,_,i)=>a+(c.lh[i]||20),0);
+ const centerY=c.y+h/2;
+ // The front panel is the camera-facing half of the physical 3D cloth.
+ // Move Figma's label centers onto that panel in the SAME physical UV space.
+ // The y=0.5 center is the crown; smaller V descends toward the front hem.
+ return {
+  u:clamp(.5+(c.x+c.w/2-214)/360,.22,.78),
+  v:clamp(.39-(centerY-345)*.00118,.105,.39),
+  max:clamp(c.w/276,.13,.48)
+ };
 }
 function embroideredLetters(variant,index){
  const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
@@ -586,19 +584,17 @@ function create(root){
       Math.max(.08,Math.abs(points[454].x-points[234].x)))*1.1,-.52,.52);
     const pitch=clamp((points[1].z-(points[10].z+points[152].z)*.5)*2,-.32,.32);
     const cw=fw*2.35,ch=fh*2.05;
-    // Smooth head translation and size only; screen-facing veil has no
-    // independent yaw/pitch rotation. Small tracked head roll is bounded.
-    const previous=faceCenter;
-    const blend=(old,next,rate)=>previous?mix(old,next,rate):next;
-    const headX=blend(previous?.x,cx,.22);
-    const headY=blend(previous?.y,centerY,.22);
-    const headW=blend(previous?.fw,fw,.16);
-    const headH=blend(previous?.fh,fh,.16);
-    const roll=blend(previous?.roll,clamp(angle,-.10,.10),.14);
-    faceCenter={x:headX,y:headY,cw:headW*2.35,ch:headH*2.05,
-      co:Math.cos(roll),si:Math.sin(roll),roll,fw:headW,fh:headH,
-      yaw:0,pitch:0,radiusX:headW*.59,radiusY:headH*.84,
-      radiusZ:headW*.59};
+    // Stabilize tracking without independently spinning the fitted veil.
+    const prev=faceCenter,alpha=.22;
+    const fx=prev?mix(prev.x,cx,alpha):cx;
+    const fy=prev?mix(prev.y,centerY,alpha):centerY;
+    const fwidth=prev?mix(prev.fw,fw,.18):fw;
+    const fheight=prev?mix(prev.fh,fh,.18):fh;
+    const roll=prev?mix(prev.roll||0,clamp(angle,-.085,.085),.12):clamp(angle,-.085,.085);
+    faceCenter={x:fx,y:fy,cw:fwidth*2.35,ch:fheight*2.05,
+      co:Math.cos(roll),si:Math.sin(roll),roll,fw:fwidth,fh:fheight,
+      yaw:0,pitch:0,
+      radiusX:fwidth*.59,radiusY:fheight*.84,radiusZ:fwidth*.59};
     // Build the real tracked face surface in the same mirrored screen space.
     facePixels=new Float32Array(468*2);
     faceDepth=new Float32Array(468);
@@ -619,41 +615,108 @@ function create(root){
     // No 468-point face surface is ever copied into a cloth vertex.
   }
 
-  // Crown-anchored front veil. Actual FaceLandmarker forehead/chin/cheeks
-  // define its scale and placement; no invented free-falling physics axis.
-  // A single facing surface prevents the reverse/backside doubled phrases.
+  // Verlet cloth sheet: gravity, structural/shear links and a moving
+  // ellipsoid collider. A single crown contact prevents the fabric sliding
+  // off while the rest of the material falls and folds freely.
+  function makeDrape(layer){
+    const N=GRID_COLS+1,side=3.34,step=side/GRID_COLS;
+    const nodes=[],links=[];
+    for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
+      const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
+      const y=-.98+.025*Math.sin(c*.65+r*.43+layer.index);
+      nodes.push({x,y,z,ox:x,oy:y,oz:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=1});
+    }
+    const add=(a,b,rest,stiffness)=>links.push({a,b,rest,stiffness});
+    for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
+      const a=r*N+c;
+      if(c<GRID_COLS)add(a,a+1,step,.82);
+      if(r<GRID_ROWS)add(a,a+N,step,.82);
+      if(c<GRID_COLS&&r<GRID_ROWS){
+        add(a,a+N+1,step*Math.SQRT2,.63);
+        add(a+1,a+N,step*Math.SQRT2,.63);
+      }
+      if(c+2<=GRID_COLS)add(a,a+2,step*2,.25);
+      if(r+2<=GRID_ROWS)add(a,a+N*2,step*2,.25);
+    }
+    const sim={nodes,links,last:0,settled:0};
+    layer.drape=sim;
+    return sim;
+  }
   function drapedCloth(layer,now){
-    const head=faceCenter,fw=head.fw,fh=head.fh;
-    const crownY=head.y-fh*.72;
-    const hemY=head.y+fh*1.12;
-    const seconds=now*.001;
-    for(let id=0;id<faceVertexCount;id++){
-      const row=Math.floor(id/(GRID_COLS+1));
-      const col=id%(GRID_COLS+1);
-      const u=col/GRID_COLS,v=row/GRID_ROWS,at=id*stride;
-      const nx=(u-.5)*2;
-      // A stable dome sits above the tracked forehead, and an outward
-      // skirt reaches past the chin. Neither can spin away from the face.
-      const width=fw*.88*(.96+.12*v);
-      const arch=fh*.15*Math.pow(Math.abs(nx),1.7)*
-        Math.pow(1-v,2);
-      const fringe=clamp((Math.abs(nx)-.53)/.47,0,1)*
-        clamp((v-.35)/.65,0,1);
-      const sway=fringe*fw*.014*Math.sin(seconds*1.35+u*8+layer.index);
-      const swayY=fringe*fh*.009*Math.sin(seconds*1.1+u*11+layer.index);
-      const localX=nx*width+sway;
-      const localY=(crownY+(hemY-crownY)*v-head.y)+arch+swayY;
-      mesh[at]=head.x+localX*head.co-localY*head.si;
-      mesh[at+1]=head.y+localX*head.si+localY*head.co;
-      mesh[at+2]=clamp(-.18+Math.abs(nx)*.11+v*.06,-.6,.5);
-      // Top of cloth = atlas top; the canvas texture is UNPACK_FLIP_Y.
-      mesh[at+3]=u;mesh[at+4]=1-v;
-      mesh[at+5]=clamp(.95+.055*fringe*Math.sin(u*24+layer.index),.84,1.04);
-      mesh[at+6]=Math.min(u,1-u,v,1-v);
-      mesh[at+7]=0;
-      mesh[at+8]=clamp(nx*.18,-.24,.24);
-      mesh[at+9]=clamp((.5-v)*.13,-.1,.1);
-      mesh[at+10]=.96;
+    const sim=layer.drape||makeDrape(layer);
+    // Solve once per layer/frame, not once for both fabric and embroidery.
+    const elapsed=sim.last?clamp((now-sim.last)/1000,0,.045):1/60;
+    sim.last=now;
+    const frameStep=Math.min(2.1,elapsed*60);
+    const radiusY=faceCenter.radiusY/faceCenter.fw;
+    const radiusX=faceCenter.radiusX/faceCenter.fw;
+    const radiusZ=faceCenter.radiusZ/faceCenter.fw;
+    const anchorY=-radiusY-.025,headY=0;
+    const contactAge=clamp((now-layer.start-250)/1000,0,1);
+    // Once the original physical veil has settled, keep its achieved drape.
+    // Continuing gravity forever let the sheet rotate around the crown.
+    const locked=now-layer.start>1700;
+    if(contactAge>0&&!layer.removing&&!locked){
+      const slices=Math.max(1,Math.ceil(frameStep));
+      const stepRatio=frameStep/slices;
+      for(let sub=0;sub<slices;sub++){
+        for(const p of sim.nodes){
+          if(p.pin){p.x=p.z=0;p.y=anchorY;p.ox=0;p.oz=0;p.oy=anchorY;continue;}
+          const vx=(p.x-p.ox)*.977,vy=(p.y-p.oy)*.977,vz=(p.z-p.oz)*.977;
+          p.ox=p.x;p.oy=p.y;p.oz=p.z;
+          p.x+=vx;p.y+=vy+.0043*stepRatio*stepRatio;p.z+=vz;
+        }
+        for(let iteration=0;iteration<4;iteration++){
+          for(const e of sim.links){
+            const a=sim.nodes[e.a],b=sim.nodes[e.b];
+            const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
+            const len=Math.hypot(dx,dy,dz)||1;
+            const correction=((len-e.rest)/len)*e.stiffness*.5;
+            const x=dx*correction,y=dy*correction,z=dz*correction;
+            if(!a.pin){a.x+=x;a.y+=y;a.z+=z;}
+            if(!b.pin){b.x-=x;b.y-=y;b.z-=z;}
+          }
+          for(const p of sim.nodes){
+            if(p.pin)continue;
+            // Real collision against a tracked skull-sized ellipsoid rather
+            // than a z-height map of the eyes, mouth, or cheeks.
+            const nx=p.x/radiusX,ny=(p.y-headY)/radiusY,nz=p.z/radiusZ;
+            const d=Math.hypot(nx,ny,nz);
+            if(d<1.035){
+              const k=1.035/Math.max(.0001,d);
+              p.x*=k;p.y=headY+(p.y-headY)*k;p.z*=k;
+            }
+          }
+        }
+      }
+    }
+    const {nodes}=sim;
+    const head=faceCenter,scale=head.fw,cosYaw=Math.cos(head.yaw),sinYaw=Math.sin(head.yaw);
+    // On arrival the flat cloth is in front of/above the head, then the
+    // settled fabric attaches to the tracked head frame.
+    for(let id=0;id<nodes.length;id++){
+      const p=nodes[id],r=Math.floor(id/(GRID_COLS+1)),c=id%(GRID_COLS+1);
+      const u=c/GRID_COLS,v=r/GRID_ROWS,at=id*stride;
+      const x=p.x*cosYaw+p.z*sinYaw;
+      const z=p.z*cosYaw-p.x*sinYaw;
+      const screenX=head.x+scale*(x*head.co-p.y*head.si);
+      // Front panel drapes below the chin instead of stopping at face height.
+      const frontHem=Math.pow(Math.max(0,(.5-r/GRID_ROWS)*2),1.6);
+      const screenY=head.y+scale*(x*head.si+p.y*head.co-z*head.pitch*.32)
+        +head.fh*.32*frontHem;
+      const prevL=c>0?nodes[id-1]:p,nextR=c<GRID_COLS?nodes[id+1]:p;
+      const prevT=r>0?nodes[id-(GRID_COLS+1)]:p,nextB=r<GRID_ROWS?nodes[id+(GRID_COLS+1)]:p;
+      const dx=nextR.x-prevL.x,dz=nextR.z-prevL.z;
+      const dy=nextB.y-prevT.y,dySide=nextR.y-prevL.y;
+      const nX=clamp(-dySide/(Math.abs(dx)+.3),-.7,.7);
+      const nY=clamp(-dy/(Math.abs(nextB.z-prevT.z)+.3),-.7,.7);
+      mesh[at]=screenX;mesh[at+1]=screenY;
+      mesh[at+2]=clamp(-.24+z*.18,-.76,.62);
+      mesh[at+3]=u;mesh[at+4]=v;
+      mesh[at+5]=clamp(.89+.16*Math.abs(nX)+.09*Math.cos(u*35+p.y*3),.68,1.18);
+      mesh[at+6]=Math.min(u,1-u,v,1-v);mesh[at+7]=0;
+      mesh[at+8]=nX;mesh[at+9]=nY;
+      mesh[at+10]=Math.sqrt(Math.max(.08,1-nX*nX-nY*nY));
     }
   }
   function arrival(t){
