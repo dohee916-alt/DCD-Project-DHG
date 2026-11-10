@@ -624,7 +624,7 @@ function create(root){
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
       const y=-.98+.025*Math.sin(c*.65+r*.43+layer.index);
-      nodes.push({x,y,z,ox:x,oy:y,oz:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=1});
+      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=1});
     }
     const add=(a,b,rest,stiffness)=>links.push({a,b,rest,stiffness});
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
@@ -661,7 +661,14 @@ function create(root){
       const stepRatio=frameStep/slices;
       for(let sub=0;sub<slices;sub++){
         for(const p of sim.nodes){
-          if(p.pin){p.x=p.z=0;p.y=anchorY;p.ox=0;p.oz=0;p.oy=anchorY;continue;}
+          if(p.pin){
+             // Preserve the spread of the crown patch instead of collapsing
+             // all nine anchored vertices into one point.
+             const px=p.baseX,pz=p.baseZ;
+             const xy=px/radiusX,zz=pz/radiusZ;
+             const py=-radiusY*Math.sqrt(Math.max(.08,1-xy*xy-zz*zz))-.025;
+             p.x=p.ox=px;p.z=p.oz=pz;p.y=p.oy=py;continue;
+           }
           const vx=(p.x-p.ox)*.977,vy=(p.y-p.oy)*.977,vz=(p.z-p.oz)*.977;
           p.ox=p.x;p.oy=p.y;p.oz=p.z;
           p.x+=vx;p.y+=vy+.0043*stepRatio*stepRatio;p.z+=vz;
