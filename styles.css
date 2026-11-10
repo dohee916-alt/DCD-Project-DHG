@@ -41,7 +41,7 @@
 .dose,.paper-prompt,.signature-guide{color:#d83a00}
 .page-12 .options{color:#2e2924}
 .page-13 .options,.page-14 .options,.page-14done .options{color:#2b333d}
-.page-15 .consent-copy{color:#f53c0a}
+.page-15 .consent-copy{color:#d83a00}
 .page-16 .consent-copy{color:#f9f6f2}
 .glass.gray{color:#fff}
 .title-stack.fixed{opacity:.7}
@@ -847,7 +847,7 @@ canvas.figure{object-fit:contain!important}
   backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
 }
 .ar-immersive .ar-organza-printed-copy{
-  color:#e83d0a!important;font-family:"Source Sans 3",Arial,sans-serif!important;
+  color:#d83a00!important;font-family:"Source Sans 3",Arial,sans-serif!important;
   font-weight:700!important;font-size:26px!important;line-height:32px!important;
   width:76%;left:12%;right:12%;
   text-shadow:none!important;
@@ -1059,7 +1059,7 @@ canvas.figure{object-fit:contain!important}
 }
 .ar-immersive[data-ar-frame="AR8"] .ar-copy{
  left:61px;right:61px;top:144px;width:306px;
- font:700 26px/32px 'Source Sans 3',Arial,sans-serif;color:#e83d0a;
+ font:700 26px/32px 'Source Sans 3',Arial,sans-serif;color:#d83a00;
 }
 .ar-immersive[data-ar-frame="AR9"] .ar-copy{
  left:61px;right:61px;top:430px;width:306px;
