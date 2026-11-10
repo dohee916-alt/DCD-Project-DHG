@@ -1596,3 +1596,20 @@ canvas.figure{object-fit:contain!important}
   mix-blend-mode:normal!important;
   pointer-events:none!important;
 }
+
+/* WEB00–02 GIF load continuity: always show the matching still until the
+   actual animated GIF has decoded, never the superseded poster alternate. */
+#stage .opening-blister-still{
+  position:absolute!important;
+  z-index:1!important;
+  display:block!important;
+  opacity:1!important;
+  object-fit:fill!important;
+  transform:none!important;
+  animation:none!important;
+  filter:none!important;
+  pointer-events:none!important;
+}
+#stage .opening-blister-motion.opening-blister-awaiting{
+  visibility:hidden!important;
+}
