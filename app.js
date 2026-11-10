@@ -22,7 +22,7 @@ let packingAssetsWarmed=false;
 let ruptureWarmPromise=null,ruptureBuffer=null,rupturePlayUrl=null;
 function preloadRuptureGif(){
   if(ruptureWarmPromise)return ruptureWarmPromise;
-  ruptureWarmPromise=fetch(A.blisterOneShot,{cache:'force-cache',priority:'low'})
+  ruptureWarmPromise=fetch(A.blisterOneShot,{cache:'force-cache'})
     .then(response=>{
       if(!response.ok)throw new Error('GIF preload HTTP '+response.status);
       return response.arrayBuffer();
