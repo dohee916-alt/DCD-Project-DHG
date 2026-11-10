@@ -990,9 +990,23 @@ if(packHand){
   packHand.addEventListener('animationend',endHand,{once:true});
   setTimeout(endHand,Math.max(0,PACK_HAND_TOTAL_MS-elapsed)+40);
 }if(s.page==='14')bindNewSignature();if(s.page==='arFace')attachArCamera();if(s.page==='01'&&s.phase==='rupture'){
-  // Animated GIF cannot fire an ended event. The delay comes from its
-  // verified 44 original frames (5,010ms), not an arbitrary transition.
-  later(finishRupture,M.blisterOneShotMs);
+  // Start the verified 5.01-second playback clock only after the actual
+  // 44-frame GIF has loaded. Large GIFs must not get cut off on slow phones.
+  const gif=stage.querySelector('.opening-blister-rupture');
+  if(!gif){finishRupture();}
+  else{
+    let started=false;
+    const begin=()=>{
+      if(started||s.page!=='01'||s.phase!=='rupture')return;
+      started=true;
+      later(finishRupture,M.blisterOneShotMs);
+    };
+    if(gif.complete&&gif.naturalWidth)begin();
+    else{
+      gif.addEventListener('load',begin,{once:true});
+      gif.addEventListener('error',finishRupture,{once:true});
+    }
+  }
 }}
 function finishRupture(){if(s.page==='01'&&s.phase==='rupture'){videoEnded=true;setPage('02');}}
 function runIntro(p){setPage(p,'intro');later(()=>{if(s.page===p&&s.phase==='intro'){s.phase=p==='00'?'loop':'guide';render();}},M.introMs);}
