@@ -143,12 +143,12 @@ function create(root){
      shader.uniforms.dcdIvory={value:ivory};
      shader.vertexShader=shader.vertexShader
       .replace('#include <common>',
-       '#include <common>\\nvarying float vDcdLocalY;')
+       '#include <common>\nvarying float vDcdLocalY;')
       .replace('#include <begin_vertex>',
-       '#include <begin_vertex>\\nvDcdLocalY=position.y;');
+       '#include <begin_vertex>\nvDcdLocalY=position.y;');
      shader.fragmentShader=shader.fragmentShader
       .replace('#include <common>',
-       '#include <common>\\nvarying float vDcdLocalY;\\nuniform vec3 dcdPeach;\\nuniform vec3 dcdIvory;')
+       '#include <common>\nvarying float vDcdLocalY;\nuniform vec3 dcdPeach;\nuniform vec3 dcdIvory;')
       .replace('#include <color_fragment>',[
        '#include <color_fragment>',
        '// The supplied hand extends from Y=-0.18 at the wrist to Y=23.',
@@ -157,7 +157,7 @@ function create(root){
        'float blush=smoothstep(1.0,22.0,vDcdLocalY);',
        'diffuseColor.rgb=mix(dcdPeach,dcdIvory,blush);',
        'diffuseColor.a*=wristAlpha;'
-      ].join('\\n'));
+      ].join('\n'));
     };
     material.customProgramCacheKey=()=> 'dcd-soft-translucent-hand-feathered-wrist-v3';
     owned.push(material);
