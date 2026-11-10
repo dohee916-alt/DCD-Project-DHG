@@ -22,6 +22,8 @@ attribute vec3 position;
 attribute vec2 uv;
 attribute float lighting;
 attribute float fringe;
+attribute float travel;
+uniform vec2 projectionCenter;
 varying vec2 vUV;
 varying float vLight;
 varying float vFringe;
@@ -29,7 +31,11 @@ void main(){
   // Canvas textures otherwise land upside-down on the WebGL face UVs.
   // Flip only the sampled atlas, not the geometry or head tracking.
   vUV=vec2(uv.x,1.0-uv.y);vLight=lighting;vFringe=fringe;
-  gl_Position=vec4(position.xy,clamp(position.z,-0.8,0.8),1.0);
+  // Homogeneous perspective during approach/peel; w=1 at contact keeps
+  // the calibrated screen-space face and its depth occluder registered.
+  float w=max(0.4,1.0+travel);
+  gl_Position=vec4(projectionCenter*w+(position.xy-projectionCenter),
+    clamp(position.z,-0.8,0.8)*w,w);
 }`;
 const FRAG=`
 precision highp float;
@@ -80,7 +86,7 @@ void main(){
   // the fabric even when individual thread pixels shrink at camera scale.
   // Fine, thin organza filament with a faint continuous translucent body.
   // Avoid the coarse opaque mesh effect from the earlier yarn intensity.
-  float netAlpha=0.105+0.53*strand+0.034*detail;
+  float netAlpha=0.028+0.23*strand+0.018*detail;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -91,7 +97,11 @@ void main(){
   // on the other. No generated plaid/grid/false black stitch pattern.
   float rim=clamp((eLeft-eRight+eUp-eDown)*0.24,-0.20,0.20);
   float surface=clamp(0.82+0.12*fiber+0.13*(vLight-0.85)+rim,0.60,1.10);
-  vec3 orangeThread=vec3(0.99,0.315,0.035)*surface;
+  // Satin-stitch ridges share the cloth UV and lighting, including peel.
+  float rib=0.5+0.5*sin((vUV.x+vUV.y*.36)*1024.0*2.1);
+  float filament=pow(rib,7.0);
+  vec3 threadColor=vec3(.075,.068,.061)*surface
+    +vec3(.14,.125,.105)*filament*clamp(vLight-.65,0.0,.6);
   float contact=clamp(max(max(eLeft,eRight),max(eUp,eDown))-stitch,0.0,1.0);
   float shade=contact*0.13;
   // Fabric and embroidery have independent draw passes. In particular the
@@ -103,7 +113,7 @@ void main(){
   float silhouette=1.0;
   float edgeFade=1.0-smoothstep(0.18,0.99,vFringe);
   if(embroideryPass>0.5){
-    gl_FragColor=vec4(orangeThread,0.0);
+    gl_FragColor=vec4(threadColor,stitch*opacity*edgeFade);
   }else{
     gl_FragColor=vec4(whiteNet*(1.0-shade),
       clamp(netAlpha*opacity*edgeFade*silhouette,0.0,1.0));
@@ -323,7 +333,9 @@ function canvasCloth(root){
 function create(root){
   if(!root)return null;
   const canvas=document.createElement('canvas');
-  canvas.className='ar-tulle-webgl';canvas.width=W;canvas.height=H;root.prepend(canvas);
+  canvas.className='ar-tulle-webgl';
+  const pixelRatio=Math.min(2,window.devicePixelRatio||1);
+  canvas.width=Math.round(W*pixelRatio);canvas.height=Math.round(H*pixelRatio);root.prepend(canvas);
   let gl,program;
   try{
     gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,premultipliedAlpha:true});
@@ -353,15 +365,18 @@ function create(root){
   // Suppress the old flat CSS oval when the tracked 3D cloth is available.
   root.classList.add('ar-tulle-gpu');
   const vb=gl.createBuffer(),ib=gl.createBuffer();
-  const stride=7,positionAttr=gl.getAttribLocation(program,'position');
+  const stride=8,positionAttr=gl.getAttribLocation(program,'position');
   const uvAttr=gl.getAttribLocation(program,'uv'),lightAttr=gl.getAttribLocation(program,'lighting');
   const fringeAttr=gl.getAttribLocation(program,'fringe');
+  const travelAttr=gl.getAttribLocation(program,'travel');
+  const projectionUniform=gl.getUniformLocation(program,'projectionCenter');
   const opacityUniform=gl.getUniformLocation(program,'opacity'),texUniform=gl.getUniformLocation(program,'fabric');
   const stitchUniform=gl.getUniformLocation(program,'embroideryMask');
   const passUniform=gl.getUniformLocation(program,'embroideryPass');
   let outline=[],mesh=null,vertices=null,indexCount=0,faceCenter=null;
   let facePixels=null,faceDepth=null,faceBounds=null,frameLast=0;
   let triangleBins=null;
+  let clothUV=null;
   const BIN_W=20,BIN_H=32;
   function faceSurfaceAt(x,y){
     if(!triangleBins||!facePixels)return null;
@@ -405,63 +420,6 @@ function create(root){
   }
   const textures={},layers=[];
   const canvasBackup=canvasCloth(root);
-  // Screen-space embroidery is a separate tracked layer. The cloth can
-  // drape and bend without distorting a single character of the words.
-  const printCanvas=document.createElement('canvas');
-  printCanvas.className='ar-tulle-legible-print';
-  printCanvas.width=W;printCanvas.height=H;
-  printCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:none';
-  root.appendChild(printCanvas);
-  const printCtx=printCanvas.getContext('2d',{alpha:true});
-  const safePrintSlots=[
-    {u:.29,v:.20},{u:.70,v:.34},{u:.29,v:.49},
-    {u:.70,v:.63},{u:.49,v:.81}
-  ];
-  function drawPrints(now){
-    if(!printCtx)return;
-    printCtx.clearRect(0,0,W,H);
-    if(!faceCenter)return;
-    const c=faceCenter,co=c.co,si=c.si;
-    for(const layer of layers){
-      if(layer.removing&&(now-layer.exit)>1150)continue;
-      const config=FIGMA_MASK_TEXT[layer.variant]?.[layer.index];
-      if(!config)continue;
-      const age=(now-layer.start)/1000;
-      const progress=ease(clamp(age/1.05,0,1));
-      const fly=1-progress;
-      const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
-      const alpha=(layer.removing?1-ease(leave):clamp(age/.14,0,1));
-      if(alpha<=0)continue;
-      const slot=safePrintSlots[layer.index]||safePrintSlots[4];
-      const dx=(slot.u-.5)*c.textWidth,dy=(slot.v-.50)*c.textHeight;
-      const shiftX=(layer.index%2?-1:1)*245*fly;
-      const shiftY=-165*fly;
-      const scale=1-.46*fly;
-      const px=c.x+(dx*co-dy*si)*scale+shiftX;
-      const py=c.textY+(dx*si+dy*co)*scale+shiftY;
-      printCtx.save();
-      printCtx.globalAlpha=alpha;
-      printCtx.translate(px,py);
-      printCtx.rotate(Math.atan2(si,co));
-      printCtx.scale(scale,scale);
-      const lines=config.text.split('\n');
-      const lineHeight=20;
-      let fs=18;
-      const maxWidth=Math.min(170,c.textWidth*.42);
-      printCtx.font='700 '+fs+'px "Turret Road",sans-serif';
-      const maxMeasured=Math.max(1,...lines.map(t=>printCtx.measureText(t).width));
-      if(maxMeasured>maxWidth)fs=Math.max(14,fs*maxWidth/maxMeasured);
-      printCtx.font='700 '+fs+'px "Turret Road",sans-serif';
-      printCtx.textAlign='center';printCtx.textBaseline='middle';
-      // Original clean orange type: never add dark outline/shadow.
-      printCtx.fillStyle='#151515';
-      for(let j=0;j<lines.length;j++){
-        const yy=(j-(lines.length-1)/2)*lineHeight;
-        printCtx.fillText(lines[j],0,yy);
-      }
-      printCtx.restore();
-    }
-  }
   // Cloth follows the actual FaceLandmarker mesh, not a rectangle
   // estimated from face width/height. A separate, feathered ring extends
   // beyond MediaPipe's skin outline to softly cover the temples and hair.
@@ -524,6 +482,9 @@ function create(root){
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);
     gl.generateMipmap(gl.TEXTURE_2D);
+    const aniso=gl.getExtension('EXT_texture_filter_anisotropic');
+    if(aniso)gl.texParameterf(gl.TEXTURE_2D,aniso.TEXTURE_MAX_ANISOTROPY_EXT,
+      Math.min(8,gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
     return tex;
   }
@@ -579,7 +540,7 @@ function create(root){
     const angle=uprightFaceAngle(eyeA,eyeB),co=Math.cos(angle),si=Math.sin(angle);
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2+fh*.035;
     // Expand the physical veil around the whole head (hair and temples).
-    // Keep the text in its PREVIOUS independent screen-space positions.
+    // The lettering now shares the cloth surface and head-relative UVs.
     const cw=clamp(fw*1.96,fw+104,424),ch=clamp(fh*1.63,fh+116,610);
     const textWidth=clamp(fw*1.72,fw+80,412);
     const textHeight=clamp(fh*1.53,fh+85,585);
@@ -606,14 +567,21 @@ function create(root){
     // actual FaceLandmarker position and 3D depth on every video frame.
     // This preserves cheeks, nose bridge, brow and jaw as one CONTINUOUS
     // 468-vertex surface (no separate lip/eyelid overlay).
+    if(!clothUV)clothUV=[];
     function writeClothVertex(id,px,py,pz,light,fringe){
       const at=id*stride;
       mesh[at]=px;mesh[at+1]=py;
       mesh[at+2]=clamp(pz,-.79,.79);
-      mesh[at+3]=clamp((px-(cx-cw*.5))/cw,.004,.996);
-      mesh[at+4]=clamp((py-(cy-ch*.5))/ch,.004,.996);
+      // Freeze material coordinates on the first tracked surface. They must
+      // not slide through the face as landmarks move or the head rotates.
+      if(!clothUV[id]){
+        const dx=px-cx,dy=py-cy;
+        clothUV[id]=[clamp(.5+(dx*co+dy*si)/cw,.004,.996),
+          clamp(.5+(-dx*si+dy*co)/ch,.004,.996)];
+      }
+      mesh[at+3]=clothUV[id][0];mesh[at+4]=clothUV[id][1];
       mesh[at+5]=clamp(light,.64,1.24);
-      mesh[at+6]=fringe;
+      mesh[at+6]=fringe;mesh[at+7]=0;
     }
     // Estimate continuous cloth lighting from the LOCAL 3D face surface.
     // The old single nose-depth brightness term made the fabric look flat.
@@ -678,7 +646,7 @@ function create(root){
   }
   function render(now){
     if(!live)return;
-    gl.viewport(0,0,W,H);
+    gl.viewport(0,0,canvas.width,canvas.height);
     gl.depthMask(true);gl.clearDepth(1);gl.clearColor(0,0,0,0);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     for(let i=layers.length-1;i>=0;i--){
@@ -689,7 +657,6 @@ function create(root){
       reportState(gl.isContextLost()?'context-lost':(!faceCenter?'no-face':(!textures.first?'no-texture':'not-ready')),now);
       root.classList.remove('ar-tulle-ready');
       canvasBackup.draw(layers,now);
-      printCtx?.clearRect(0,0,W,H);
       return;
     }
     try{
@@ -723,6 +690,9 @@ function create(root){
       gl.vertexAttribPointer(lightAttr,1,gl.FLOAT,false,stride*4,5*4);
       gl.enableVertexAttribArray(fringeAttr);
       gl.vertexAttribPointer(fringeAttr,1,gl.FLOAT,false,stride*4,6*4);
+      gl.enableVertexAttribArray(travelAttr);
+      gl.vertexAttribPointer(travelAttr,1,gl.FLOAT,false,stride*4,7*4);
+      gl.uniform2f(projectionUniform,faceCenter.x/W*2-1,1-faceCenter.y/H*2);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
       gl.uniform1i(texUniform,0);gl.uniform1i(stitchUniform,1);
 
@@ -734,14 +704,14 @@ function create(root){
           const tex=textures[layer.variant]?.[layer.index];
           if(!tex)continue;
           const seconds=(now-layer.start)/1000;
-          const progress=clamp(seconds/1.05,0,1);
+          const progress=clamp(seconds/.82,0,1);
           const approach=layer.removing?1:arrival(progress);
           const fly=1-approach;
           const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
-          const opacity=layer.removing?1-ease(leave):clamp(seconds/.14,0,1);
+          const opacity=layer.removing?1-ease(clamp((leave-.82)/.18,0,1)):clamp(seconds/.10,0,1);
           if(opacity<=0)continue;
-          const shiftX=(layer.index%2?-1:1)*245*fly;
-          const shiftY=-165*fly;
+          const shiftX=(layer.index%2?-1:1)*24*fly;
+          const shiftY=-30*fly;
           const center=faceCenter;
           const clothWidth=center.cw,clothHeight=center.ch;
           const xCos=center.co,ySin=center.si;
@@ -761,18 +731,24 @@ function create(root){
             const flutter=fly*pull*pull*Math.sin(now*.003+nx*9+layer.index*.3)*1.5;
             const x=startX+(mesh[at]-startX)*smooth;
             const y=startY+(mesh[at+1]-startY)*smooth;
-            const lift=ease(leave);
-            const scale=1-.46*fly;
-            // Each successive translucent veil sits a few pixels off the
-            // previous hem. This reveals five physical boundaries without
-            // losing registration against the head.
-            const stackEdge=approach*layer.index;
-            vertices[at]=(center.x+(x-center.x)*scale+shiftX+flutter+lift*42+stackEdge*1.55)/W*2-1;
-            vertices[at+1]=1-(center.y+(y-center.y)*scale+shiftY-lift*175+stackEdge*1.05)/H*2;
-            // Before contact the textile approaches from in front of the
-            // nose; final Z is the sampled face surface with jaw curl.
-            vertices[at+2]=clamp(-.72*fly+mesh[at+2]*approach-layer.index*.008,-.8,.8);
+            // Peel from the upper-right corner. The release front travels
+            // across the sheet; attached vertices stay on the face until
+            // reached, then curl toward the camera as a continuous surface.
+            const distance=clamp((1-u)*.48+v*.52,0,1);
+            const released=layer.removing?clamp((leave*1.55-distance)/.40,0,1):0;
+            const lift=ease(released);
+            const curl=Math.sin(lift*Math.PI*.82);
+            const depart=ease(clamp((leave-.65)/.35,0,1));
+            const peelX=(lift*clothWidth*.34+curl*clothWidth*.10+depart*W*.75);
+            const peelY=(-lift*clothHeight*.23-curl*clothHeight*.13-depart*H*.20);
+            vertices[at]=(x+shiftX+flutter+peelX)/W*2-1;
+            vertices[at+1]=1-(y+shiftY+peelY)/H*2;
+            vertices[at+2]=clamp(-.65*fly+mesh[at+2]*approach
+              -layer.index*.002-lift*.24,-.8,.8);
             for(let j=3;j<stride;j++)vertices[at+j]=mesh[at+j];
+            vertices[at+5]*=1-.20*curl;
+            vertices[at+7]=-.42*fly-.16*curl;
+
           }
           gl.bindBuffer(gl.ARRAY_BUFFER,vb);
           gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
@@ -780,7 +756,7 @@ function create(root){
           gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.thread);
           // Five stacked textile layers must stay translucent; embroidery
           // remains opaque enough to be read even across the older layers.
-          gl.uniform1f(opacityUniform,opacity*(pass===0?.96:0));
+          gl.uniform1f(opacityUniform,opacity*(pass===0?.96:1));
           gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
         }
       }
@@ -788,14 +764,12 @@ function create(root){
       if(err!==gl.NO_ERROR)throw new Error('WebGL cloth/face draw error '+err);
       root.classList.add('ar-tulle-ready');
       canvasBackup.draw([],now);
-      drawPrints(now);
       reportState('rendering',now);
       renderErrorReported=false;
     }catch(error){
       gl.colorMask(true,true,true,true);gl.depthMask(true);
       root.classList.remove('ar-tulle-ready');
       canvasBackup.draw(layers,now);
-      printCtx?.clearRect(0,0,W,H);
       reportState('draw-error',now);
       if(!renderErrorReported){
         console.error('[DCD AR] face/cloth pipeline:',error);
@@ -807,7 +781,7 @@ function create(root){
     if(!live)return;
     // Thirty FPS is sufficient for a translucent face cloth and prevents
     // a second 60 FPS WebGL loop from competing with camera inference.
-    if(now-lastRendered>=33){lastRendered=now;render(now);}
+    if(now-lastRendered>=16){lastRendered=now;render(now);}
     frameId=requestAnimationFrame(loop);
   }
   frameId=requestAnimationFrame(loop);
@@ -825,7 +799,7 @@ function create(root){
     for(const texArray of Object.values(textures))for(const pair of texArray){
       for(const t of [pair.fabric,pair.thread])if(!seen.has(t)){gl.deleteTexture(t);seen.add(t);}
     }
-    canvasBackup.destroy();printCanvas.remove();
+    canvasBackup.destroy();
     if(occBuffer)gl.deleteBuffer(occBuffer);
     if(occIndex)gl.deleteBuffer(occIndex);
     if(occProgram)gl.deleteProgram(occProgram);

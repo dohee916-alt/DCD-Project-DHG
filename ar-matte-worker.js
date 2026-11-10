@@ -44,7 +44,7 @@ function segment(source,timestamp){
   }
   const values=mask.getAsFloat32Array();
   for(let i=0;i<values.length;i++){
-   const a=values[i];pixels.data[i*4+3]=Math.round(255*a*a*(3-2*a));
+   const a=values[i];pixels.data[i*4+3]=Math.round(255*Math.max(0,Math.min(1,a)));
   }
   matteCtx.putImageData(pixels,0,0);
  });
