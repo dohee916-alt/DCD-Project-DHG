@@ -645,7 +645,7 @@ function create(root){
           p.ox=p.x;p.oy=p.y;p.oz=p.z;
           p.x+=vx;p.y+=vy+.0043*stepRatio*stepRatio;p.z+=vz;
         }
-        for(let iteration=0;iteration<5;iteration++){
+        for(let iteration=0;iteration<4;iteration++){
           for(const e of sim.links){
             const a=sim.nodes[e.a],b=sim.nodes[e.b];
             const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
@@ -675,7 +675,7 @@ function create(root){
     // settled fabric attaches to the tracked head frame.
     for(let id=0;id<nodes.length;id++){
       const p=nodes[id],r=Math.floor(id/(GRID_COLS+1)),c=id%(GRID_COLS+1);
-      const u=c/GRID_COLS,v=1-r/GRID_ROWS,at=id*stride;
+      const u=c/GRID_COLS,v=r/GRID_ROWS,at=id*stride;
       const x=p.x*cosYaw+p.z*sinYaw;
       const z=p.z*cosYaw-p.x*sinYaw;
       const screenX=head.x+scale*(x*head.co-p.y*head.si);
@@ -788,6 +788,20 @@ function create(root){
           }
           gl.bindBuffer(gl.ARRAY_BUFFER,vb);
           gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
+          if(pass===0){
+            // Use the physical sheet's own depth, not the face as an
+            // occluder. Hide fabric on the far side of the head/itself.
+            // Reset only depth for this layer so earlier translucent sheets
+            // remain visible in the color buffer.
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+            gl.disable(gl.BLEND);
+            gl.colorMask(false,false,false,false);
+            gl.depthMask(true);
+            gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
+            gl.depthMask(false);
+            gl.colorMask(true,true,true,true);
+            gl.enable(gl.BLEND);
+          }
           gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex.fabric);
           gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tex.thread);
           // Five stacked textile layers must stay translucent; embroidery
