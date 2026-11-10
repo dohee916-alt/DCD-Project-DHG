@@ -1579,7 +1579,7 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-1"],[data-ar-frame="AR5-2"]) .ar-copy{line-height:28px!important;}
 
 /* WEB04: orange syringe liquid layer only, 60% opacity */
-.syringe-2d .syringe-drug.orange{opacity:.6}
+.syringe-2d .syringe-drug.orange{opacity:.7}
 
 /* WEB00–02: approved GIF placement, Figma 'gif 화면비율 배치' 984:115.
    The image has a native 1:2 ratio (540x1080), placed at -16,0,467x934.
