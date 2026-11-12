@@ -135,7 +135,7 @@ function create(root){
     const material=new THREE.MeshPhysicalMaterial({
      color:0xffffff,roughness:1,metalness:0,clearcoat:0,
      clearcoatRoughness:1,flatShading:false,
-     transparent:true,opacity:.70,side:THREE.FrontSide,
+     transparent:true,opacity:.90,side:THREE.FrontSide,
      depthTest:true,depthWrite:false
     });
     material.onBeforeCompile=shader=>{
