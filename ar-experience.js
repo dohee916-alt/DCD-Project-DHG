@@ -8,7 +8,7 @@ const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'];
 const state={root:null,video:null,stage:null,frame:'AR3',maskCount:0,variant:'first',
  face:null,hand:null,playing:false,requestId:0,lastFace:0,lastHand:0,lastVideoTime:-1,
- guideSince:0,pinchStart:null,pinchReady:true,handGuide:null,stepTimer:[],
+ guideSince:0,pinchStart:null,pinchReady:true,manualPeels:0,autoPeeling:false,handGuide:null,stepTimer:[],
  tulle:null,sheets:[],faceBox:null,matte:null,session:0,
  modelState:'idle',faceSeen:false,analysisError:false};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
@@ -115,6 +115,24 @@ function removeFabric(){
  state.tulle?.remove(sheet.surface);
  delay(()=>sheet.layer.remove(),720);
 }
+// First three masks are removed by hand; the last two peel one at a time.
+function completeHandPeel(){
+  if(state.frame!=='AR7'||state.autoPeeling||state.maskCount===0)return;
+  const before=state.maskCount;
+  removeFabric();
+  if(state.maskCount===before)return;
+  state.manualPeels++;
+  state.pinchReady=false;
+  state.pinchStart=null;
+  if(state.manualPeels===1)state.handGuide?.hideOnce(0);
+  if(state.manualPeels>=3){
+    state.autoPeeling=true;
+    // Keep all removal animations on the existing 720ms peel renderer.
+    delay(()=>{if(state.frame==='AR7'&&state.maskCount>0)removeFabric();},850);
+    delay(()=>{if(state.frame==='AR7'&&state.maskCount>0)removeFabric();},1750);
+    delay(()=>{if(state.frame==='AR7'&&state.maskCount===0)enter('AR8');},3000);
+  }
+}
 function buttons(yes,no){
  const area=state.root?.querySelector('.ar-flow-choices');if(!area)return;
  area.innerHTML='<button type="button" data-ar-choice="yes" class="ar-choice yes">YES</button>'+
@@ -166,7 +184,9 @@ function enter(frame){
      for(let i=0;i<5;i++)delay(addFabric,250+i*2000);
      delay(()=>enter('AR6'),250+4*2000+1250+1100);
    },220+4*800+700);break;
- case 'AR6':caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
+ case 'AR6':
+    state.manualPeels=0;state.autoPeeling=false;
+    caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
  case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
  case 'AR8':
    // Explicitly clear the removed transition label, including when
@@ -212,79 +232,73 @@ function observeFace(points,now){
  if(now-state.guideSince>=650)enter('AR4');
 }
 function observeHands(hands,now){
- if(!['AR6','AR7'].includes(state.frame))return;
- const box=state.faceBox;
- // Do not guess a generic face position if face tracking temporarily drops.
- if(!box)return;
- const near=(p,pad=.075)=>p.x>box.l-pad&&p.x<box.r+pad
-   &&p.y>box.t-pad&&p.y<box.b+pad;
- const display=p=>({x:1-p.x,y:p.y});
- const choices=(hands||[]).filter(h=>h?.length>=21).map(h=>{
-   const index=display(h[8]),thumb=display(h[4]);
-   const pick={x:(index.x+thumb.x)*.5,y:(index.y+thumb.y)*.5};
-   const palmWidth=Math.max(.035,distance(h[5],h[17]));
-   const tipGap=distance(h[4],h[8]);
-   const pinch=tipGap<Math.max(.065,palmWidth*.78);
-   const palmSpan=Math.max(.04,distance(h[0],h[9]));
-   return {pick,tipGap,pinch,palmSpan,onFace:near(pick)||near(index,.085),h};
- });
- if(!choices.length){
-   // A hand can briefly be occluded by the face; do not force the user to
-   // turn it sideways just to preserve tracking.
-   if(state.pinchStart&&now-state.pinchStart.lastSeen<280)return;
-   state.pinchStart=null;state.pinchReady=true;return;
- }
- // Choose the hand closest to the user's FACE, not blindly hands[0].
- const mid={x:(box.l+box.r)/2,y:(box.t+box.b)/2};
- choices.sort((a,b)=>((!a.onFace?1:0)-(!b.onFace?1:0))
-   ||distance(a.pick,mid)-distance(b.pick,mid));
- const hand=choices[0];
- if(state.frame==='AR6'){
-   // First touch the actual face while pinching; pulling belongs to AR7.
-   if(!hand.onFace||!hand.pinch){state.pinchStart=null;return;}
-   if(!state.pinchStart){state.pinchStart={point:hand.pick,near:now,lastSeen:now};return;}
-   state.pinchStart.lastSeen=now;
-   if(now-state.pinchStart.near>=130){
-     state.pinchStart=null;state.pinchReady=true;
-     // Keep the full animation looping through AR7 until a mask
-     // has actually been peeled off, not merely when the hand reaches face.
-     enter('AR7');
-   }
-   return;
- }
- if(!hand.pinch){
-   // Every fabric is a separate touch -> pull. Reset after releasing.
-   state.pinchStart=null;state.pinchReady=true;return;
- }
- if(!state.pinchReady)return;
- if(!state.pinchStart){
-   if(hand.onFace){
-     state.pinchStart={point:hand.pick,palmSpan:hand.palmSpan,
-       near:now,lastSeen:now,fromFace:true};
-   }
-   return;
- }
- const start=state.pinchStart;
- start.lastSeen=now;
- const moved=distance(hand.pick,start.point);
- // Pull the pinched fabric AWAY from the face in the image plane, or toward
- // the viewer via perspective growth. Neither requires sideways rotation.
- const faceCenterDistance=distance(hand.pick,mid);
- const startCenterDistance=distance(start.point,mid);
- const awayFromFace=faceCenterDistance>startCenterDistance+.055;
- const movedOut=moved>.085&&awayFromFace;
- const movedForward=hand.palmSpan>start.palmSpan*1.16;
- if(now-start.near>=135&&(movedOut||movedForward)){
-   state.pinchReady=false;state.pinchStart=null;
-   const beforeRemoval=state.maskCount;
-   removeFabric();
-   if(state.maskCount<beforeRemoval){
-     // This is the first successful removal: permanently stop the guide.
-     state.handGuide?.hideOnce(0);
-   }
-   // Do not repeat the 3D guide for every remaining mask.
-   if(state.maskCount===0)delay(()=>enter('AR8'),420);
- }
+  if(!['AR6','AR7'].includes(state.frame)||state.autoPeeling)return;
+  const box=state.faceBox;
+  if(!box)return; // Never substitute an inferred face center.
+  const faceWidth=Math.max(.16,box.r-box.l),faceHeight=Math.max(.17,box.b-box.t);
+  const near=(p,padX=.10,padY=.09)=>p.x>box.l-padX&&p.x<box.r+padX
+    &&p.y>box.t-padY&&p.y<box.b+padY;
+  const display=p=>({x:1-p.x,y:p.y});
+  const choices=(hands||[]).filter(h=>h?.length>=21).map(h=>{
+    const index=display(h[8]),thumb=display(h[4]);
+    const pick={x:(index.x+thumb.x)*.5,y:(index.y+thumb.y)*.5};
+    const palmWidth=Math.max(.035,distance(h[5],h[17]));
+    const tipGap=distance(h[4],h[8]);
+    const pinchLimit=Math.max(.073,palmWidth*.88);
+    const palmSpan=Math.max(.04,distance(h[0],h[9]));
+    return {pick,tipGap,pinch:tipGap<pinchLimit,
+      holding:!!state.pinchStart&&tipGap<pinchLimit*1.25,
+      palmSpan,onFace:near(pick)||near(index,.11,.10),h};
+  });
+  if(!choices.length){
+    // A brief occlusion of fingertips by the face should not lose the grip.
+    if(state.pinchStart&&now-state.pinchStart.lastSeen<420)return;
+    state.pinchStart=null;state.pinchReady=true;return;
+  }
+  const mid={x:(box.l+box.r)*.5,y:(box.t+box.b)*.5};
+  if(state.pinchStart){
+    // Continue following the hand that started the pull.
+    choices.sort((a,b)=>distance(a.pick,state.pinchStart.lastPoint||state.pinchStart.point)
+      -distance(b.pick,state.pinchStart.lastPoint||state.pinchStart.point));
+  }else{
+    choices.sort((a,b)=>(Number(!a.onFace)-Number(!b.onFace))
+      ||distance(a.pick,mid)-distance(b.pick,mid));
+  }
+  const hand=choices[0];
+  if(state.frame==='AR6'){
+    if(!hand.onFace||!hand.pinch){state.pinchStart=null;return;}
+    if(!state.pinchStart){
+      state.pinchStart={point:hand.pick,lastPoint:hand.pick,near:now,lastSeen:now};
+      return;
+    }
+    state.pinchStart.lastSeen=now;
+    if(now-state.pinchStart.near>=95)enter('AR7');
+    return;
+  }
+  if(!hand.pinch&&!hand.holding){
+    state.pinchStart=null;state.pinchReady=true;return;
+  }
+  if(!state.pinchReady)return;
+  if(!state.pinchStart){
+    if(hand.onFace&&hand.pinch){
+      state.pinchStart={point:hand.pick,lastPoint:hand.pick,palmSpan:hand.palmSpan,
+        near:now,lastSeen:now};
+    }
+    return;
+  }
+  const start=state.pinchStart;
+  // HandLandmarker runs every ~70ms; preserve grips across brief stalls.
+  if(now-start.lastSeen>420){state.pinchStart=null;return;}
+  start.lastSeen=now;
+  start.lastPoint=hand.pick;
+  const moved=distance(hand.pick,start.point);
+  const outward=distance(hand.pick,mid)-distance(start.point,mid);
+  // A gentle diagonal tug is enough; thresholds scale with face size.
+  const movedEnough=moved>Math.max(.045,faceWidth*.13)
+    &&outward>Math.max(.019,Math.min(faceWidth,faceHeight)*.055);
+  const pulledTowardCamera=hand.palmSpan>start.palmSpan*1.10
+    &&moved>.022;
+  if(now-start.near>=90&&(movedEnough||pulledTowardCamera))completeHandPeel();
 }
 async function loadHandWhenNeeded(session){
  if(!state.playing||session!==state.session||state.hand)return;
@@ -457,7 +471,7 @@ window.DCD_AR_FLOW={markup,mount,start,stop,cameraError,frame:()=>state.frame,de
  else if(state.frame==='AR5'){enter('AR5-1');}
  else if(state.frame==='AR5-1'){enter('AR6');}
  else if(state.frame==='AR6'){enter('AR7');}
- else if(state.frame==='AR7'){removeFabric();if(!state.maskCount)enter('AR8');}
+ else if(state.frame==='AR7'){completeHandPeel();}
  else enter(frameNames[Math.min(frameNames.length-1,pos+1)]);
 }};
 })();
