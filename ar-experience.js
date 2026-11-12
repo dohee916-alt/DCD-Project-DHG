@@ -26,7 +26,7 @@ function markup(){
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
  '<div class="ar-copy" aria-live="polite"></div>'+
-
+  '<button type=\"button\" class=\"ar-ending-cta\" aria-label=\"READY TO SEE DIFFERENTLY?\"><span>READY TO SEE<br>DIFFERENTLY?</span></button>'+
  '<svg class="ar-face-guide" aria-hidden="true" width="289" height="375" viewBox="0 0 289 375" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="144.5" cy="187.5" rx="142" ry="185" stroke="#D83A00" stroke-width="5" stroke-linecap="round" stroke-dasharray="0.5 30"/></svg>'+
  '<div class="ar-gesture-guide" aria-hidden="true"></div>'+
  '<div class="ar-flow-choices"></div></div>';
@@ -36,6 +36,7 @@ function clearScene(){
  state.root.querySelector('.ar-copy').textContent='';
  state.root.querySelector('.ar-flow-choices').innerHTML='';
  state.root.querySelector('.ar-choice-pack').innerHTML='';
+  state.root.querySelector('.ar-ending-cta')?.classList.remove('visible');
  state.root.classList.toggle('ar-final-mode',state.frame==='AR9'||state.frame==='AR10');
  state.root.classList.toggle('ar-moment',state.frame==='AR8');
  state.root.classList.toggle('ar-align-gesture',state.frame==='AR3');
@@ -46,7 +47,7 @@ function clearScene(){
  state.root.classList.toggle('ar-plain-choice',state.frame==='AR5');
 }
 function caption(value){const e=state.root?.querySelector('.ar-copy');if(e)e.textContent=value;}
-function typeCaption(value,duration=1200){
+function typeCaption(value,duration=1200,onComplete=null){
  const element=state.root?.querySelector('.ar-copy');if(!element)return;
  const letters=[...value];let i=0;const period=duration/Math.max(1,letters.length);
  function write(){
@@ -61,6 +62,7 @@ function typeCaption(value,duration=1200){
    element.querySelector('.ar-final-rest').textContent=lower;
   }else element.textContent=chars;
   if(i<letters.length)delay(write,period);
+   else onComplete?.();
  }
  write();
 }
@@ -196,7 +198,11 @@ function enter(frame){
  case 'AR9':
    typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1400);
    delay(()=>enter('AR10'),3400);break;
- case 'AR10':typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1500);break;
+ case 'AR10':
+    typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1500,()=>{
+      delay(()=>{if(state.frame==='AR10')state.root?.querySelector('.ar-ending-cta')?.classList.add('visible');},850);
+    });
+    break;
  }
 }
 // AR3 keeps only the approved POSITION YOUR FACE HERE prompt.
@@ -414,6 +420,12 @@ function mount(stage,video){
  if(state.root===root){state.video=video||state.video;return;}
  stop();
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
+  root.querySelector('.ar-ending-cta')?.addEventListener('click',()=>{
+    if(state.frame!=='AR10')return;
+    state.sheets.forEach(sheet=>sheet.layer.remove());
+    state.sheets=[];state.maskCount=0;state.manualPeels=0;state.autoPeeling=false;
+    state.tulle?.clear();enter('AR3');
+  });
  // Do NOT allocate GPU organza or start heavy matting before AR3 can see
  // the face. Those visuals are only needed after the detection transition.
  state.tulle=null;
