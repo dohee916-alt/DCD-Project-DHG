@@ -1615,3 +1615,9 @@ canvas.figure{object-fit:contain!important}
 #stage .opening-blister-motion.opening-blister-awaiting{
   visibility:hidden!important;
 }
+
+/* Restore the New WEB 7 syringe color treatment without rotating, resampling,
+   replacing or geometrically filtering the correctly oriented 3x assets.
+   SVG color matrices (declared in index.html) preserve every pixel's position. */
+#stage .syringe-2d .syringe-plunger{filter:url(#dcd-syringe-plunger-grade)!important;}
+#stage .syringe-2d .syringe-barrel{filter:url(#dcd-syringe-barrel-grade)!important;opacity:.8;}
