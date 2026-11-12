@@ -1017,7 +1017,7 @@ canvas.figure{object-fit:contain!important}
 }
 .ar-immersive[data-ar-frame="AR5"] .ar-choice.yes::after,
 .ar-immersive[data-ar-frame="AR5-1"] .ar-choice.yes::after{
-  background-image:url('assets/figma-current/hd/ar-choice-yes-figma.png');
+  background-image:url('assets/figma-current/hd/ar-choice-yes-new-grade-20261112.svg');
 }
 .ar-immersive[data-ar-frame="AR5"] .ar-choice.no::after,
 .ar-immersive[data-ar-frame="AR5-1"] .ar-choice.no::after{
@@ -1276,7 +1276,7 @@ canvas.figure{object-fit:contain!important}
   pointer-events:none;display:block;
 }
 .ar-immersive[data-ar-frame="AR5"] .ar-choice.yes::after{
-  background-image:url('assets/figma-current/hd/ar-choice-yes-figma.png');
+  background-image:url('assets/figma-current/hd/ar-choice-yes-new-grade-20261112.svg');
 }
 .ar-immersive[data-ar-frame="AR5"] .ar-choice.no::after,
 .ar-immersive[data-ar-frame="AR5-1"] .ar-choice.no::after{
