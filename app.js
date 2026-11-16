@@ -125,7 +125,7 @@ function syringeMarkup(cls=''){
     img(A.syringeBarrel,0,0,22,219,'syringe-barrel')+
     '<span class="syringe-tip-marker" aria-hidden="true"></span>');
 }
-function setPage(p,phase='ready'){if(s.page==='15'&&p!=='15')window.DCD_CONSENT_AUDIO?.no?.();window.DCD_CAMPAIGN_AUDIO?.setScene(p);if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
+function setPage(p,phase='ready'){if(s.page==='15'&&p!=='15'&&window.DCD_CONSENT_AUDIO?.status?.()!=='yes')window.DCD_CONSENT_AUDIO?.no?.();window.DCD_CAMPAIGN_AUDIO?.setScene(p);if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
 function dimensions(){return mobilePortraitLandscape()||['reel0','00','01','02','03','ar','arOpen','arFace'].includes(s.page)?[428,926]:[874,428];}
 function fit(){
  const [w,h]=dimensions(),v=document.querySelector('#viewport');
@@ -1102,6 +1102,7 @@ if(packHand){
    // Reel0 stays put until its ENABLE SOUND button is pressed.
   }
  }
+ if(s.page==='14')window.DCD_CONSENT_AUDIO?.preload?.();
  if(s.page==='15')window.DCD_CONSENT_AUDIO?.start?.();
  if(s.page==='14')bindNewSignature();
  if(s.page==='arFace')attachArCamera();
