@@ -1018,6 +1018,10 @@ async function beginAr(){
 }
 function openArPack(){
   if(s.page!=='ar'||arHandoffActive)return;
+  // On some mobiles the internal AR button stops propagation: unlock sound
+  // directly from THIS real user click, before the camera permission prompt.
+  window.DCD_CAMPAIGN_AUDIO?.gesture();
+  window.DCD_WEB_SFX?.unlock();
   s.arPackOpened=true;
   save();
   // Must be called from the user click itself to satisfy browser camera
@@ -1552,7 +1556,7 @@ stage.addEventListener('pointerup',e=>{
   }
 });
 stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){drag=null;render();}});
-function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){window.DCD_WEB_SFX?.play('signature',{loop:true});stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;window.DCD_WEB_SFX?.stop('signature');if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};c.onpointercancel=()=>{drawing=false;window.DCD_WEB_SFX?.stop('signature');};}
+function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{window.DCD_WEB_SFX?.unlock();e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){window.DCD_WEB_SFX?.play('signature',{loop:true});stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;window.DCD_WEB_SFX?.stop('signature');if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};c.onpointercancel=()=>{drawing=false;window.DCD_WEB_SFX?.stop('signature');};}
 // Resize never rotates the WEB canvas in code. It only reads the user's
 // real viewport layout. Device motion unlocks the next step under OS lock.
 function onViewportChange(){
