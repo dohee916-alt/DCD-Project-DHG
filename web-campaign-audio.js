@@ -16,15 +16,24 @@ let allowed=false,scene='00',musicContext=null,musicGain=null,musicSource=null,m
 let musicLoading=null,duckTimer=0;
 const Context=window.AudioContext||window.webkitAudioContext;
 const PARTS=[1,2,3,4,5].map(n=>BASE+'dcd-fashion-loop-part'+n+'.txt');
-let packedMusic=Promise.all(PARTS.map(async url=>{
- const response=await fetch(url);if(!response.ok)throw Error('Fashion BGM '+response.status+' '+url);
- return response.text();
-})).then(parts=>{
- const text=parts.join('').trim(),raw=atob(text),data=new Uint8Array(raw.length);
- for(let i=0;i<raw.length;i++)data[i]=raw.charCodeAt(i);
- if(data.length!==10756)throw Error('Unexpected DCD Fashion Music length '+data.length);
- return data.buffer;
-}).catch(error=>{console.warn('[DCD BGM] Bundled audio:',error);return null;});
+let packedMusic=fetch(BASE+'dcd-fashion-loop.ogg')
+ .then(async response=>{
+   if(!response.ok)throw Error('Bundled original fashion loop HTTP '+response.status);
+   const buffer=await response.arrayBuffer();
+   if(buffer.byteLength!==10756)throw Error('Fashion loop damaged');
+   return buffer;
+ }).catch(async error=>{
+   console.warn('[DCD BGM] Falling back to verified parts:',error);
+   const parts=await Promise.all(PARTS.map(async url=>{
+     const response=await fetch(url);
+     if(!response.ok)throw Error('Fashion BGM '+response.status+' '+url);
+     return response.text();
+   }));
+   const raw=atob(parts.join('').trim()),data=new Uint8Array(raw.length);
+   for(let i=0;i<raw.length;i++)data[i]=raw.charCodeAt(i);
+   if(data.length!==10756)throw Error('Fashion loop fallback damaged');
+   return data.buffer;
+ }).catch(error=>{console.error('[DCD BGM] Music source:',error);return null;});
 function unlockMusic(){
  if(!Context)return;
  if(!musicContext){
