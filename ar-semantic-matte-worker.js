@@ -17,7 +17,7 @@ async function init(){
  matte=new OffscreenCanvas(256,256);matteCtx=matte.getContext('2d',{willReadFrequently:true});
  postMessage({type:'ready'});
 }
-function gateFromResult(result){
+function gateFromResult(result,faceRegion){
  const masks=result.confidenceMasks;
  if(!masks||masks.length<6)throw Error('Multiclass masks missing');
  const w=masks[0].width,h=masks[0].height,n=w*h;
@@ -60,7 +60,34 @@ function gateFromResult(result){
   buffer.data[k]=255;buffer.data[k+1]=255;buffer.data[k+2]=255;buffer.data[k+3]=alpha;
  }
  matteCtx.putImageData(buffer,0,0);
- return matte.transferToImageBitmap();
+ // Find the measured upper hair silhouette in the face region. Exclude isolated
+ // noise by requiring horizontally contiguous hair and multiple supporting rows.
+ // Normalized coordinates refer to the original unmirrored video frame.
+ let crown=null;
+ if(faceRegion&&Number.isFinite(faceRegion.cx)&&Number.isFinite(faceRegion.top)){
+   const cx=faceRegion.cx*w,fw=Math.max(28,faceRegion.width*w);
+   const x0=Math.max(0,Math.floor(cx-fw*.85)),x1=Math.min(w-1,Math.ceil(cx+fw*.85));
+   const minY=Math.max(0,Math.floor((faceRegion.top-.42)*h));
+   const maxY=Math.min(h-1,Math.ceil((faceRegion.top+.13)*h));
+   const rows=[];
+   for(let y=minY;y<=maxY;y++){
+     let run=0,best=0,weightedX=0,weight=0;
+     for(let x=x0;x<=x1;x++){
+       const v=hair[y*w+x];
+       if(v>.57){run++;weightedX+=x*v;weight+=v;best=Math.max(best,run)}
+       else run=0;
+     }
+     if(best>=Math.max(4,Math.round(fw*.065))&&weight>5)
+       rows.push({y,x:weightedX/weight});
+   }
+   if(rows.length>=3){
+     const selected=rows.slice(0,Math.min(rows.length,4));
+     crown={x:selected.reduce((s,p)=>s+p.x,0)/selected.length/w,
+       y:selected.reduce((s,p)=>s+p.y,0)/selected.length/h,
+       measuredAt:performance.now()};
+   }
+ }
+ return {bitmap:matte.transferToImageBitmap(),crown};
 }
 self.onmessage=async({data})=>{
  if(data?.type==='init'){
@@ -71,7 +98,7 @@ self.onmessage=async({data})=>{
   segmenter?.close?.();self.close();return;
  }
  if(data?.type!=='frame')return;
- const {bitmap,time}=data;
+ const {bitmap,time,faceRegion}=data;
  if(broken||!segmenter){bitmap?.close?.();return}
  const started=performance.now();
  try{
@@ -79,8 +106,8 @@ self.onmessage=async({data})=>{
   ctx.drawImage(bitmap,0,0,256,256);
   const result=segmenter.segmentForVideo(stage,time);
   let gate;
-  try{gate=gateFromResult(result)}finally{result?.confidenceMasks?.forEach(m=>m.close?.())}
-  postMessage({type:'gate',bitmap:gate,time,latency:performance.now()-started},[gate]);
+  try{gate=gateFromResult(result,faceRegion)}finally{result?.confidenceMasks?.forEach(m=>m.close?.())}
+  postMessage({type:'gate',bitmap:gate.bitmap,crown:gate.crown,time,latency:performance.now()-started},[gate.bitmap]);
  }catch(error){broken=true;postMessage({type:'error',message:String(error)})}
  finally{bitmap?.close?.()}
 };
