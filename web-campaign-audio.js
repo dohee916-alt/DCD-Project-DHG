@@ -1,86 +1,95 @@
-/* DCD approved promotional soundtrack. All assets were cut from user
- * supplied recordings. No animation assets or geometry are modified.
- * BGM starts only after a trusted gesture (mobile autoplay policy).
- */
+/* DCD campaign soundtrack: the approved user-supplied fashion music is
+   bundled as an 8s encoded excerpt so it is actually served by GitHub Pages.
+   No missing MP3 URL. The user-approved creak, burst and whoosh remain intact.
+*/
 (()=>{
 'use strict';
-const prefix='assets/audio/';
-const sources={
- bgm:prefix+'dcd-fashion-advertising-promo.mp3',
- creak:prefix+'dcd-plastic-creak.ogg',
- burst:prefix+'dcd-blister-burst-1p5s.ogg',
- whoosh:prefix+'dcd-pack-whoosh.ogg'
+const BASE='assets/audio/';
+const FX={
+ creak:new Audio(BASE+'dcd-plastic-creak.ogg'),
+ burst:new Audio(BASE+'dcd-blister-burst-1p5s.ogg'),
+ whoosh:new Audio(BASE+'dcd-pack-whoosh.ogg')
 };
-const tracks={};
-for(const [key,url] of Object.entries(sources)){
- const audio=new Audio();
- audio.preload='auto';
- audio.src=url;
- audio.playsInline=true;
- audio.addEventListener('error',()=>{
-  console.warn('[DCD audio] Unavailable:',key,url,audio.error?.code);
- });
- tracks[key]=audio;
+FX.creak.loop=true;FX.creak.volume=.65;
+FX.burst.volume=.8;FX.whoosh.volume=.7;
+let allowed=false,scene='00',musicContext=null,musicGain=null,musicSource=null,musicBuffer=null;
+let musicLoading=null,duckTimer=0;
+const Context=window.AudioContext||window.webkitAudioContext;
+const PARTS=[1,2,3,4,5].map(n=>BASE+'dcd-fashion-loop-part'+n+'.txt');
+let packedMusic=Promise.all(PARTS.map(async url=>{
+ const response=await fetch(url);if(!response.ok)throw Error('Fashion BGM '+response.status+' '+url);
+ return response.text();
+})).then(parts=>{
+ const text=parts.join('').trim(),raw=atob(text),data=new Uint8Array(raw.length);
+ for(let i=0;i<raw.length;i++)data[i]=raw.charCodeAt(i);
+ if(data.length!==10756)throw Error('Unexpected DCD Fashion Music length '+data.length);
+ return data.buffer;
+}).catch(error=>{console.warn('[DCD BGM] Bundled audio:',error);return null;});
+function unlockMusic(){
+ if(!Context)return;
+ if(!musicContext){
+  musicContext=new Context();
+  musicGain=musicContext.createGain();musicGain.gain.value=.48;
+  musicGain.connect(musicContext.destination);
+ }
+ musicContext.resume()?.catch(error=>console.warn('[DCD BGM] Unlock:',error));
+ if(!musicLoading)musicLoading=packedMusic.then(async data=>{
+   if(!data)return;
+   try{musicBuffer=await musicContext.decodeAudioData(data.slice(0));}
+   catch(error){
+    // Browsers lacking native Ogg/Opus decode can use a JS decoder.
+    console.info('[DCD BGM] Native Opus unavailable:',error);
+    const mod=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
+    musicBuffer=await mod.default(data.slice(0));
+   }
+   if(allowed)startMusic();
+ }).catch(error=>console.warn('[DCD BGM] Decode:',error));
 }
-tracks.bgm.loop=true;
-tracks.bgm.volume=.34;
-tracks.creak.loop=true;
-tracks.creak.volume=.47;
-tracks.burst.volume=.8;
-tracks.whoosh.volume=.66;
-let allowed=false,phase='00',recentDuck=0;
+function startMusic(){
+ if(!allowed||!musicContext||!musicBuffer||musicSource||scene==='arFace'||scene==='arClose')return;
+ const source=musicContext.createBufferSource();
+ source.buffer=musicBuffer;source.loop=true;source.connect(musicGain);source.start();
+ musicSource=source;source.onended=()=>{if(musicSource===source)musicSource=null;};
+}
+function stopMusic(){
+ if(!musicSource)return;try{musicSource.stop();}catch{}
+ musicSource.disconnect();musicSource=null;
+}
 function attempt(audio){
  if(!allowed)return;
- const promise=audio.play();
- promise?.catch?.(error=>console.warn('[DCD audio] Playback:',audio.src,error));
+ const result=audio.play();result?.catch?.(error=>console.warn('[DCD audio] Effect:',audio.src,error));
 }
 function gesture(){
- allowed=true;
- attempt(tracks.bgm);
- if(phase==='00')attempt(tracks.creak);
+ allowed=true;unlockMusic();startMusic();
+ if(scene==='00'&&FX.creak.paused)attempt(FX.creak);
 }
 function setScene(page){
- phase=page;
+ scene=page;
  if(page==='00'){
-  if(allowed)attempt(tracks.creak);
- }else{
-  tracks.creak.pause();
-  try{tracks.creak.currentTime=0;}catch{}
- }
- if(page==='arFace'||page==='arClose'){
-  tracks.bgm.pause();
-  tracks.creak.pause();
- }else if(allowed){
-  attempt(tracks.bgm);
- }
+  if(allowed&&FX.creak.paused)attempt(FX.creak);
+ }else{FX.creak.pause();try{FX.creak.currentTime=0;}catch{}}
+ if(page==='arFace'||page==='arClose'){stopMusic();}
+ else{startMusic();}
 }
-function duck(duration){
- const id=++recentDuck;
- tracks.bgm.volume=.16;
- window.setTimeout(()=>{if(id===recentDuck)tracks.bgm.volume=.34;},duration);
+function duck(ms){
+ if(!musicGain)return;
+ clearTimeout(duckTimer);
+ musicGain.gain.setTargetAtTime(.24,musicContext.currentTime,.035);
+ duckTimer=setTimeout(()=>{
+  if(musicGain&&musicContext)musicGain.gain.setTargetAtTime(.48,musicContext.currentTime,.20);
+ },ms);
 }
 function burst(kind='web'){
- if(!allowed)return;
- tracks.burst.pause();
- try{
-  // WEB: original 9–12.5s recording is pitch-preserving
-  // time-compressed to the approved 1.5s rupture GIF. The original
-  // 12.0s transient lands around 1.29s into the animation.
-  // AR: morph is 240ms, so cue the same transient at its last 240ms.
-  tracks.burst.currentTime=kind==='ar'?1.04:0;
- }catch{}
- duck(kind==='ar'?700:1700);
- attempt(tracks.burst);
+ gesture();
+ const audio=FX.burst;audio.pause();try{audio.currentTime=kind==='ar'?1.04:0;}catch{}
+ duck(kind==='ar'?700:1700);attempt(audio);
 }
 function whoosh(){
- if(!allowed)return;
- tracks.whoosh.pause();
- try{tracks.whoosh.currentTime=0;}catch{}
- duck(1350);
- attempt(tracks.whoosh);
+ gesture();FX.whoosh.pause();try{FX.whoosh.currentTime=0;}catch{}
+ duck(1300);attempt(FX.whoosh);
 }
 function stop(){
- for(const audio of Object.values(tracks))audio.pause();
+ stopMusic();Object.values(FX).forEach(a=>a.pause());
 }
-window.DCD_CAMPAIGN_AUDIO={gesture,setScene,burst,whoosh,stop,sources};
+window.DCD_CAMPAIGN_AUDIO={gesture,setScene,burst,whoosh,stop,fx:FX,musicReady:()=>!!musicBuffer};
 })();
