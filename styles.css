@@ -1936,3 +1936,11 @@ canvas.figure{object-fit:contain!important}
  overflow-y:auto;
  touch-action:pan-y;
 }
+
+/* Restore the approved original ad lettering over the animated GIF in Reel1. */
+#stage.page-reel0 .reel-screen-one .poster-glass-text{
+ z-index:5;overflow:visible;pointer-events:none;
+}
+#stage.page-reel0 .reel-screen-one .poster-word{
+ z-index:5;pointer-events:none;
+}
