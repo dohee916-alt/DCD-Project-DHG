@@ -35,16 +35,22 @@ function create(root,video,canvas,onFrame){
  function initSemantic(){
   if(semantic||semanticDisabled||typeof Worker==='undefined'||!subjectCtx)return;
   try{
-   semantic=new Worker(new URL('ar-semantic-matte-worker.js?v=human-background-v1',scriptURL));
+   semantic=new Worker(new URL('ar-semantic-matte-worker.js?v=hair-crown-v2',scriptURL));
    semantic.onerror=e=>disableSemantic(e.message||'Semantic worker failure');
    semantic.onmessage=({data})=>{
     if(!live){data?.bitmap?.close?.();return}
     if(data.type==='ready'){semanticReady=true;return}
     if(data.type==='error'){disableSemantic(data.message);return}
     if(data.type==='gate'){
+     if(data.crown&&Number.isFinite(data.crown.y)){
+       // Match the camera's mirrored CSS presentation when placing tracked cloth.
+       root.__dcdHairCrown={x:1-data.crown.x,y:data.crown.y,at:performance.now()};
+     }
      semanticBusy=false;
      if(data.latency>290)semanticSlow++;else semanticSlow=Math.max(0,semanticSlow-1);
-     if(semanticSlow>=3){data.bitmap?.close?.();disableSemantic('Processing too slow');return}
+     // Run this semantic helper at reduced cadence on slow devices, but retain
+     // periodic hair measurements rather than permanently disabling it.
+     if(semanticSlow>=3)semanticLast=performance.now()+450;
      semanticGate?.close?.();semanticGate=data.bitmap;semanticTime=data.time;
     }
    };
@@ -58,7 +64,9 @@ function create(root,video,canvas,onFrame){
   // Copy the original, unmasked frame before closing the VideoFrame.
   Promise.resolve().then(()=>createImageBitmap(source)).then(bitmap=>{
    if(!live||!semanticReady){bitmap.close();semanticBusy=false;return}
-   semantic.postMessage({type:'frame',bitmap,time:sourceTime},[bitmap]);
+   const face=root.__dcdFaceRegion;
+   const faceRegion=face&&performance.now()-face.at<1800?face:null;
+   semantic.postMessage({type:'frame',bitmap,time:sourceTime,faceRegion},[bitmap]);
   }).catch(error=>{semanticBusy=false;console.warn('[DCD AR] Semantic capture:',error)})
   .finally(()=>source.close?.());
   return true;
