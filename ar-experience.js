@@ -361,6 +361,9 @@ function faceDisplayRect(points){
 }
 function observeFace(points,now){
  if(state.frame!=='AR3'||!points?.length)return;
+ // Prepare the high-quality portrait worker on FIRST face detection rather
+ // than waiting for the 650ms alignment dwell; keep raw video live meanwhile.
+ if(!state.matte)ensurePortraitMatte();
  const face=faceDisplayRect(points);
  // The real, mirrored face must be centered within the existing AR3 guide.
  // Require stable alignment, not merely a face anywhere in the camera.
