@@ -504,7 +504,7 @@ function mount(stage,video){
  const root=stage?.querySelector('.ar-immersive');
  if(!root)return;
  if(state.root===root){state.video=video||state.video;return;}
- stop();
+ stop(true);
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
   root.querySelector('.ar-ending-cta')?.addEventListener('click',()=>{
     if(state.frame!=='AR10')return;
@@ -552,9 +552,10 @@ function startArVisuals(){
  }
  ensurePortraitMatte();
 }
-function stop(){
+function stop(preservePrimedAudio=false){
  state.session++;
- state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();stopWhisper(true);
+ state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
+ if(!preservePrimedAudio)stopWhisper(true);
  state.matte?.stop();state.matte=null;
  state.face?.close();state.face=null;
  state.hand?.close();state.hand=null;
