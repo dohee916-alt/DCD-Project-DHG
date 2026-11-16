@@ -237,7 +237,7 @@ function introMarkup(p){
   if(p==='00'){
     h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');
     h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';
-    if(!openingSoundEnabled)h+='<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound on the opening advertisement"><span class="opening-web-glass"><span class="opening-web-glass-perimeter"></span><span class="opening-web-glass-face"></span><span class="opening-web-glass-core"></span><span class="opening-web-glass-rim"></span><span class="opening-web-glass-label">ENABLE SOUND</span></span></button>';
+    if(!openingSoundEnabled)h+='<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound on the opening advertisement"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>';
   }else if(s.phase==='guide'){
     h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
     // WEB01 approved guide; left hand Y=415, all other guides unchanged.
