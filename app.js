@@ -16,6 +16,7 @@ const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const fresh=()=>({page:'00',phase:'intro',initialPresetVersion:5,figures:Array.from({length:4},(_,i)=>({kind:i+1,value:[85,75,65,95][i],orange:0,purple:0,packed:false})),active:0,loaded:null,firstFill:false,firstInject:false,handGuideDismissed:false,packGuideDone:false,packGuideHandFinished:false,packGuideHandStartedAt:null,used:{orange:false,purple:false},expected:[],side:[],signed:false,arReturnPage:null,arPackOpened:false});
 let s=fresh(),drag=null,gesture=new Map(),timers=[],scale=1,offset={x:0,y:0},videoEnded=false;
 let syringeInjectionAngle=45,rotateGuideFinished=false,signatureInk=null;
+let openingSoundEnabled=false;
 let packingAssetsWarmed=false;
 // Fetch compressed GIF bytes during the opening, rather than after pulling.
 // A fresh blob URL then starts at frame zero without another network request.
@@ -236,6 +237,7 @@ function introMarkup(p){
   if(p==='00'){
     h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');
     h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';
+    if(!openingSoundEnabled)h+='<button type="button" data-action="enableSound" aria-label="Enable sound on the opening advertisement" style="position:absolute;inset:0;width:100%;height:100%;z-index:999;border:0;background:rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center;cursor:pointer;"><span style="display:block;padding:17px 24px;background:#d83a00;color:#fff;font:700 21px/1.2 Turret Road,sans-serif;letter-spacing:.04em;text-align:center;border:2px solid white;box-shadow:0 4px 26px #0007;">TAP TO ENABLE SOUND</span></button>';
   }else if(s.phase==='guide'){
     h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
     // WEB01 approved guide; left hand Y=415, all other guides unchanged.
@@ -1478,7 +1480,7 @@ window.DCD_RESTART_WEB=()=>{
  s=fresh();sessionStorage.removeItem(key);
  setPage('01','guide');
 };
-function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
+function act(a){if(a==='enableSound'&&s.page==='00'){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.gesture();stage.querySelector('[data-action="enableSound"]')?.remove();return;}if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
 stage.addEventListener('click',e=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('pointerdown',()=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();},{passive:true});
 stage.addEventListener('change',e=>{
