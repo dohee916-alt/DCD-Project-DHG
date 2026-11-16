@@ -23,6 +23,45 @@ function create(root,video,canvas,onFrame){
  // Longpipe remains the sole source of fine hair and skin alpha.
  let semantic=null,semanticReady=false,semanticBusy=false,semanticDisabled=false;
  let semanticLast=0,semanticTime=0,semanticGate=null,semanticSlow=0;
+ // Derive the crown from the actual HD portrait alpha, independent of the
+ // optional 256px semantic worker. Scan only above the tracked forehead.
+ let crownLast=0;
+ function measureVisibleHairCrown(now){
+   const face=root.__dcdFaceRegion;
+   if(!face||now-face.at>1800||now-crownLast<180||!canvas.width||!canvas.height)return;
+   crownLast=now;
+   const w=canvas.width,h=canvas.height;
+   const vw=video.videoWidth,vh=video.videoHeight;
+   if(!vw||!vh)return;
+   const scale=Math.max(w/vw,h/vh),dw=vw*scale,dh=vh*scale;
+   const ox=(w-dw)/2,oy=(h-dh)/2;
+   const cx=w-(ox+face.cx*dw);
+   const forehead=oy+face.top*dh;
+   const faceWidth=Math.max(24,face.width*dw);
+   const x0=Math.max(0,Math.floor(cx-faceWidth*.72));
+   const x1=Math.min(w,Math.ceil(cx+faceWidth*.72));
+   const y0=Math.max(0,Math.floor(forehead-faceWidth*1.30));
+   const y1=Math.min(h,Math.ceil(forehead+faceWidth*.12));
+   if(x1-x0<14||y1-y0<12)return;
+   let data;
+   try{data=ctx.getImageData(x0,y0,x1-x0,y1-y0).data;}catch{return;}
+   const sw=x1-x0,sh=y1-y0,threshold=Math.max(6,Math.floor(sw*.12)),candidates=[];
+   for(let y=0;y<sh;y++){
+     let run=0,best=0,total=0,weighted=0;
+     for(let x=0;x<sw;x++){
+       const a=data[(y*sw+x)*4+3];
+       if(a>145){run++;total++;weighted+=x;best=Math.max(best,run);}
+       else run=0;
+     }
+     if(best>=threshold&&total>=threshold*1.5)candidates.push({y:y+y0,x:x0+weighted/Math.max(1,total)});
+   }
+   if(candidates.length<4)return;
+   const first=candidates.slice(0,Math.min(5,candidates.length));
+   const px=first.reduce((sum,p)=>sum+p.x,0)/first.length;
+   const py=first.reduce((sum,p)=>sum+p.y,0)/first.length;
+   root.__dcdHairCrown={x:px/w,y:py/h,at:now,source:'portrait-alpha'};
+ }
+
  const subject=document.createElement('canvas');
  subject.width=canvas.width;subject.height=canvas.height;
  const subjectCtx=subject.getContext('2d',{alpha:true});
@@ -42,9 +81,10 @@ function create(root,video,canvas,onFrame){
     if(data.type==='ready'){semanticReady=true;return}
     if(data.type==='error'){disableSemantic(data.message);return}
     if(data.type==='gate'){
-     if(data.crown&&Number.isFinite(data.crown.y)){
-       // Match the camera's mirrored CSS presentation when placing tracked cloth.
-       root.__dcdHairCrown={x:1-data.crown.x,y:data.crown.y,at:performance.now()};
+     if(data.crown&&Number.isFinite(data.crown.y)&&
+        (!root.__dcdHairCrown||performance.now()-root.__dcdHairCrown.at>1500)){
+       // Semantic hair is a backup. The HD cutout alpha is the primary source.
+       root.__dcdHairCrown={x:1-data.crown.x,y:data.crown.y,at:performance.now(),source:'hair-class'};
      }
      semanticBusy=false;
      if(data.latency>290)semanticSlow++;else semanticSlow=Math.max(0,semanticSlow-1);
@@ -148,6 +188,7 @@ function create(root,video,canvas,onFrame){
   ctx.clearRect(0,0,w,h);
   ctx.drawImage(f.foreground,0,0);
   visible=true;lastCapture=now;
+  measureVisibleHairCrown(now);
   root.classList.add('ar-matting-active');
   canvas.style.visibility='visible';canvas.style.opacity='1';
   try{onFrame?.(f.source,vw,vh);}catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
@@ -210,6 +251,7 @@ function create(root,video,canvas,onFrame){
     ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
     ctx.restore();
     lastCapture=performance.now();visible=true;
+    measureVisibleHairCrown(lastCapture);
     root.classList.add('ar-matting-active');
     canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
