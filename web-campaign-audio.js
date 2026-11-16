@@ -15,7 +15,7 @@ FX.creak.loop=true;FX.creak.volume=.65;
 FX.burst.volume=.8;FX.whoosh.volume=.7;
 Object.values(FX).forEach(audio=>{audio.preload='auto';});
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
-let allowed=false,scene='00',duckTimer=0,ctx=null,bus=null,source=null,decoded=null;
+let allowed=false,musicEnabled=false,scene='00',duckTimer=0,ctx=null,bus=null,source=null,decoded=null;
 let loading=null,stopping=false;
 const VOLUME=.48;
 function attempt(audio){
@@ -62,7 +62,7 @@ async function preload(){
  return loading;
 }
 function startMusic(){
- if(!allowed||scene!=='00')return;
+ if(!allowed||!musicEnabled||scene!=='00')return;
  if(source&&!stopping)return;
  if(!AudioCtx){if(musicFallback.paused)attempt(musicFallback);return;}
  if(!ctx){
@@ -107,6 +107,7 @@ function gesture(){
  if(scene==='00')startMusic();
  if((scene==='00'||scene==='01')&&FX.creak.paused)attempt(FX.creak);
 }
+function enableMusic(){musicEnabled=true;gesture();startMusic();}
 function enableOnGesture(){gesture();}
 document.addEventListener('touchstart',enableOnGesture,{capture:true,passive:true});
 document.addEventListener('pointerdown',enableOnGesture,{capture:true,passive:true});
@@ -147,7 +148,7 @@ function whoosh(){
 function stop(){
  stopMusic(.15);Object.values(FX).forEach(a=>a.pause());
 }
-window.DCD_CAMPAIGN_AUDIO={gesture,setScene,burst,whoosh,stop,fx:FX,musicReady:()=>!!decoded||musicFallback.readyState>=HTMLMediaElement.HAVE_CURRENT_DATA};
+window.DCD_CAMPAIGN_AUDIO={gesture,enableMusic,setScene,burst,whoosh,stop,fx:FX,musicReady:()=>!!decoded||musicFallback.readyState>=HTMLMediaElement.HAVE_CURRENT_DATA};
 setScene('00');
 // Prefetch bytes on page load; decoded output starts only after the
 // first deliberate user interaction (Safari audio permission).
