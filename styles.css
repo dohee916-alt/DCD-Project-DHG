@@ -1715,3 +1715,46 @@ canvas.figure{object-fit:contain!important}
   color:#fff!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
 }
 #stage .ar-immersive .ar-ending-cta span{white-space:normal!important;width:228px!important;}
+
+/* DCD 04_AR: final artboard coordinates measured from actual Figma TEXT nodes.
+   The Figma mockup header is ALREADY part of the 428×926 artboard.
+   Never subtract 80px or apply a second mockup-header correction. */
+#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
+  position:absolute!important;top:141px!important;height:44px!important;
+  font:900 16px/32px "Doto",sans-serif!important;
+  font-variation-settings:"wght" 900,"ROND" 0!important;
+  color:#111!important;text-align:center!important;
+}
+#stage .ar-immersive[data-ar-frame="AR3"] .ar-copy{left:68px!important;width:292px!important;right:auto!important}
+#stage .ar-immersive:is([data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{left:50px!important;width:342px!important;right:auto!important}
+#stage .ar-immersive[data-ar-frame="AR3-1"] .ar-copy{
+  position:absolute!important;left:33px!important;top:116px!important;
+  right:auto!important;width:362px!important;height:64px!important;
+  margin:0!important;padding:0!important;
+  font:700 25px/32px "Source Sans 3",sans-serif!important;
+  color:#000!important;text-align:center!important;white-space:pre-line!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5"] .ar-copy{
+  position:absolute!important;left:61px!important;top:116px!important;
+  right:auto!important;width:306px!important;height:64px!important;
+  margin:0!important;padding:0!important;
+  font:700 25px/32px "Source Sans 3",sans-serif!important;
+  color:#111!important;text-align:center!important;white-space:pre-line!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-message{
+  position:absolute!important;left:54px!important;top:116px!important;
+  right:auto!important;width:306px!important;height:auto!important;
+  margin:0!important;padding:0!important;text-align:center!important;
+  display:block!important;
+}
+#stage .ar-immersive .ar-stigma-heading{
+  display:block!important;margin:0!important;padding:0!important;
+  width:306px!important;height:32px!important;
+  font:700 25px/32px "Source Sans 3",sans-serif!important;
+}
+#stage .ar-immersive .ar-stigma-typed{
+  display:block!important;margin:13px 0 0!important;padding:0!important;
+  width:306px!important;min-height:46px!important;
+  font:700 18px/23px "Turret Road",sans-serif!important;
+  white-space:pre-line!important;text-align:center!important;
+}
