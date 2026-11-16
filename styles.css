@@ -1704,3 +1704,14 @@ canvas.figure{object-fit:contain!important}
   box-shadow:0 2.54px 5.08px rgba(255,106,106,.15),0 8.90px 8.90px rgba(255,106,106,.13)!important;
   color:#fff!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
 }
+
+/* AR10 uses the actual AR5 YES SVG material, with ONLY the label replaced.
+   Never redraw the optical gradient with a CSS approximation. */
+#stage .ar-immersive .ar-ending-cta{
+  left:89px!important;top:748px!important;width:250px!important;height:90px!important;
+  padding:0!important;border:0!important;border-radius:0!important;
+  background:transparent url('assets/figma-current/hd/ar-ending-yes-blank-250x90.svg') center/250px 90px no-repeat!important;
+  box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  color:#fff!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
+}
+#stage .ar-immersive .ar-ending-cta span{white-space:normal!important;width:228px!important;}
