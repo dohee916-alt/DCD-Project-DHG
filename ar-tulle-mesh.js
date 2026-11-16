@@ -167,14 +167,14 @@ function paintedFabric(height,index){
   // Render the real photographed yarn more finely rather than relying on
   // DOMMatrix pattern transforms (unsupported in some mobile WebViews).
   const fineTile=document.createElement('canvas');
-  fineTile.width=fineTile.height=38;
+  fineTile.width=fineTile.height=24;
   const ft=fineTile.getContext('2d');
   ft.imageSmoothingEnabled=true;ft.imageSmoothingQuality='high';
-  ft.drawImage(tile,0,0,38,38);
+  ft.drawImage(tile,0,0,24,24);
   const weave=ctx.createPattern(fineTile,'repeat');
   ctx.imageSmoothingEnabled=true;
-  ctx.save();ctx.translate((index*11)%38,(index*17)%38);
-  ctx.fillStyle=weave;ctx.fillRect(-38,-38,c.width+76,c.height+76);
+  ctx.save();ctx.translate((index*11)%24,(index*17)%24);
+  ctx.fillStyle=weave;ctx.fillRect(-24,-24,c.width+48,c.height+48);
   ctx.restore();
   return c;
 }
@@ -290,10 +290,10 @@ function canvasCloth(root){
     im.data[k+3]=v?Math.round(80+175*Math.sqrt(v/143)):0;
   }
   t.putImageData(im,0,0);
-  const finer=document.createElement('canvas');finer.width=finer.height=38;
+  const finer=document.createElement('canvas');finer.width=finer.height=24;
   const fineCtx=finer.getContext('2d');
   fineCtx.imageSmoothingEnabled=true;fineCtx.imageSmoothingQuality='high';
-  fineCtx.drawImage(tile,0,0,38,38);
+  fineCtx.drawImage(tile,0,0,24,24);
   const pattern=ctx.createPattern(finer,'repeat');
   let positions=null,lastSeen=0,live=true;
   function update(points,width,height){
@@ -598,6 +598,7 @@ function create(root){
     const roll=prev?mix(prev.roll||0,clamp(angle,-.085,.085),.12):clamp(angle,-.085,.085);
     faceCenter={x:fx,y:fy,cw:fwidth*2.17,ch:fheight*1.76,
       hairCrownY:Number.isFinite(crown)?crown:null,
+      hairOutline:measured&&performance.now()-measured.at<2300?measured.outline||null:null,
       co:Math.cos(roll),si:Math.sin(roll),roll,fw:fwidth,fh:fheight,
       yaw:0,pitch:0,
       radiusX:fwidth*.59,radiusY:fheight*.52,radiusZ:fwidth*.59};
@@ -759,6 +760,34 @@ function create(root){
       for(let i=1;i<mesh.length;i+=stride){
         const weight=Math.pow(1-clamp((mesh[i]-top)/span,0,1),1.5);
         mesh[i]+=correction*weight;
+      }
+      // Fit upper side folds to the measured silhouette, in screen coordinates.
+      // Lower drape retains the original 3D cloth simulation.
+      const outline=head.hairOutline;
+      if(outline?.length>=3){
+        for(let r=0;r<=GRID_ROWS;r++){
+          const atL=r*(GRID_COLS+1)*stride;
+          const atR=(r*(GRID_COLS+1)+GRID_COLS)*stride;
+          const y=(mesh[atL+1]+mesh[atR+1])*.5;
+          let measured=outline[0],distance=Infinity;
+          for(const edge of outline){
+            const d=Math.abs(edge.y*H-y);
+            if(d<distance){distance=d;measured=edge;}
+          }
+          if(distance>head.fh*.72)continue;
+          const progress=clamp((y-(head.hairCrownY-8))/(head.fh*.95),0,1);
+          const strength=Math.pow(1-progress,1.8);
+          const leftTarget=measured.left*W-10;
+          const rightTarget=measured.right*W+10;
+          const left=mesh[atL],right=mesh[atR];
+          const widenLeft=Math.min(0,leftTarget-left);
+          const widenRight=Math.max(0,rightTarget-right);
+          for(let c=0;c<=GRID_COLS;c++){
+            const j=(r*(GRID_COLS+1)+c)*stride,u=c/GRID_COLS;
+            const leftInfluence=Math.pow(1-u,2),rightInfluence=u*u;
+            mesh[j]+=strength*(widenLeft*leftInfluence+widenRight*rightInfluence);
+          }
+        }
       }
     }
   }
