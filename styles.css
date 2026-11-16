@@ -361,8 +361,8 @@
 .new-consent-copy{color:#000;font-family:'Source Sans 3',Arial,sans-serif;font-size:26px;font-weight:700;line-height:32px;letter-spacing:0;text-align:center}
 .new-signature-guide{font-size:10px!important;line-height:12px!important;font-weight:900!important}
 .new-signature-trace{z-index:6;pointer-events:none;opacity:.95}
-.new-signature-trace path{animation:signatureTraceTravel 1.6s linear infinite}
-@keyframes signatureTraceTravel{to{stroke-dashoffset:-100}}
+.new-signature-trace path{stroke-dasharray:100 100;stroke-dashoffset:100;animation:signatureTraceTravel 2.8s ease-in-out infinite}
+@keyframes signatureTraceTravel{0%{stroke-dashoffset:100;opacity:1}78%{stroke-dashoffset:0;opacity:1}90%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
 .poster-result-art{object-fit:fill!important;object-position:center}
 .poster-result-wash{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(115deg,rgba(139,25,0,.65),transparent 60%);mix-blend-mode:multiply}
 .poster-gradient{position:absolute;width:510px;height:942px;z-index:2;pointer-events:none}
