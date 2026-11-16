@@ -9,7 +9,7 @@ const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
 function create(root,video,canvas,onFrame){
  // Transparency is essential: do NOT request an opaque canvas.
- const ratio=Math.min(2,window.devicePixelRatio||1);
+ const ratio=Math.min(1.5,window.devicePixelRatio||1);
  const designWidth=Number(canvas.dataset.matteWidth||canvas.width);
  const designHeight=Number(canvas.dataset.matteHeight||canvas.height);
  canvas.dataset.matteWidth=designWidth;canvas.dataset.matteHeight=designHeight;
@@ -109,6 +109,34 @@ function create(root,video,canvas,onFrame){
  const subject=document.createElement('canvas');
  subject.width=canvas.width;subject.height=canvas.height;
  const subjectCtx=subject.getContext('2d',{alpha:true});
+ // Worker frames update only the foreground alpha. Render the newest LIVE
+ // video through that mask instead of freezing the entire camera frame until
+ // the next (potentially seconds-late) model result.
+ const alphaCanvas=document.createElement('canvas');
+ alphaCanvas.width=canvas.width;alphaCanvas.height=canvas.height;
+ const alphaCtx=alphaCanvas.getContext('2d',{alpha:true});
+ let hasAlpha=false,latestMaskAt=0,paintFrame=0,lastPaint=0;
+ function paintLive(now){
+   if(!live)return;
+   paintFrame=requestAnimationFrame(paintLive);
+   if(!hasAlpha||!visible||video.readyState<2||now-lastPaint<33)return;
+   lastPaint=now;
+   const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
+   if(!vw||!vh)return;
+   const scale=Math.max(w/vw,h/vh),dw=vw*scale,dh=vh*scale;
+   try{
+     subjectCtx.globalCompositeOperation='source-over';
+     subjectCtx.clearRect(0,0,w,h);
+     subjectCtx.drawImage(video,(w-dw)/2,(h-dh)/2,dw,dh);
+     subjectCtx.globalCompositeOperation='destination-in';
+     subjectCtx.drawImage(alphaCanvas,0,0,w,h);
+     subjectCtx.globalCompositeOperation='source-over';
+     ctx.clearRect(0,0,w,h);
+     ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
+     ctx.drawImage(subject,0,0);ctx.restore();
+   }catch(error){if(!root.dataset.arMattePaintError)console.warn('[DCD AR] Live video paint:',error);root.dataset.arMattePaintError='1';}
+ }
+ paintFrame=requestAnimationFrame(paintLive);
  function disableSemantic(reason){
   semanticDisabled=true;semanticReady=false;semanticBusy=false;
   semanticGate?.close?.();semanticGate=null;
@@ -240,7 +268,7 @@ function create(root,video,canvas,onFrame){
   try{onFrame?.(f.source,vw,vh);}catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
  }
  function stop(){
-  live=false;closeWorker();clearInterval(timer);
+  live=false;cancelAnimationFrame(paintFrame);closeWorker();clearInterval(timer);
   if(frameHandle)video.cancelVideoFrameCallback?.(frameHandle);
   fallback?.segmenter.close();fallback=null;
   disableSemantic();
@@ -301,21 +329,12 @@ function create(root,video,canvas,onFrame){
     const width=data.cutout.displayWidth||data.cutout.width;
     const height=data.cutout.displayHeight||data.cutout.height;
     const scale=Math.max(w/width,h/height),dw=width*scale,dh=height*scale;
-    // Render ORIGINAL camera pixels, preserving source camera resolution.
-    // The segmentation model supplies only alpha. Drawing its downsized
-    // RGBA portrait directly was blurring the full face and hair.
-    subjectCtx.clearRect(0,0,w,h);
-    subjectCtx.globalCompositeOperation='source-over';
-    subjectCtx.drawImage(data.source,(w-dw)/2,(h-dh)/2,dw,dh);
-    subjectCtx.globalCompositeOperation='destination-in';
-    subjectCtx.imageSmoothingEnabled=true;
-    subjectCtx.imageSmoothingQuality='high';
-    subjectCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
-    subjectCtx.globalCompositeOperation='source-over';
-    ctx.clearRect(0,0,w,h);
-    ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
-    ctx.drawImage(subject,0,0);
-    ctx.restore();
+    // Preserve the finest alpha from the model. The video pixels themselves
+    // are drawn continuously in paintLive(), independent of inference FPS.
+    alphaCtx.clearRect(0,0,w,h);
+    alphaCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+    hasAlpha=true;latestMaskAt=performance.now();
+    paintLive(latestMaskAt);
     lastCapture=performance.now();visible=true;
     if(root.__dcdMatteStatus)root.__dcdMatteStatus.frames++;
     measureVisibleHairCrown(lastCapture);
