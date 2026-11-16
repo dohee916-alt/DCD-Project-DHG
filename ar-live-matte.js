@@ -113,9 +113,12 @@ function create(root,video,canvas,onFrame){
  // video through that mask instead of freezing the entire camera frame until
  // the next (potentially seconds-late) model result.
  const alphaCanvas=document.createElement('canvas');
- alphaCanvas.width=canvas.width;alphaCanvas.height=canvas.height;
+ // Preserve the uncropped segmentation mask at the model's native full-frame size.
+ // Cropping it to 428x926 BEFORE tracking causes straight cut lines when moving.
+ alphaCanvas.width=1;alphaCanvas.height=1;
  const alphaCtx=alphaCanvas.getContext('2d',{alpha:true});
  let hasAlpha=false,latestMaskAt=0,paintFrame=0,lastPaint=0,maskAnchor=null;
+ let alphaPlacement=null,lastMaskDx=0,lastMaskDy=0;
  function paintLive(now){
    if(!live)return;
    paintFrame=requestAnimationFrame(paintLive);
@@ -133,10 +136,18 @@ function create(root,video,canvas,onFrame){
      // inference can take many frames; leaving its alpha at old coordinates
      // clips moving hair/cheeks even when the live camera image is fresh.
      const face=root.__dcdFaceRegion;
-     const aligned=face&&maskAnchor&&now-face.at<450;
-     const dx=aligned?Math.max(-w*.24,Math.min(w*.24,(face.cx-maskAnchor.cx)*dw)):0;
-     const dy=aligned?Math.max(-h*.18,Math.min(h*.18,(face.top-maskAnchor.top)*dh)):0;
-     subjectCtx.drawImage(alphaCanvas,dx,dy,w,h);
+     const aligned=face&&maskAnchor&&now-face.at<650;
+     // The landmark coordinates refer to the UNMIRRORED source video.
+     // Keep the last tracked offset while a turned/occluded face is briefly lost.
+     if(aligned){
+       lastMaskDx=(face.cx-maskAnchor.cx)*dw;
+       lastMaskDy=(face.top-maskAnchor.top)*dh;
+     }
+     if(alphaPlacement){
+       subjectCtx.drawImage(alphaCanvas,
+         alphaPlacement.x+lastMaskDx,alphaPlacement.y+lastMaskDy,
+         alphaPlacement.width,alphaPlacement.height);
+     }
      subjectCtx.globalCompositeOperation='source-over';
      ctx.clearRect(0,0,w,h);
      ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
@@ -340,10 +351,18 @@ function create(root,video,canvas,onFrame){
     const scale=Math.max(w/width,h/height),dw=width*scale,dh=height*scale;
     // Preserve the finest alpha from the model. The video pixels themselves
     // are drawn continuously in paintLive(), independent of inference FPS.
-    alphaCtx.clearRect(0,0,w,h);
-    alphaCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+    // Retain the ENTIRE camera-space alpha, including the left/right overscan.
+    // The portrait viewport crops ONLY the final tracked composite, never
+    // this reusable mask. Otherwise shifting the head exposes a hard edge.
+    if(alphaCanvas.width!==width||alphaCanvas.height!==height){
+      alphaCanvas.width=width;alphaCanvas.height=height;
+    }
+    alphaCtx.clearRect(0,0,width,height);
+    alphaCtx.drawImage(data.cutout,0,0,width,height);
+    alphaPlacement={x:(w-dw)/2,y:(h-dh)/2,width:dw,height:dh};
     hasAlpha=true;latestMaskAt=performance.now();
     maskAnchor=request?.faceRegion||root.__dcdFaceRegion||null;
+    lastMaskDx=0;lastMaskDy=0;
     lastCapture=performance.now();visible=true;
     if(root.__dcdMatteStatus){root.__dcdMatteStatus.frames++;root.__dcdMatteStatus.lastFrameAt=lastCapture;}
     measureVisibleHairCrown(lastCapture);
