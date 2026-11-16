@@ -27,7 +27,7 @@ function markup(){
  '<div class="ar-flash" aria-hidden="true"></div>'+
  '<div class="ar-copy" aria-live="polite"></div>'+ 
  '<div class="ar-stigma-message" aria-live="polite"><div class="ar-stigma-heading">THEY SAY</div><div class="ar-stigma-typed"></div></div>'+
-  '<button type=\"button\" class=\"ar-ending-cta\" aria-label=\"READY TO SEE DIFFERENTLY?\"><span>READY TO SEE<br>DIFFERENTLY?</span></button>'+
+  '<button type=\"button\" class=\"ar-ending-cta\" aria-label=\"READY TO SEE DIFFERENTLY?\"><img src=\"assets/figma-current/hd/ar10-ready-see-figma.svg\" alt=\"\" draggable=\"false\"></button>'+
  '<svg class="ar-face-guide" aria-hidden="true" width="289" height="375" viewBox="0 0 289 375" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="144.5" cy="187.5" rx="142" ry="185" stroke="#D83A00" stroke-width="5" stroke-linecap="round" stroke-dasharray="0.5 30"/></svg>'+
  '<div class="ar-gesture-guide" aria-hidden="true"></div>'+
  '<div class="ar-flow-choices"></div></div>';
