@@ -1796,3 +1796,10 @@ canvas.figure{object-fit:contain!important}
  width:400px!important;max-width:400px!important;
  word-break:keep-all!important;overflow-wrap:normal!important;
 }
+
+/* Final button uses the entire original YES vector body, not the original
+   134px export's empty padding. Figma's 250×90 element stays unchanged. */
+#stage .ar-immersive .ar-ending-cta{
+ background:transparent url('assets/figma-current/hd/ar-ending-yes-blank-250x90.svg?v=full-yes-body-20261117') center / 100% 100% no-repeat!important;
+ filter:drop-shadow(0 4px 6px rgba(255,106,106,.16))!important;
+}
