@@ -3,7 +3,7 @@
 'use strict';
 const MAX_FRAME_AGE=1150, MAX_VISIBLE_AGE=1900;
 const scriptURL=document.currentScript.src;
-const workerURL=new URL('ar-matte-worker.js?v=hd-matte-stability-20261116-20',scriptURL);
+const workerURL=new URL('ar-matte-worker.js?v=restore-xl-webgl-20261116-26',scriptURL);
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
@@ -157,8 +157,9 @@ function create(root,video,canvas,onFrame){
  }
 
  // Longpipe's temporal portrait matting is the primary engine.
- // Try the large temporal model on both WebGPU and WebGL.
- // SelfieSegmenter is a last-resort compatibility fallback only.
+ // Start with XL on BOTH WebGPU and WebGL; preserve 1280x768 detail.
+ // Switch models only after actual initialization or repeated processing failures.
+ // HD camera resolution alone does not guarantee HD matting.
  
  const modes=['xl','large','small','mediapipe'];
  function hide(){
@@ -246,10 +247,14 @@ function create(root,video,canvas,onFrame){
   hide();
  }
  function next(reason){
-  if(reason)console.info('[DCD AR] Changing portrait engine:',reason);
+  if(reason){
+    root.dataset.arMatteLastFailure=String(reason).slice(0,180);
+    console.warn('[DCD AR] Changing portrait engine:',reason);
+  }
   closeWorker();misses=0;failures=0;firstFrame=true;
   // Preserve the most recent valid image during model transitions.
   const mode=modes.shift();
+  root.dataset.arMatteRequested=mode||'mediapipe-main';
   if(!mode||typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'){
    startFallback(reason||'Worker API unavailable');return;
   }
@@ -264,6 +269,7 @@ function create(root,video,canvas,onFrame){
    }
    if(data.type==='ready'){
     root.dataset.arMatteEngine=data.engine||mode;
+    console.info('[DCD AR] Portrait engine ready:',root.dataset.arMatteEngine);
     clearTimeout(watchdog);watchdog=0;ready=true;
     // The HD Longpipe alpha directly supplies crown geometry. Do not run
     // an extra 256px semantic worker in parallel with video and the veil.
@@ -305,6 +311,8 @@ function create(root,video,canvas,onFrame){
     root.classList.add('ar-matting-active');
     canvas.style.visibility='visible';canvas.style.opacity='1';
     root.dataset.arMatte=data.engine;
+    root.dataset.arMatteCutoutSize=width+'x'+height;
+    root.dataset.arMatteFrameAge=Math.round(age)+'ms';
     // A landmark tracking error must not turn off a working cutout.
     try{onFrame?.(data.source,width,height);}
     catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
