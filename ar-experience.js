@@ -81,6 +81,8 @@ function playWhisperBuffer(){
 function startWhisper(){
  whisperWanted=true;
  if(!whisperContext)primeWhisper();
+ // The whispered crowd is prominent before stigma appears.
+ if(whisperGain&&whisperContext)whisperGain.gain.setTargetAtTime(.85,whisperContext.currentTime,.07);
  playWhisperBuffer();
 }
 function stopWhisper(force=false){
@@ -167,7 +169,13 @@ function fabric(){
 }
 function addFabric(){
  if(!state.root||state.maskCount>=5)return;
- state.maskCount++;fabric();
+ state.maskCount++;
+ // When the first piece of organza begins arriving, make whispering a
+ // background layer so every typed stigma remains legible.
+ if(state.maskCount===1&&whisperGain&&whisperContext){
+   whisperGain.gain.setTargetAtTime(.24,whisperContext.currentTime,.16);
+ }
+ fabric();
 }
 function typeStigmaHeading(text,onComplete){
  const heading=state.root?.querySelector('.ar-stigma-heading');
