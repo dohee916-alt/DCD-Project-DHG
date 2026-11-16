@@ -660,6 +660,21 @@ function create(root){
     const radiusX=faceCenter.radiusX/faceCenter.fw;
     const radiusZ=faceCenter.radiusZ/faceCenter.fw;
     const anchorY=-radiusY-.025,headY=0;
+    const hairLine=faceCenter.crownCurve?.length>=8
+      ?[...faceCenter.crownCurve].sort((a,b)=>a.x-b.x):null;
+    function measuredCrownY(x){
+      if(!hairLine)return null;
+      const pos=x/W;
+      if(pos<=hairLine[0].x)return hairLine[0].y*H;
+      for(let i=1;i<hairLine.length;i++){
+        const a=hairLine[i-1],b=hairLine[i];
+        if(pos<=b.x){
+          const t=clamp((pos-a.x)/Math.max(.00001,b.x-a.x),0,1);
+          return (a.y+(b.y-a.y)*t)*H;
+        }
+      }
+      return hairLine[hairLine.length-1].y*H;
+    }
     const contactAge=clamp((now-layer.start-450)/1650,0,1);
     // Freeze only the accumulating gravity/constraint solver after the
     // approved three-dimensional form settles. The render projection adds
@@ -675,7 +690,15 @@ function create(root){
              // all nine anchored vertices into one point.
              const px=p.baseX,pz=p.baseZ;
              const xy=px/radiusX,zz=pz/radiusZ;
-             const py=-radiusY*Math.sqrt(Math.max(.08,1-xy*xy-zz*zz))-.025;
+             const physicalY=-radiusY*Math.sqrt(Math.max(.08,1-xy*xy-zz*zz))-.025;
+             const screenX=faceCenter.x+faceCenter.fw*px;
+             const crownY=measuredCrownY(screenX);
+             // Anchor the physical solver itself to the observed scalp arc.
+             // No post-simulation vertex translation, which caused snapping.
+             const targetY=Number.isFinite(crownY)
+               ?clamp((crownY-8-faceCenter.y)/faceCenter.fw,-2.15,-.25)
+               :physicalY;
+             const py=Number.isFinite(crownY)?targetY:physicalY;
              p.x=p.ox=px;p.z=p.oz=pz;p.y=p.oy=py;continue;
            }
           const vx=(p.x-p.ox)*.977,vy=(p.y-p.oy)*.977,vz=(p.z-p.oz)*.977;
@@ -748,75 +771,6 @@ function create(root){
       mesh[at+6]=Math.min(u,1-u,v,1-v);mesh[at+7]=0;
       mesh[at+8]=nX;mesh[at+9]=nY;
       mesh[at+10]=Math.sqrt(Math.max(.08,1-nX*nX-nY*nY));
-    }
-    // Actual hair crown is a SUPPORT CURVE across the full head width.
-    // Anchor upper fabric vertices along the observed curved scalp contour,
-    // then let everything below hang naturally under Verlet gravity.
-    const crownCurve=head.crownCurve;
-    if(crownCurve?.length>=8){
-      const sorted=[...crownCurve].sort((a,b)=>a.x-b.x);
-      const crownAt=x=>{
-        const nx=x/W;
-        if(nx<=sorted[0].x)return sorted[0].y*H;
-        if(nx>=sorted[sorted.length-1].x)return sorted[sorted.length-1].y*H;
-        for(let i=1;i<sorted.length;i++){
-          if(nx<=sorted[i].x){
-            const a=sorted[i-1],b=sorted[i];
-            return (a.y+(b.y-a.y)*(nx-a.x)/Math.max(.00001,b.x-a.x))*H;
-          }
-        }
-        return sorted[sorted.length-1].y*H;
-      };
-      let top=Infinity,bottom=-Infinity;
-      for(let j=1;j<mesh.length;j+=stride){top=Math.min(top,mesh[j]);bottom=Math.max(bottom,mesh[j]);}
-      const span=Math.max(1,bottom-top),headWidth=head.fw*1.5;
-      for(let j=0;j<mesh.length;j+=stride){
-        const x=mesh[j],y=mesh[j+1];
-        const lateral=ease(clamp((headWidth*.65-Math.abs(x-head.x))/(headWidth*.25),0,1));
-        const upper=Math.pow(1-clamp((y-top)/(span*.58),0,1),2.3);
-        const target=crownAt(x)-9;
-        // Move only the top of the drape. The lower panel remains free.
-        mesh[j+1]+=clamp(target-top,-head.fh*.85,head.fh*.85)*upper*lateral;
-      }
-    }else if(Number.isFinite(head.hairCrownY)){
-      let top=Infinity,bottom=-Infinity;
-      for(let i=1;i<mesh.length;i+=stride){
-        top=Math.min(top,mesh[i]);bottom=Math.max(bottom,mesh[i]);
-      }
-      const span=Math.max(1,bottom-top);
-      const correction=head.hairCrownY-8-top;
-      for(let i=1;i<mesh.length;i+=stride){
-        const weight=Math.pow(1-clamp((mesh[i]-top)/span,0,1),1.5);
-        mesh[i]+=correction*weight;
-      }
-      // Fit upper side folds to the measured silhouette, in screen coordinates.
-      // Lower drape retains the original 3D cloth simulation.
-      const outline=head.hairOutline;
-      if(outline?.length>=3){
-        for(let r=0;r<=GRID_ROWS;r++){
-          const atL=r*(GRID_COLS+1)*stride;
-          const atR=(r*(GRID_COLS+1)+GRID_COLS)*stride;
-          const y=(mesh[atL+1]+mesh[atR+1])*.5;
-          let measured=outline[0],distance=Infinity;
-          for(const edge of outline){
-            const d=Math.abs(edge.y*H-y);
-            if(d<distance){distance=d;measured=edge;}
-          }
-          if(distance>head.fh*.72)continue;
-          const progress=clamp((y-(head.hairCrownY-8))/(head.fh*.95),0,1);
-          const strength=Math.pow(1-progress,1.8);
-          const leftTarget=measured.left*W-10;
-          const rightTarget=measured.right*W+10;
-          const left=mesh[atL],right=mesh[atR];
-          const widenLeft=Math.min(0,leftTarget-left);
-          const widenRight=Math.max(0,rightTarget-right);
-          for(let c=0;c<=GRID_COLS;c++){
-            const j=(r*(GRID_COLS+1)+c)*stride,u=c/GRID_COLS;
-            const leftInfluence=Math.pow(1-u,2),rightInfluence=u*u;
-            mesh[j]+=strength*(widenLeft*leftInfluence+widenRight*rightInfluence);
-          }
-        }
-      }
     }
   }
   function arrival(t){
