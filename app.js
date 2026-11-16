@@ -370,6 +370,16 @@ function newButton(label,action,x,y,disabled=false,size=null,signatureArrow=fals
   const high=size?.[1]??69;
   return '<button class="lay new-ui-button'+(signatureArrow?' new-signature-next':'')+(disabled?' disabled':'')+'" '+box(x,y,wide,high)+' data-action="'+action+'" aria-label="'+label+'" '+(disabled?'disabled':'')+'><img src="assets/figma-current/hd/'+source+'" alt=""></button>';
 }
+// Share the exact WEB15/16 gradient layers, their Figma coordinates and blend modes.
+function prescriptionGradientLayers(){
+  let h=img(A.workbenchBackground,52,0,874,428,'bg');
+  h+='<div class="lay new-orange-tint" '+box(43,-13,883,459)+' aria-hidden="true"></div>';
+  h+='<div class="lay new-orange-gradient grad-one" '+box(-4,-31,942,510)+' aria-hidden="true"><div></div></div>';
+  h+='<div class="lay new-orange-gradient grad-two" '+box(-6,-38,942,510)+' aria-hidden="true"><div></div></div>';
+  h+='<div class="lay new-orange-gradient grad-three" '+box(-12,-45,942,510)+' aria-hidden="true"><div></div></div>';
+  h+='<div class="lay new-orange-gradient grad-four" '+box(-4,-31,942,510)+' aria-hidden="true"><div></div></div>';
+  return h;
+}
 function newPrescriptionMarkup(page=s.page){
   const side=page==='13',sign=page==='14'||page==='14done',consent=page==='15'||page==='16';
   const dose=s.figures.reduce((a,f)=>a+f.orange,0).toFixed(1);
@@ -401,11 +411,7 @@ function newPrescriptionMarkup(page=s.page){
     if(page==='14')h+=text('SIGN HERE TO CONFIRM.',500,396,291,25,'doto guide-blink new-signature-guide');
     h+=newButton('NEXT','next',827,354.5,page==='14',[67,70],true);
   }else if(consent){
-    h+='<div class="lay new-orange-tint" '+box(43,-13,883,459)+' aria-hidden="true"></div>';
-    h+='<div class="lay new-orange-gradient grad-one" '+box(-4,-31,942,510)+' aria-hidden="true"><div></div></div>';
-    h+='<div class="lay new-orange-gradient grad-two" '+box(-6,-38,942,510)+' aria-hidden="true"><div></div></div>';
-    h+='<div class="lay new-orange-gradient grad-three" '+box(-12,-45,942,510)+' aria-hidden="true"><div></div></div>';
-    h+='<div class="lay new-orange-gradient grad-four" '+box(-4,-31,942,510)+' aria-hidden="true"><div></div></div>';
+    h+=prescriptionGradientLayers().replace(img(A.workbenchBackground,52,0,874,428,'bg'),'');
     h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?513:514,262,264,64,'new-consent-copy');
     if(page==='15')h+=newButton('YES','ar',522,343,false,[134,69])+newButton('NO','decline',633,343,false,[134,69]);
     else h+=newButton('TEST IT','ar',579,343,false,[140,69]);
@@ -478,7 +484,7 @@ window.DCD_AR_PACK_PREVIEW=()=>arPackMarkup(true);
 window.DCD_RENDER_FIGURES=drawFigures;
 function arMarkup(){
   if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
-  let h='<div class="lay ar-orange-background ar-prescription-gradient" '+box(0,0,428,926)+' aria-hidden="true"></div>'+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
+  let h='<div class="lay ar-orange-background ar-prescription-background" '+box(0,0,428,926)+' aria-hidden="true"><div class="ar-prescription-landscape">'+prescriptionGradientLayers()+'</div></div>'+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
   h+=arPackMarkup();
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,29,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
   return h;
