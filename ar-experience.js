@@ -32,15 +32,37 @@ function markup(){
  '<div class="ar-gesture-guide" aria-hidden="true"></div>'+
  '<div class="ar-flow-choices"></div></div>';
 }
-// SFXMint CC0 low crowd whisper ambience; dialogue is deliberately indistinct.
-const WHISPER_AUDIO='https://sfxmint.com/dl/hushed-crowd-murmur-walla-02.mp3';
-function startWhisper(){
- const audio=state.whisperAudio||new Audio(WHISPER_AUDIO);
- state.whisperAudio=audio;audio.preload='auto';audio.loop=true;audio.volume=.32;
- audio.currentTime=0;audio.play()?.catch?.(e=>console.warn('[DCD AR] Whisper audio:',e));
+// CC0 hushed crowd murmur. The previous -28 dB RMS track at 32% volume
+// was barely audible. This replacement has a verified louder source level.
+const WHISPER_AUDIO='https://sfxmint.com/dl/crowd-murmur-47.mp3';
+function whisperElement(){
+ if(!state.whisperAudio){
+   const audio=new Audio(WHISPER_AUDIO);
+   audio.preload='auto';audio.loop=true;
+   audio.onerror=()=>console.warn('[DCD AR] Whisper source failed:',audio.error?.code);
+   state.whisperAudio=audio;
+ }
+ return state.whisperAudio;
 }
-function stopWhisper(){
- if(state.whisperAudio){state.whisperAudio.pause();state.whisperAudio.currentTime=0;}
+// Called synchronously from the user's blister-pack click, satisfying the
+// gesture restriction before FaceLandmarker and AR3 timers take over.
+function primeWhisper(){
+ const audio=whisperElement();
+ state.whisperPrimed=true;audio.volume=.005;
+ audio.play()?.catch?.(e=>console.warn('[DCD AR] Whisper unlock:',e));
+}
+function startWhisper(){
+ const audio=whisperElement();
+ audio.volume=1;
+ try{audio.currentTime=0;}catch{}
+ if(audio.paused)audio.play()?.catch?.(e=>console.warn('[DCD AR] Whisper playback:',e));
+}
+function stopWhisper(force=false){
+ const audio=state.whisperAudio;
+ if(!audio)return;
+ if(!force&&state.whisperPrimed&&state.frame==='AR3'){audio.volume=.005;return;}
+ audio.pause();try{audio.currentTime=0;}catch{}
+ state.whisperPrimed=false;
 }
 function clearScene(){
  if(!state.root)return;
@@ -532,7 +554,7 @@ function startArVisuals(){
 }
 function stop(){
  state.session++;
- state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();stopWhisper();
+ state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();stopWhisper(true);
  state.matte?.stop();state.matte=null;
  state.face?.close();state.face=null;
  state.hand?.close();state.hand=null;
@@ -541,7 +563,7 @@ function stop(){
  state.root=null;state.stage=null;state.video=null;
 }
 
-window.DCD_AR_FLOW={markup,mount,start,stop,cameraError,frame:()=>state.frame,debugNext:()=>{
+window.DCD_AR_FLOW={markup,mount,start,stop,cameraError,primeWhisper,frame:()=>state.frame,debugNext:()=>{
  const pos=frameNames.indexOf(state.frame);
  if(state.frame==='AR4'){for(let i=state.maskCount;i<5;i++)addFabric();enter('AR5');}
  else if(state.frame==='AR5'){enter('AR5-1');}
