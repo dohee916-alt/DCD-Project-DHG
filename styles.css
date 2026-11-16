@@ -1693,3 +1693,14 @@ canvas.figure{object-fit:contain!important}
  white-space:pre-line!important;overflow-wrap:normal!important;text-align:center!important}
 #stage .ar-immersive:is([data-ar-frame="AR5"],[data-ar-frame="AR5-1"]) .ar-copy{
  font-size:25px!important;line-height:32px!important;top:116px!important;color:#000!important}
+
+/* AR10 CTA matches Figma AR5 YES component 636:503, shape I636:503;569:239.
+   Keep AR10 artboard geometry and 20px approved text. */
+#stage .ar-immersive .ar-ending-cta{
+  border:2px solid rgba(255,255,255,.95)!important;
+  border-radius:100px!important;
+  background:linear-gradient(168deg,#ffe1dc 0%,rgba(255,131,85,.70) 54%,#ffe0dc 100%)!important;
+  -webkit-backdrop-filter:blur(9px)!important;backdrop-filter:blur(9px)!important;
+  box-shadow:0 2.54px 5.08px rgba(255,106,106,.15),0 8.90px 8.90px rgba(255,106,106,.13)!important;
+  color:#fff!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
+}
