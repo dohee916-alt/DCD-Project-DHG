@@ -1624,28 +1624,10 @@ canvas.figure{object-fit:contain!important}
 
 /* AR10: user-approved glass-outline final CTA. It appears only after the
    complete AR10 typewriter message plus its reading pause, never during typing. */
-#stage .ar-immersive .ar-ending-cta{
-  position:absolute;left:89px;top:748px;width:250px;height:90px;
-  padding:10px 11px;display:flex;align-items:center;justify-content:center;
-  border:5px solid rgba(255,248,245,.87);border-radius:60px;
-  background:linear-gradient(125deg,rgba(255,198,183,.27),rgba(255,235,225,.38));
-  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
-  box-shadow:inset 0 1px 5px rgba(255,255,255,.22),0 9px 20px rgba(139,66,57,.08);
-  color:#fff;font:700 20px/24px "Source Sans 3",Arial,sans-serif;
-  letter-spacing:0;text-align:center;z-index:12;
-  opacity:0;visibility:hidden;pointer-events:none;
-  transform:translateY(15px) scale(.97);
-  transition:opacity .5s ease,transform .5s cubic-bezier(.2,.8,.2,1),visibility 0s .5s;
-  cursor:pointer;
-}
-#stage .ar-immersive .ar-ending-cta span{display:block;white-space:nowrap;pointer-events:none}
-#stage .ar-immersive[data-ar-frame="AR10"] .ar-ending-cta.visible{
-  opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0) scale(1);
-  transition:opacity .5s ease,transform .5s cubic-bezier(.2,.8,.2,1),visibility 0s;
-}
-#stage .ar-immersive .ar-ending-cta:focus-visible{
-  outline:3px solid #fff;outline-offset:5px;
-}
+
+
+
+
 
 /* Rotate the exact WEB15/16 gradient composition into the 428x926 AR portrait.
    The original 926x428 layer coordinates, image, colors and blend modes remain unchanged. */
@@ -1696,25 +1678,12 @@ canvas.figure{object-fit:contain!important}
 
 /* AR10 CTA matches Figma AR5 YES component 636:503, shape I636:503;569:239.
    Keep AR10 artboard geometry and 20px approved text. */
-#stage .ar-immersive .ar-ending-cta{
-  border:2px solid rgba(255,255,255,.95)!important;
-  border-radius:100px!important;
-  background:linear-gradient(168deg,#ffe1dc 0%,rgba(255,131,85,.70) 54%,#ffe0dc 100%)!important;
-  -webkit-backdrop-filter:blur(9px)!important;backdrop-filter:blur(9px)!important;
-  box-shadow:0 2.54px 5.08px rgba(255,106,106,.15),0 8.90px 8.90px rgba(255,106,106,.13)!important;
-  color:#fff!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
-}
+
 
 /* AR10 uses the actual AR5 YES SVG material, with ONLY the label replaced.
    Never redraw the optical gradient with a CSS approximation. */
-#stage .ar-immersive .ar-ending-cta{
-  left:89px!important;top:748px!important;width:250px!important;height:90px!important;
-  padding:0!important;border:0!important;border-radius:0!important;
-  background:transparent url('assets/figma-current/hd/ar-ending-yes-blank-250x90.svg') center/250px 90px no-repeat!important;
-  box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
-  color:#fff!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
-}
-#stage .ar-immersive .ar-ending-cta span{white-space:normal!important;width:228px!important;}
+
+
 
 /* DCD 04_AR: final artboard coordinates measured from actual Figma TEXT nodes.
    The Figma mockup header is ALREADY part of the 428×926 artboard.
@@ -1778,15 +1747,9 @@ canvas.figure{object-fit:contain!important}
 
 /* 2026-11-17 Figma CTA: original YES vector viewport includes its drop
    shadow; preserve native SVG design and replace ONLY the label. */
-#stage .ar-immersive .ar-ending-cta{
- left:89px!important;top:748px!important;width:250px!important;height:90px!important;
- padding:0!important;border:0!important;border-radius:0!important;
- background:transparent url('assets/figma-current/hd/ar-ending-yes-blank-250x90.svg?v=figma-native-yes-20261117') center / 100% 100% no-repeat!important;
- box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
- font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
-}
+
 /* Keep the source label's vertical placement and exact 20px typography. */
-#stage .ar-immersive .ar-ending-cta span{width:228px!important;white-space:normal!important;line-height:24px!important}
+
 /* A single GLP-1 word must not wrap after its hyphen. The entire message
    expands equally to the left and right while remaining centered. */
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-message{
@@ -1799,10 +1762,7 @@ canvas.figure{object-fit:contain!important}
 
 /* Final button uses the entire original YES vector body, not the original
    134px export's empty padding. Figma's 250×90 element stays unchanged. */
-#stage .ar-immersive .ar-ending-cta{
- background:transparent url('assets/figma-current/hd/ar-ending-yes-blank-250x90.svg?v=full-yes-body-20261117') center / 100% 100% no-repeat!important;
- filter:drop-shadow(0 4px 6px rgba(255,106,106,.16))!important;
-}
+
 
 /* 2026-11-17 native Figma geometry, read directly from 04_AR text nodes.
    Heading stays at its unchanged Figma x54/y116/306 width; only the
@@ -1843,132 +1803,42 @@ canvas.figure{object-fit:contain!important}
 /* Exact Figma 1024:11 AR10 CTA: native 250x90 frame with 100 corner radius,
    2px inside gradient stroke, specified gradient stops and two shadows.
    Do not use the altered/cropped/warped YES SVG export as a CSS background. */
-#stage .ar-immersive .ar-ending-cta{
-  left:89px!important;top:748px!important;width:250px!important;height:90px!important;
-  border:2px solid rgba(255,250,247,.95)!important;border-radius:100px!important;
-  padding:0!important;
-  background:linear-gradient(155deg,
-    rgba(255,225,220,1) 0%,
-    rgba(255,131,85,.70) 53.846%,
-    rgba(255,224,220,1) 100%)!important;
-  box-shadow:0 2.5419px 5.0839px rgba(255,106,106,.15),
-             0 8.8968px 8.8968px rgba(255,106,106,.13)!important;
-  filter:none!important;
-  backdrop-filter:blur(9px)!important;-webkit-backdrop-filter:blur(9px)!important;
-  display:flex!important;align-items:center!important;justify-content:center!important;
-  text-align:center!important;box-sizing:border-box!important;
-  color:#fff!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
-}
-#stage .ar-immersive .ar-ending-cta span{
-  width:228px!important;height:60px!important;
-  display:flex!important;flex-direction:column!important;
-  align-items:center!important;justify-content:center!important;
-  white-space:normal!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
-}
 
 
-/* Figma 1024:11, AR10, exact 250x90 glass button component.
-   Shared with the WEB00 sound activation control. */
-#stage .dcd-figma-glass-pill,
-#stage .ar-immersive .ar-ending-cta{
-  position:absolute;
-  width:250px!important;height:90px!important;
-  padding:0!important;margin:0!important;
-  box-sizing:border-box!important;
-  border:2px solid #fff!important;
-  border-radius:100px!important;
-  background:linear-gradient(252.61152471878125deg,
-    rgb(255,225,220) 10.175%,
-    rgba(255,131,85,.7) 60.222%,
-    rgb(255,224,220) 103.12%)!important;
-  box-shadow:0 8.897px 4.448px rgba(255,106,106,.13),
-             0 2.542px 2.542px rgba(255,106,106,.15)!important;
-  -webkit-backdrop-filter:blur(4.5px)!important;
-  backdrop-filter:blur(4.5px)!important;
-  filter:none!important;
-  color:white!important;
-  font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
-  text-align:center!important;
-}
-#stage .ar-immersive .ar-ending-cta{
-  left:89px!important;top:748px!important;
-  display:block!important;
-}
-#stage .ar-immersive .ar-ending-cta span{
-  position:absolute!important;
-  left:11px!important;top:15px!important;
-  width:228px!important;height:60px!important;
-  padding:0!important;margin:0!important;
-  display:flex!important;flex-direction:column!important;
-  align-items:center!important;justify-content:center!important;
-  white-space:normal!important;
-  font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
-}
+
+
+
+/* Buttons are the SVGs exported directly from the approved Figma nodes.
+   CSS handles positioning and interaction ONLY, never the visual material. */
 #stage .opening-sound-gate{
-  position:absolute;inset:0;width:100%;height:100%;z-index:999;
-  padding:0;border:0;background:transparent;
-  cursor:pointer;display:flex;justify-content:center;align-items:center;
+ position:absolute;inset:0;width:100%;height:100%;z-index:999;
+ display:block;padding:0;border:0;background:transparent;cursor:pointer;
 }
-#stage .opening-sound-control{
-  position:relative!important;
-  left:auto!important;top:auto!important;
-  display:flex;justify-content:center;align-items:center;
-  pointer-events:none;
+#stage .opening-sound-gate .opening-sound-figma-asset{
+ position:absolute;left:89px;top:372px;width:250px;height:100px;
+ display:block;pointer-events:none;object-fit:fill;
 }
-#stage .opening-sound-control .dcd-figma-glass-label{
-  width:228px;height:60px;
-  display:flex;justify-content:center;align-items:center;
-  font:700 20px/24px "Source Sans 3",Arial,sans-serif;
-  color:white;text-align:center;
+#stage .opening-sound-gate:focus-visible .opening-sound-figma-asset{
+ outline:2px solid white;outline-offset:2px;
 }
-#stage .opening-sound-gate:focus-visible .opening-sound-control{
-  outline:3px solid white;outline-offset:5px;
+#stage .ar-immersive .ar-ending-cta{
+ position:absolute!important;left:80.103px!important;top:745.458px!important;
+ width:268px!important;height:111px!important;
+ padding:0!important;margin:0!important;border:0!important;
+ border-radius:0!important;background:none!important;box-shadow:none!important;
+ filter:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+ display:block!important;cursor:pointer;z-index:12;
+ opacity:0;visibility:hidden;pointer-events:none;
+ transform:translateY(15px) scale(.97);
+ transition:opacity .5s ease,transform .5s cubic-bezier(.2,.8,.2,1),visibility 0s .5s;
 }
-
-
-/* Opening audio control: Figma 409:156 WEB orange glass, independent of AR10 CTA.
-   Native WEB control has 112x60; extend width for approved sound label. */
-#stage .opening-sound-gate .opening-web-glass{
- position:relative;display:block;flex:0 0 auto;
- width:250px;height:60px;pointer-events:none;isolation:isolate;
- font:700 20px/24px "Source Sans 3",Arial,sans-serif;
+#stage .ar-immersive .ar-ending-cta img{
+ display:block;width:268px;height:111px;object-fit:fill;pointer-events:none;
 }
-#stage .opening-sound-gate .opening-web-glass-perimeter,
-#stage .opening-sound-gate .opening-web-glass-face,
-#stage .opening-sound-gate .opening-web-glass-core,
-#stage .opening-sound-gate .opening-web-glass-rim{
- position:absolute;display:block;pointer-events:none;
+#stage .ar-immersive[data-ar-frame="AR10"] .ar-ending-cta.visible{
+ opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0) scale(1);
+ transition:opacity .5s ease,transform .5s cubic-bezier(.2,.8,.2,1),visibility 0s;
 }
-#stage .opening-sound-gate .opening-web-glass-perimeter{
- inset:0;border-radius:145px;
- background:linear-gradient(to bottom,#ea5a06 0%,#f2ddd6 50.481%,#e0480a 100%);
- box-shadow:0 11px 22px rgba(214,77,15,.14);
-}
-#stage .opening-sound-gate .opening-web-glass-face{
- inset:3.33% 1.79%;border-radius:139px;
- border:1px solid rgba(255,242,227,.3);
- background:radial-gradient(ellipse 56% 52% at 50% 50%,
- rgba(255,99,11,.97) 0%,rgba(255,122,39,.94) 19%,
- rgba(255,145,66,.91) 38%,rgba(255,166,106,.91) 54%,
- rgba(255,186,145,.91) 70%,rgba(255,212,185,.935) 85%,
- rgba(255,237,224,.96) 100%);
-}
-#stage .opening-sound-gate .opening-web-glass-core{
- inset:3.33% 1.79%;border-radius:125px;
- background:radial-gradient(ellipse 70% 48% at 50% 50%,
- rgba(255,51,0,.43) 0%,rgba(255,87,26,.28) 45%,
- rgba(255,204,153,0) 100%);
-}
-#stage .opening-sound-gate .opening-web-glass-rim{
- inset:0;border-radius:145px;
- border:.5px solid rgba(255,255,255,.85);
-}
-#stage .opening-sound-gate .opening-web-glass-label{
- position:absolute;inset:0;
- display:flex;align-items:center;justify-content:center;
- font:700 20px/24px "Source Sans 3",Arial,sans-serif;
- color:#fff;text-align:center;white-space:nowrap;
-}
-#stage .opening-sound-gate:focus-visible .opening-web-glass{
- outline:3px solid #fff;outline-offset:5px;border-radius:145px;
+#stage .ar-immersive .ar-ending-cta:focus-visible{
+ outline:3px solid white;outline-offset:3px;
 }
