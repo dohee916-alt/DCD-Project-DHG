@@ -18,10 +18,8 @@ async function init(mode){
  }else{
   const {BackgroundRemover}=await import(KATANA);
   processor=await BackgroundRemover.load('longpipe-'+mode,{backend:'auto',temporal:true});
-  // XL on WebGL can block the GPU shared with the live veil. Prefer Large
-  // there, but keep XL on WebGPU for crisp hair alpha and real-time inference.
-  if(mode==='xl'&&processor.backend==='webgl')
-    throw new Error('XL WebGL is too expensive for simultaneous live AR');
+  // WebGL is slower than WebGPU, but does not lower model precision.
+  // Let the real frame latency determine whether a fallback is warranted.
   engine='longpipe-'+mode+'-'+processor.backend;
  }
  postMessage({type:'ready',engine});
