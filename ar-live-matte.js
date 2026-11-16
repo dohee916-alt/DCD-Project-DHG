@@ -334,7 +334,6 @@ function create(root,video,canvas,onFrame){
     alphaCtx.clearRect(0,0,w,h);
     alphaCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
     hasAlpha=true;latestMaskAt=performance.now();
-    paintLive(latestMaskAt);
     lastCapture=performance.now();visible=true;
     if(root.__dcdMatteStatus)root.__dcdMatteStatus.frames++;
     measureVisibleHairCrown(lastCapture);
