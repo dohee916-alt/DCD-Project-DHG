@@ -28,7 +28,7 @@ function create(root,video,canvas,onFrame){
  let crownLast=0;
  function measureVisibleHairCrown(now){
    const face=root.__dcdFaceRegion;
-   if(!face||now-face.at>1800||now-crownLast<180||!canvas.width||!canvas.height)return;
+   if(!face||now-face.at>1800||now-crownLast<340||!canvas.width||!canvas.height)return;
    crownLast=now;
    const w=canvas.width,h=canvas.height;
    const vw=video.videoWidth,vh=video.videoHeight;
@@ -254,7 +254,7 @@ function create(root,video,canvas,onFrame){
    startFallback(reason||'Worker API unavailable');return;
   }
   let current;
-  try{current=new Worker(workerURL)}catch(error){startFallback(error);return;}
+  try{current=new Worker(workerURL,{type:'module'})}catch(error){startFallback(error);return;}
   worker=current;
   watchdog=setTimeout(()=>next(mode+' initialization timeout'),18000);
   current.onerror=event=>{if(worker===current)next(event.message||'Worker error');};
@@ -265,7 +265,8 @@ function create(root,video,canvas,onFrame){
    if(data.type==='ready'){
     root.dataset.arMatteEngine=data.engine||mode;
     clearTimeout(watchdog);watchdog=0;ready=true;
-    if(data.engine?.startsWith('longpipe'))initSemantic();
+    // The HD Longpipe alpha directly supplies crown geometry. Do not run
+    // an extra 256px semantic worker in parallel with video and the veil.
     return;
    }
    if(data.type==='error'){next(data.message);return;}
@@ -307,7 +308,7 @@ function create(root,video,canvas,onFrame){
     // A landmark tracking error must not turn off a working cutout.
     try{onFrame?.(data.source,width,height);}
     catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
-    if(data.engine?.startsWith('longpipe'))semanticOffered=offerSemanticFrame(data.source,request.started);
+    // The HD crown is derived from the painted matte; no separate segmentation.
    }catch(error){next(String(error));}
    finally{
     if(!semanticOffered)data.source.close?.();
