@@ -38,6 +38,19 @@ function markup(){
 const WHISPER_B64='assets/audio/murmur-ben0815-clip.opus.b64';
 let whisperContext=null,whisperGain=null,whisperBuffer=null,whisperNode=null;
 let whisperLoading=null,whisperWanted=false;
+const WHISPER_MAX=.85,WHISPER_MIN=.012;
+let whisperTarget=0;
+function whisperLevel(target,fade=.4){
+ whisperTarget=Math.max(0,target);
+ if(!whisperGain||!whisperContext)return;
+ const now=whisperContext.currentTime;
+ whisperGain.gain.cancelScheduledValues(now);
+ whisperGain.gain.setTargetAtTime(whisperTarget,now,Math.max(.035,fade/3));
+}
+function whisperForLayers(lastHandPeel=false){
+ const n=state.maskCount;
+ whisperLevel(lastHandPeel&&n===0?0:n===0?WHISPER_MIN:WHISPER_MIN+(WHISPER_MAX-WHISPER_MIN)*n/5,.5);
+}
 function primeWhisper(){
  // This is called synchronously from the user's pack-click gesture.
  // An unlocked AudioContext can play a decoded buffer later in the AR flow.
@@ -47,7 +60,7 @@ function primeWhisper(){
   whisperContext ||=new AudioContextClass();
   state.whisperPrimed=true;
   whisperContext.resume()?.catch?.(error=>console.warn('[DCD AR] Audio permission:',error));
-  if(!whisperGain){whisperGain=whisperContext.createGain();whisperGain.gain.value=1.7;whisperGain.connect(whisperContext.destination);}
+  if(!whisperGain){whisperGain=whisperContext.createGain();whisperGain.gain.value=whisperTarget;whisperGain.connect(whisperContext.destination);}
   if(!whisperLoading){
    whisperLoading=fetch(WHISPER_B64).then(response=>{
      if(!response.ok)throw new Error('Murmur audio HTTP '+response.status);
@@ -82,7 +95,7 @@ function startWhisper(){
  whisperWanted=true;
  if(!whisperContext)primeWhisper();
  // The whispered crowd is prominent before stigma appears.
- if(whisperGain&&whisperContext)whisperGain.gain.setTargetAtTime(.85,whisperContext.currentTime,.07);
+ if(whisperGain&&whisperContext)whisperLevel(WHISPER_MAX,.3);
  playWhisperBuffer();
 }
 function stopWhisper(force=false){
@@ -90,6 +103,8 @@ function stopWhisper(force=false){
  whisperWanted=false;
  if(whisperNode){try{whisperNode.stop();}catch{}whisperNode.disconnect();whisperNode=null;}
  state.whisperPrimed=false;
+  whisperTarget=0;
+  if(whisperGain&&whisperContext)whisperGain.gain.setValueAtTime(0,whisperContext.currentTime);
 }
 function clearScene(){
  if(!state.root)return;
@@ -172,9 +187,7 @@ function addFabric(){
  state.maskCount++;
  // When the first piece of organza begins arriving, make whispering a
  // background layer so every typed stigma remains legible.
- if(state.maskCount===1&&whisperGain&&whisperContext){
-   whisperGain.gain.setTargetAtTime(.24,whisperContext.currentTime,.16);
- }
+ whisperForLayers();
  fabric();
 }
 function typeStigmaHeading(text,onComplete){
@@ -225,7 +238,8 @@ function showStigmaSequence(variant,done){
 function removeFabric(){
  if(state.maskCount===0)return;
  state.maskCount--;
- const sheet=state.sheets.pop();
+  whisperForLayers(state.frame==='AR7');
+  const sheet=state.sheets.pop();
  if(!sheet)return;
  sheet.layer.classList.add('peeling');
  state.tulle?.remove(sheet.surface);
@@ -264,23 +278,24 @@ function enter(frame){
  stopTimers();
  // Whispering is one continuous ambience from AR3-1 through all five first
  // stigma labels and cloth arrivals. Do not restart at every new frame.
- if(frame!=='AR3-1'&&frame!=='AR4')stopWhisper();
+ if(['AR8','AR9','AR10'].includes(frame))stopWhisper(true);
  state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
  switch(frame){
  case 'AR3':state.portraitPending=false;caption('POSITION YOUR FACE HERE');break;
  case 'AR3-1':
    // The cutout is already visibly ready before this transition.
-   caption("What's with all the whispering?\nWhy are they staring at you?");
-   startWhisper();
-   delay(()=>{if(state.frame==='AR3-1')enter('AR4');},5500);
+   caption("What's with all the whispering?");
+    startWhisper();
+    delay(()=>{if(state.frame==='AR3-1')caption('Why are they staring at you?');},2600);
+    delay(()=>{if(state.frame==='AR3-1')enter('AR4');},5500);
    break;
  case 'AR4':
    // Only after face recognition: start expensive cutout/fabric and hand model.
    startArVisuals();
    if(!state.hand)loadHandWhenNeeded(state.session);
    caption('');
-   state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());
+   state.variant='first';state.maskCount=0;whisperLevel(WHISPER_MAX,.3);state.sheets.forEach(e=>e.layer.remove());
    state.sheets=[];state.tulle?.clear();
    // Allow face tracking and the cutout pipeline to initialize before the first arrival.
    // Never advance five fabric layers on the old rapid fixed timer.
@@ -324,17 +339,20 @@ function enter(frame){
    delay(()=>{
      if(state.frame!=='AR5-2'||state.maskCount!==0)return;
      state.variant='replacement';
-     typeStigmaHeading('NOW THEY SAY',()=>{
+      whisperLevel(WHISPER_MIN,.25);
+      typeStigmaHeading('NOW THEY SAY',()=>{
        if(state.frame==='AR5-2')
          showStigmaSequence('replacement',()=>{if(state.frame==='AR5-2')enter('AR6');});
      });
    },5500);break;
  case 'AR6':
-    state.manualPeels=0;state.autoPeeling=false;
+     whisperForLayers();
+     state.manualPeels=0;state.autoPeeling=false;
     caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
  case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
  case 'AR8':
-   // Explicitly clear the removed transition label, including when
+    stopWhisper(true);
+    // Explicitly clear the removed transition label, including when
    // returning from a previous scene in an existing browser session.
    caption('');
    delay(()=>enter('AR9'),1800);break;
