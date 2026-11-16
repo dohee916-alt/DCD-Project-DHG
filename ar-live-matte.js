@@ -75,6 +75,34 @@ function create(root,video,canvas,onFrame){
      }
      if(left>=0&&right-left>=threshold)outline.push({y:yy/h,left:(x0+left)/w,right:(x0+right)/w});
    }
+   // Sample the full hair crown from left to right in the actual matte.
+   // Each column finds its first connected foreground pixel near the head,
+   // producing a curved SUPPORT LINE rather than a single forehead anchor.
+   const crownCurve=[];
+   for(let sample=0;sample<=20;sample++){
+     const x=Math.round(x0+(x1-x0-1)*sample/20),localX=x-x0;
+     let hit=-1;
+     for(let y=0;y<sh-4;y++){
+       let support=0;
+       for(let yy=y;yy<Math.min(sh,y+5);yy++){
+         const alpha=data[(yy*sw+localX)*4+3];
+         if(alpha>145)support++;
+       }
+       if(support>=4){hit=y+y0;break;}
+     }
+     // Sparse flyaway strands are excluded; absent samples are interpolated.
+     if(hit>=0&&hit<forehead+faceWidth*.1)
+       crownCurve.push({x:x/w,y:hit/h});
+   }
+   if(crownCurve.length>=8){
+     const ys=crownCurve.map(p=>p.y).sort((a,b)=>a-b);
+     const median=ys[Math.floor(ys.length/2)];
+     const stable=crownCurve.filter(p=>Math.abs(p.y-median)<faceWidth/h*.48);
+     if(stable.length>=8){
+       root.__dcdHairCrown={x:px/w,y:py/h,outline,curve:stable,at:now,source:'portrait-alpha'};
+       return;
+     }
+   }
    root.__dcdHairCrown={x:px/w,y:py/h,outline,at:now,source:'portrait-alpha'};
  }
 
