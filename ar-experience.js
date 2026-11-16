@@ -417,6 +417,13 @@ function track(frame,width,height,now=performance.now()){
        if(!state.tulleWarning){console.warn('[DCD AR] Cloth update:',error);state.tulleWarning=true;}
      }
      if(points?.length){
+       const rawX=[points[234].x,points[454].x];
+       state.root.__dcdFaceRegion={
+         cx:(rawX[0]+rawX[1])*.5,
+         width:Math.abs(rawX[0]-rawX[1]),
+         top:points[10].y,
+         at:performance.now()
+       };
        let l=1,r=0,t=1,b=0;
        for(const p of points){const x=1-p.x;l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,p.y);b=Math.max(b,p.y);}
        state.faceBox={l,r,t,b};state.faceBoxSeenAt=now;
