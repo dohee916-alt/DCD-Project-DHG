@@ -632,7 +632,7 @@ function create(root){
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
       const y=-.98+.025*Math.sin(c*.65+r*.43+layer.index);
-      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.33});
+      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.18});
     }
     const add=(a,b,rest,stiffness)=>links.push({a,b,rest,stiffness});
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
@@ -679,8 +679,9 @@ function create(root){
     // Freeze only the accumulating gravity/constraint solver after the
     // approved three-dimensional form settles. The render projection adds
     // bounded non-accumulating air movement; crown orientation stays fixed.
-    const locked=now-layer.start>3100;
-    if(contactAge>0&&!layer.removing&&!locked){
+    // Do not freeze the sheet after 3.1s: gravity continues to settle the
+    // side panels naturally, with damping limiting excessive motion.
+    if(contactAge>0&&!layer.removing){
       const slices=Math.max(1,Math.ceil(frameStep));
       const stepRatio=frameStep/slices;
       for(let sub=0;sub<slices;sub++){
@@ -701,9 +702,9 @@ function create(root){
              const py=Number.isFinite(crownY)?targetY:physicalY;
              p.x=p.ox=px;p.z=p.oz=pz;p.y=p.oy=py;continue;
            }
-          const vx=(p.x-p.ox)*.977,vy=(p.y-p.oy)*.977,vz=(p.z-p.oz)*.977;
+          const vx=(p.x-p.ox)*.94,vy=(p.y-p.oy)*.94,vz=(p.z-p.oz)*.94;
           p.ox=p.x;p.oy=p.y;p.oz=p.z;
-          p.x+=vx;p.y+=vy+.0043*stepRatio*stepRatio;p.z+=vz;
+          p.x+=vx;p.y+=vy+.012*stepRatio*stepRatio;p.z+=vz;
         }
         for(let iteration=0;iteration<4;iteration++){
           for(const e of sim.links){
@@ -755,9 +756,12 @@ function create(root){
       const screenX=head.x+scale*((x+windX)*head.co-(p.y+windY)*head.si);
       // Front panel drapes below the chin instead of stopping at face height.
       const frontHem=Math.pow(Math.max(0,(.5-r/GRID_ROWS)*2),1.6);
+      // Once the sheet rests on the hair crown, unpinned side panels hang
+      // toward the shoulders. The solver supplies folds and continued motion.
+      const sideFall=ease(clamp((Math.abs(u-.5)-.15)/.35,0,1));
       const screenY=head.y+scale*((x+windX)*head.si+
         (p.y+windY)*head.co-(z+windZ)*head.pitch*.32)
-        +head.fh*.32*frontHem;
+        +head.fh*.32*frontHem+head.fh*.76*sideFall;
       const prevL=c>0?nodes[id-1]:p,nextR=c<GRID_COLS?nodes[id+1]:p;
       const prevT=r>0?nodes[id-(GRID_COLS+1)]:p,nextB=r<GRID_ROWS?nodes[id+(GRID_COLS+1)]:p;
       const dx=nextR.x-prevL.x,dz=nextR.z-prevL.z;
