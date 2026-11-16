@@ -1926,3 +1926,13 @@ canvas.figure{object-fit:contain!important}
  width:250px!important;height:100px!important;
  object-fit:fill;pointer-events:none;
 }
+
+/* Reel0 is stationary until ENABLE SOUND; then its complete frame slides into Reel1. */
+#stage.page-reel0 .reels-vertical-scroll:not(.sound-unlocked){
+ overflow-y:hidden!important;
+ touch-action:none;
+}
+#stage.page-reel0 .reels-vertical-scroll.sound-unlocked{
+ overflow-y:auto;
+ touch-action:pan-y;
+}
