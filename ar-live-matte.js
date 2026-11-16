@@ -202,20 +202,12 @@ function create(root,video,canvas,onFrame){
     // Composite in source orientation, then mirror as a whole.
     // Only confirmed background beyond a wide hair-protection margin
     // is attenuated; no trimap edge is substituted for Longpipe's edge.
-    if(data.engine?.startsWith('longpipe')&&semanticGate&&
-       request&&Math.abs(request.started-semanticTime)<100&&subjectCtx){
-      subjectCtx.clearRect(0,0,w,h);
-      subjectCtx.globalCompositeOperation='source-over';
-      subjectCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
-      subjectCtx.globalCompositeOperation='destination-in';
-      subjectCtx.imageSmoothingEnabled=true;
-      subjectCtx.imageSmoothingQuality='high';
-      subjectCtx.drawImage(semanticGate,(w-dw)/2,(h-dh)/2,dw,dh);
-      subjectCtx.globalCompositeOperation='source-over';
-      ctx.drawImage(subject,0,0);
-    }else{
-      ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
-    }
+    // Preserve Longpipe's original high-resolution hair alpha. The 256px
+    // semantic class map is used solely for crown localization; multiplying
+    // it into the cutout previously introduced blocky hair/shoulder edges.
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality='high';
+    ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
     ctx.restore();
     lastCapture=performance.now();visible=true;
     root.classList.add('ar-matting-active');
