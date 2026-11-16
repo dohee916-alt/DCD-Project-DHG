@@ -471,7 +471,7 @@ window.DCD_AR_PACK_PREVIEW=()=>arPackMarkup(true);
 window.DCD_RENDER_FIGURES=drawFigures;
 function arMarkup(){
   if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',35,149,358,34,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
-  let h=img(A.arBackground,0,0,428,926,'ar-orange-background')+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
+  let h='<div class="lay ar-orange-background ar-prescription-gradient" '+box(0,0,428,926)+' aria-hidden="true"></div>'+text('>> NOW PRESCRIBE YOURSELF',29,91,370,29,'ar-headline');
   h+=arPackMarkup();
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,29,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
   return h;
