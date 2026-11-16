@@ -1019,6 +1019,7 @@ function openArPack(){
   save();
   // Must be called from the user click itself to satisfy browser camera
   // activation policy. Never request permission merely on entering AR.
+  window.DCD_AR_FLOW?.primeWhisper?.();
   askArCamera();
   setPage('arOpen','opening');
   morphArBlister();
