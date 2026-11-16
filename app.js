@@ -1094,9 +1094,7 @@ if(packHand){
    };
    reelScroll.addEventListener('scroll',syncReelAudio,{passive:true});
    syncReelAudio();
-   // Reel0 and its entire interface rise automatically into Reel1.
-   later(()=>{if(s.page==='reel0'&&reelScroll.isConnected&&reelScroll.scrollTop<190)
-     reelScroll.scrollTo({top:926,behavior:'smooth'});},4300);
+   // Reel0 stays put until its ENABLE SOUND button is pressed.
   }
  }
  if(s.page==='14')bindNewSignature();
@@ -1512,7 +1510,7 @@ window.DCD_RESTART_WEB=()=>{
  s=fresh();sessionStorage.removeItem(key);
  setPage('01','guide');
 };
-function act(a){if(a==='openReel1'&&s.page==='reel0'){stage.querySelector('.reels-vertical-scroll')?.scrollTo({top:926,behavior:'smooth'});return;}if(a==='enableSound'&&(s.page==='00'||s.page==='reel0')){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();if(s.page==='reel0'){const reels=stage.querySelector('.reels-vertical-scroll');later(()=>{if(s.page==='reel0'&&reels?.isConnected)reels.scrollTo({top:926,behavior:'smooth'});},450);}return;}if(a==='enter'&&(s.page==='00'||s.page==='reel0'))runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
+function act(a){if(a==='openReel1'&&s.page==='reel0'){stage.querySelector('.reels-vertical-scroll')?.scrollTo({top:926,behavior:'smooth'});return;}if(a==='enableSound'&&(s.page==='00'||s.page==='reel0')){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();if(s.page==='reel0'){const reels=stage.querySelector('.reels-vertical-scroll');reels?.classList.add('sound-unlocked');reels?.scrollTo({top:926,behavior:'smooth'});}return;}if(a==='enter'&&(s.page==='00'||s.page==='reel0'))runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
 stage.addEventListener('click',e=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('pointerdown',()=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();},{passive:true});
 stage.addEventListener('change',e=>{
