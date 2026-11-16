@@ -1651,3 +1651,9 @@ canvas.figure{object-fit:contain!important}
    The original 926x428 layer coordinates, image, colors and blend modes remain unchanged. */
 .ar-prescription-background{overflow:hidden;background:#fff;pointer-events:none}
 .ar-prescription-landscape{position:absolute;left:0;top:0;width:926px;height:428px;transform-origin:top left;transform:translateX(428px) rotate(90deg);isolation:isolate}
+
+/* WEB15 -> portrait AR: eliminate the exposed straight left edges of
+   WEB15's inset workbench image (x=52) and hard-light tint (x=43).
+   After rotation those inset edges became a horizontal red stripe. */
+.ar-prescription-landscape>.bg{left:0!important;width:926px!important}
+.ar-prescription-landscape>.new-orange-tint{left:0!important;width:926px!important}
