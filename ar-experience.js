@@ -8,7 +8,7 @@ const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const frameNames=['AR3','AR3-1','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'];
 const state={root:null,video:null,stage:null,frame:'AR3',maskCount:0,variant:'first',
  face:null,hand:null,playing:false,requestId:0,lastFace:0,lastHand:0,lastVideoTime:-1,
- guideSince:0,pinchStart:null,pinchReady:true,manualPeels:0,autoPeeling:false,handGuide:null,stepTimer:[],
+ guideSince:0,pinchStart:null,pinchReady:true,portraitPending:false,manualPeels:0,autoPeeling:false,handGuide:null,stepTimer:[],
  tulle:null,sheets:[],faceBox:null,matte:null,whisperAudio:null,session:0,
  modelState:'idle',faceSeen:false,analysisError:false};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
@@ -228,9 +228,9 @@ function enter(frame){
  stopTimers();stopWhisper();state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
  switch(frame){
- case 'AR3':caption('POSITION YOUR FACE HERE');break;
+ case 'AR3':state.portraitPending=false;caption('POSITION YOUR FACE HERE');break;
  case 'AR3-1':
-   startArVisuals();
+   // The cutout is already visibly ready before this transition.
    caption("What's with all the whispering?\nWhy are they staring at you?");
    startWhisper();
    delay(()=>{if(state.frame==='AR3-1')enter('AR4');},5500);
@@ -332,9 +332,28 @@ function observeFace(points,now){
  const appropriateSize=face.w>.16&&face.w<.92&&face.h>.17&&face.h<.88;
  if(!centered||!appropriateSize){state.guideSince=0;return;}
  if(!state.guideSince)state.guideSince=now;
- // Real FaceLandmarker alignment advances AR3. The optional portrait
- // segmentation is never required for recognition or the next step.
- if(now-state.guideSince>=650)enter('AR3-1');
+ // Face alignment begins the portrait extraction, but the whisper scene
+ // must NEVER precede a successfully rendered cutout.
+ if(now-state.guideSince>=650&&!state.portraitPending){
+   state.portraitPending=true;
+   ensurePortraitMatte(); // defer cloth GPU and hand inference until AR4
+   let visibleSince=0;
+   const session=state.session;
+   function waitForCutout(){
+     if(!state.root||state.frame!=='AR3'||session!==state.session)return;
+     const ready=!!state.matte?.visible&&
+       state.root.classList.contains('ar-matting-active');
+     if(ready){
+       if(!visibleSince)visibleSince=performance.now();
+       if(performance.now()-visibleSince>=350&&state.faceBox){
+         enter('AR3-1');
+         return;
+       }
+     }else visibleSince=0;
+     delay(waitForCutout,160);
+   }
+   delay(waitForCutout,160);
+ }
 }
 function observeHands(hands,now){
   if(!['AR6','AR7'].includes(state.frame)||state.autoPeeling)return;
@@ -537,7 +556,7 @@ function mount(stage,video){
  state.tulle=null;
  state.handGuide=null;
  state.sheets=[];state.variant='first';state.maskCount=0;state.analysisError=false;state.tulleWarning=false;
- state.faceBox=null;state.faceBoxSeenAt=0;state.lastFace=0;state.lastHand=0;state.lastVideoTime=-1;
+ state.portraitPending=false;state.faceBox=null;state.faceBoxSeenAt=0;state.lastFace=0;state.lastHand=0;state.lastVideoTime=-1;
  state.modelState='idle';state.faceSeen=false;
  enter('AR3');
 }
