@@ -1,0 +1,28 @@
+name: Install DCD approved audio media
+on:
+  push:
+    paths:
+      - "scripts/provision_dcd_audio.py"
+      - ".github/workflows/install-dcd-audio.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests beautifulsoup4
+      - run: python scripts/provision_dcd_audio.py
+      - name: Commit approved audio to GitHub Pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/audio/dcd-fashion-advertising-promo.mp3 assets/audio/dcd-plastic-creak.ogg assets/audio/dcd-blister-burst-1p5s.ogg assets/audio/dcd-pack-whoosh.ogg
+          if ! git diff --cached --quiet; then
+            git commit -m "Install approved DCD campaign soundtrack"
+            git push
+          fi
