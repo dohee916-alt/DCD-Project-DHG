@@ -512,7 +512,7 @@ function handsDue(now){
 }
 function track(frame,width,height,now=performance.now()){
  try{
-   if(state.face&&now-state.lastFace>=130){
+   if(state.face&&now-state.lastFace>=100){
      state.lastFace=now;
      const points=state.face.detectForVideo(frame,now).faceLandmarks?.[0];
      // Do not let a WebGL/organza rendering failure block AR3 face
@@ -563,7 +563,7 @@ function tick(){
  // Restore the previous independently timed tracker: segmentation and
  // WebGL updates must not trigger a heavy face inference every animation frame.
  const now=performance.now();
- if(!(state.face&&now-state.lastFace>=130)&&!handsDue(now))return;
+ if(!(state.face&&now-state.lastFace>=100)&&!handsDue(now))return;
  if(video.currentTime===state.lastVideoTime)return;
  state.lastVideoTime=video.currentTime;
  track(video,video.videoWidth,video.videoHeight,now);
