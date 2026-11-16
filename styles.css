@@ -1646,3 +1646,12 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive .ar-ending-cta:focus-visible{
   outline:3px solid #fff;outline-offset:5px;
 }
+
+/* Match the portrait AR blister backdrop to the approved WEB15/16 prescription gradient palette. */
+.ar-prescription-gradient{
+  pointer-events:none;
+  background:
+    linear-gradient(112deg,rgba(255,255,255,.82) 0%,rgba(255,255,255,0) 53%,rgba(255,255,255,.56) 100%),
+    linear-gradient(34deg,rgba(229,155,115,.85) 0%,rgba(233,166,124,.58) 34%,rgba(255,255,255,.72) 82%),
+    linear-gradient(160deg,#fff 5%,#f9eee7 45%,#e9a67c 100%);
+}
