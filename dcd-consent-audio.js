@@ -1,6 +1,6 @@
 /* DCD consent: original 0-7s, hold 6.5-7s until YES, then impact. */
 (()=>{'use strict';
-const FILE='assets/audio/dcd-consent-runtime.opus',HOLD_START=6.5,HOLD_END=7,IMPACT_START=7;
+const FILE='assets/audio/dcd-consent-original.mp3',HOLD_START=6.5,HOLD_END=7,IMPACT_START=11.85;
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
 let ctx=null,loading=null,buffer=null,node=null,phase='idle',revision=0;
 function halt(){if(!node)return;try{node.stop()}catch{}try{node.disconnect()}catch{}node=null}
