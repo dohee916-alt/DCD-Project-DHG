@@ -59,7 +59,23 @@ function create(root,video,canvas,onFrame){
    const first=candidates.slice(0,Math.min(5,candidates.length));
    const px=first.reduce((sum,p)=>sum+p.x,0)/first.length;
    const py=first.reduce((sum,p)=>sum+p.y,0)/first.length;
-   root.__dcdHairCrown={x:px/w,y:py/h,at:now,source:'portrait-alpha'};
+   // Measure the upper hair outline on both sides, rather than correcting
+   // the single highest crown point only. This prevents exposed side hair.
+   const outline=[];
+   const samples=9;
+   for(let i=0;i<samples;i++){
+     const yy=Math.min(y1-1,Math.round(py+(forehead-py)*i/(samples-1)));
+     const localY=yy-y0;
+     if(localY<0||localY>=sh)continue;
+     let left=-1,right=-1;
+     for(let x=0;x<sw;x++){
+       if(data[(localY*sw+x)*4+3]>145){
+         if(left<0)left=x;right=x;
+       }
+     }
+     if(left>=0&&right-left>=threshold)outline.push({y:yy/h,left:(x0+left)/w,right:(x0+right)/w});
+   }
+   root.__dcdHairCrown={x:px/w,y:py/h,outline,at:now,source:'portrait-alpha'};
  }
 
  const subject=document.createElement('canvas');
@@ -116,7 +132,7 @@ function create(root,video,canvas,onFrame){
  // Try the large temporal model on both WebGPU and WebGL.
  // SelfieSegmenter is a last-resort compatibility fallback only.
  
- const modes=['large','small','mediapipe'];
+ const modes=['xl','large','small','mediapipe'];
  function hide(){
   visible=false;canvas.style.visibility='hidden';root.dataset.arMatte='camera';
   root.classList.remove('ar-matting-active');
@@ -145,6 +161,7 @@ function create(root,video,canvas,onFrame){
    fallback.maskCtx=fallback.mask.getContext('2d',{willReadFrequently:true});
    fallback.sourceCtx=fallback.source.getContext('2d');
    root.dataset.arMatte='mediapipe-main';
+   root.dataset.arMatteEngine='mediapipe-main';
   }catch(error){console.warn('[DCD AR] Portrait fallback unavailable:',error);}
   finally{fallbackStarting=false;}
  }
@@ -218,6 +235,7 @@ function create(root,video,canvas,onFrame){
     data.source?.close();data.cutout?.close();return;
    }
    if(data.type==='ready'){
+    root.dataset.arMatteEngine=data.engine||mode;
     clearTimeout(watchdog);watchdog=0;ready=true;
     if(data.engine?.startsWith('longpipe'))initSemantic();
     return;
