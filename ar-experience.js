@@ -201,19 +201,22 @@ function removeFabric(){
 // First three masks are removed by hand; the last two peel one at a time.
 function completeHandPeel(){
   if(state.frame!=='AR7'||state.autoPeeling||state.maskCount===0)return;
-  const before=state.maskCount;
-  removeFabric();
-  if(state.maskCount===before)return;
   state.manualPeels++;
   state.pinchReady=false;
   state.pinchStart=null;
-  if(state.manualPeels===1)state.handGuide?.hideOnce(0);
-  if(state.manualPeels>=3){
+  if(state.manualPeels<=2){
+    removeFabric();
+    if(state.manualPeels===1)state.handGuide?.hideOnce(0);
+  }else{
     state.autoPeeling=true;
-    // Exactly three gestures total: two single sheets followed by all three
-    // remaining sheets on the final gesture, with one shared peel event.
-    while(state.maskCount>0)removeFabric();
-    delay(()=>{if(state.frame==='AR7'&&state.maskCount===0)enter('AR8');},1600);
+    // Gesture three starts THREE separate automatic peel animations.
+    // No fourth gesture is needed and the first two gestures remove one each.
+    for(let i=0;i<3;i++)delay(()=>{
+      if(state.frame==='AR7'&&state.maskCount>0)removeFabric();
+    },i*900);
+    delay(()=>{
+      if(state.frame==='AR7'&&state.maskCount===0)enter('AR8');
+    },3*900+300);
   }
 }
 function buttons(yes,no){
@@ -280,15 +283,18 @@ function enter(frame){
    break;
  case 'AR5-2':
    caption('');
-   // The previous THEY SAY disappears when the removal starts.
-   // Reveal NOW THEY SAY once, by typing; hold it throughout the new labels.
-   typeStigmaHeading('NOW THEY SAY');
-   for(let i=0;i<5;i++)delay(removeFabric,400+i*900);
+   // Keep both headings hidden until the old five sheets have fully exited.
+   for(let i=0;i<5;i++)delay(()=>{
+     if(state.frame==='AR5-2')removeFabric();
+   },400+i*900);
    delay(()=>{
-     if(state.frame!=='AR5-2')return;
+     if(state.frame!=='AR5-2'||state.maskCount!==0)return;
      state.variant='replacement';
-     showStigmaSequence('replacement',()=>{if(state.frame==='AR5-2')enter('AR6');});
-   },6000);break;
+     typeStigmaHeading('NOW THEY SAY',()=>{
+       if(state.frame==='AR5-2')
+         showStigmaSequence('replacement',()=>{if(state.frame==='AR5-2')enter('AR6');});
+     });
+   },5000);break;
  case 'AR6':
     state.manualPeels=0;state.autoPeeling=false;
     caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
