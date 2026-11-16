@@ -1,7 +1,7 @@
 /* Present only recent cutouts, with the source frame for face/hand tracking. */
 (() => {
 'use strict';
-const MAX_FRAME_AGE=1150, MAX_VISIBLE_AGE=1900;
+const MAX_FRAME_AGE=3200, MAX_VISIBLE_AGE=5000;
 const scriptURL=document.currentScript.src;
 const workerURL=new URL('ar-matte-worker.js?v=restore-xl-webgl-20261116-26',scriptURL);
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
@@ -248,6 +248,7 @@ function create(root,video,canvas,onFrame){
  }
  function next(reason){
   if(reason){
+    if(root.__dcdMatteStatus)root.__dcdMatteStatus.lastFailure=String(reason);
     root.dataset.arMatteLastFailure=String(reason).slice(0,180);
     console.warn('[DCD AR] Changing portrait engine:',reason);
   }
@@ -261,7 +262,7 @@ function create(root,video,canvas,onFrame){
   let current;
   try{current=new Worker(workerURL,{type:'module'})}catch(error){startFallback(error);return;}
   worker=current;
-  watchdog=setTimeout(()=>next(mode+' initialization timeout'),18000);
+  watchdog=setTimeout(()=>next(mode+' initialization timeout'),40000);
   current.onerror=event=>{if(worker===current)next(event.message||'Worker error');};
   current.onmessage=({data})=>{
    if(worker!==current||!live){
@@ -269,6 +270,8 @@ function create(root,video,canvas,onFrame){
    }
    if(data.type==='ready'){
     root.dataset.arMatteEngine=data.engine||mode;
+    root.__dcdMatteStatus={engine:data.engine||mode,mode,ready:true,frames:0,latencyMs:null,
+      inputWidth:video.videoWidth,inputHeight:video.videoHeight,cutoutWidth:null,cutoutHeight:null};
     console.info('[DCD AR] Portrait engine ready:',root.dataset.arMatteEngine);
     clearTimeout(watchdog);watchdog=0;ready=true;
     // The HD Longpipe alpha directly supplies crown geometry. Do not run
@@ -282,6 +285,13 @@ function create(root,video,canvas,onFrame){
    let semanticOffered=false;
    try{
     const age=request?performance.now()-request.started:Infinity;
+    if(root.__dcdMatteStatus){
+      root.__dcdMatteStatus.latencyMs=Math.round(age);
+      root.__dcdMatteStatus.inputWidth=video.videoWidth;
+      root.__dcdMatteStatus.inputHeight=video.videoHeight;
+      root.__dcdMatteStatus.cutoutWidth=data.cutout?.displayWidth||data.cutout?.width||null;
+      root.__dcdMatteStatus.cutoutHeight=data.cutout?.displayHeight||data.cutout?.height||null;
+    }
     if(age>MAX_FRAME_AGE){
      if(!warmingUp&&++misses>=6)next(data.engine+' frame age '+Math.round(age)+' ms');
      return;
@@ -307,6 +317,7 @@ function create(root,video,canvas,onFrame){
     ctx.drawImage(subject,0,0);
     ctx.restore();
     lastCapture=performance.now();visible=true;
+    if(root.__dcdMatteStatus)root.__dcdMatteStatus.frames++;
     measureVisibleHairCrown(lastCapture);
     root.classList.add('ar-matting-active');
     canvas.style.visibility='visible';canvas.style.opacity='1';
@@ -329,7 +340,7 @@ function create(root,video,canvas,onFrame){
   if(!live)return;
   if(fallback){drawFallback(now);return;}
   if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE*2.2&&ready){next('Portrait frame stalled');return;}
-  if(pending&&performance.now()-pending.started>(firstFrame?4500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
+  if(pending&&performance.now()-pending.started>(firstFrame?9000:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
   const time=metadata?.mediaTime??video.currentTime;
   if(time<=lastVideoTime)return;
