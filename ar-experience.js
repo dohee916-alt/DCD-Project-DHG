@@ -5,11 +5,11 @@
 const MODEL_ROOT='https://storage.googleapis.com/mediapipe-models/';
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
-const frameNames=['AR3','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'];
+const frameNames=['AR3','AR3-1','AR4','AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'];
 const state={root:null,video:null,stage:null,frame:'AR3',maskCount:0,variant:'first',
  face:null,hand:null,playing:false,requestId:0,lastFace:0,lastHand:0,lastVideoTime:-1,
  guideSince:0,pinchStart:null,pinchReady:true,manualPeels:0,autoPeeling:false,handGuide:null,stepTimer:[],
- tulle:null,sheets:[],faceBox:null,matte:null,session:0,
+ tulle:null,sheets:[],faceBox:null,matte:null,whisperAudio:null,session:0,
  modelState:'idle',faceSeen:false,analysisError:false};
 const delay=(fn,ms)=>{const timer=setTimeout(()=>{state.stepTimer=state.stepTimer.filter(t=>t!==timer);fn();},ms);state.stepTimer.push(timer);return timer};
 const stopTimers=()=>{state.stepTimer.forEach(clearTimeout);state.stepTimer=[]};
@@ -26,11 +26,21 @@ function markup(){
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
  '<div class="ar-copy" aria-live="polite"></div>'+ 
- '<div class="ar-stigma-message" aria-live="polite"><div class="ar-stigma-heading">YOU AGREED TO</div><div class="ar-stigma-typed"></div></div>'+
+ '<div class="ar-stigma-message" aria-live="polite"><div class="ar-stigma-heading">THEY SAY</div><div class="ar-stigma-typed"></div></div>'+
   '<button type=\"button\" class=\"ar-ending-cta\" aria-label=\"READY TO SEE DIFFERENTLY?\"><span>READY TO SEE<br>DIFFERENTLY?</span></button>'+
  '<svg class="ar-face-guide" aria-hidden="true" width="289" height="375" viewBox="0 0 289 375" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="144.5" cy="187.5" rx="142" ry="185" stroke="#D83A00" stroke-width="5" stroke-linecap="round" stroke-dasharray="0.5 30"/></svg>'+
  '<div class="ar-gesture-guide" aria-hidden="true"></div>'+
  '<div class="ar-flow-choices"></div></div>';
+}
+// SFXMint CC0 low crowd whisper ambience; dialogue is deliberately indistinct.
+const WHISPER_AUDIO='https://sfxmint.com/dl/hushed-crowd-murmur-walla-02.mp3';
+function startWhisper(){
+ const audio=state.whisperAudio||new Audio(WHISPER_AUDIO);
+ state.whisperAudio=audio;audio.preload='auto';audio.loop=true;audio.volume=.32;
+ audio.currentTime=0;audio.play()?.catch?.(e=>console.warn('[DCD AR] Whisper audio:',e));
+}
+function stopWhisper(){
+ if(state.whisperAudio){state.whisperAudio.pause();state.whisperAudio.currentTime=0;}
 }
 function clearScene(){
  if(!state.root)return;
@@ -178,10 +188,16 @@ function buttons(yes,no){
 }
 function enter(frame){
  if(!state.root||!frameNames.includes(frame))return;
- stopTimers();state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
+ stopTimers();stopWhisper();state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
  switch(frame){
  case 'AR3':caption('POSITION YOUR FACE HERE');break;
+ case 'AR3-1':
+   startArVisuals();
+   caption("What's with all the whispering?\nWhy are they staring at you?");
+   startWhisper();
+   delay(()=>{if(state.frame==='AR3-1')enter('AR4');},5500);
+   break;
  case 'AR4':
    // Only after face recognition: start expensive cutout/fabric and hand model.
    startArVisuals();
@@ -276,7 +292,7 @@ function observeFace(points,now){
  if(!state.guideSince)state.guideSince=now;
  // Real FaceLandmarker alignment advances AR3. The optional portrait
  // segmentation is never required for recognition or the next step.
- if(now-state.guideSince>=650)enter('AR4');
+ if(now-state.guideSince>=650)enter('AR3-1');
 }
 function observeHands(hands,now){
   if(!['AR6','AR7'].includes(state.frame)||state.autoPeeling)return;
@@ -516,7 +532,7 @@ function startArVisuals(){
 }
 function stop(){
  state.session++;
- state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
+ state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();stopWhisper();
  state.matte?.stop();state.matte=null;
  state.face?.close();state.face=null;
  state.hand?.close();state.hand=null;
