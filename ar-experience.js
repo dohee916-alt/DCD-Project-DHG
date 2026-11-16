@@ -163,10 +163,10 @@ function completeHandPeel(){
   if(state.manualPeels===1)state.handGuide?.hideOnce(0);
   if(state.manualPeels>=3){
     state.autoPeeling=true;
-    // Keep all removal animations on the existing 720ms peel renderer.
-    delay(()=>{if(state.frame==='AR7'&&state.maskCount>0)removeFabric();},850);
-    delay(()=>{if(state.frame==='AR7'&&state.maskCount>0)removeFabric();},1750);
-    delay(()=>{if(state.frame==='AR7'&&state.maskCount===0)enter('AR8');},3000);
+    // Exactly three gestures total: two single sheets followed by all three
+    // remaining sheets on the final gesture, with one shared peel event.
+    while(state.maskCount>0)removeFabric();
+    delay(()=>{if(state.frame==='AR7'&&state.maskCount===0)enter('AR8');},1600);
   }
 }
 function buttons(yes,no){
