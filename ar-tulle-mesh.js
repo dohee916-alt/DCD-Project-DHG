@@ -596,14 +596,14 @@ function create(root){
     const pitch=clamp((points[1].z-(points[10].z+points[152].z)*.5)*2,-.32,.32);
     const cw=fw*2.17,ch=fh*1.76;
     // Stabilize tracking without independently spinning the fitted veil.
-    const prev=faceCenter,alpha=.22;
+    const prev=faceCenter,alpha=.76;
     const fx=prev?mix(prev.x,cx,alpha):cx;
     const fy=prev?mix(prev.y,centerY,alpha):centerY;
-    const fwidth=prev?mix(prev.fw,fw,.18):fw;
-    const fheight=prev?mix(prev.fh,fh,.18):fh;
-    const roll=prev?mix(prev.roll||0,clamp(angle,-.085,.085),.12):clamp(angle,-.085,.085);
+    const fwidth=prev?mix(prev.fw,fw,.73):fw;
+    const fheight=prev?mix(prev.fh,fh,.73):fh;
+    const roll=prev?mix(prev.roll||0,clamp(angle,-.14,.14),.67):clamp(angle,-.085,.085);
     faceCenter={x:fx,y:fy,cw:fwidth*2.17,ch:fheight*1.76,
-      hairCrownY:Number.isFinite(crown)?(prev?.hairCrownY!=null?mix(prev.hairCrownY,crown,.22):crown):(prev?.hairCrownY??null),
+      hairCrownY:Number.isFinite(crown)?(prev?.hairCrownY!=null?mix(prev.hairCrownY,crown,.72):crown):(prev?.hairCrownY??null),
       hairOutline:measured&&performance.now()-measured.at<2300?measured.outline||null:null,
       crownCurve:(()=>{
         const raw=measured&&performance.now()-measured.at<2300?measured.curve||null:null;
@@ -613,8 +613,8 @@ function create(root){
         return raw.map(point=>{
           let nearest=prior[0],distance=Infinity;
           for(const p of prior){const d=Math.abs(p.x-point.x);if(d<distance){distance=d;nearest=p;}}
-          const limitedY=clamp(point.y,nearest.y-.012,nearest.y+.012);
-          return {x:point.x,y:mix(nearest.y,limitedY,.28)};
+          const limitedY=clamp(point.y,nearest.y-.065,nearest.y+.065);
+          return {x:point.x,y:mix(nearest.y,limitedY,.68)};
         });
       })(),
       co:Math.cos(roll),si:Math.sin(roll),roll,fw:fwidth,fh:fheight,
@@ -649,7 +649,7 @@ function create(root){
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
       const y=-.98+.025*Math.sin(c*.65+r*.43+layer.index);
-      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.16});
+      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=2&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.25});
     }
     const add=(a,b,rest,stiffness)=>links.push({a,b,rest,stiffness});
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
@@ -714,7 +714,7 @@ function create(root){
              // Anchor the physical solver itself to the observed scalp arc.
              // No post-simulation vertex translation, which caused snapping.
              const targetY=Number.isFinite(crownY)
-               ?clamp((crownY-8-faceCenter.y)/faceCenter.fw,-2.15,-.25)
+               ?clamp((crownY-24-faceCenter.y)/faceCenter.fw,-2.15,-.25)
                :physicalY;
              const py=Number.isFinite(crownY)?targetY:physicalY;
              p.x=p.ox=px;p.z=p.oz=pz;p.y=p.oy=py;continue;
@@ -723,7 +723,7 @@ function create(root){
           p.ox=p.x;p.oy=p.y;p.oz=p.z;
           p.x+=vx;p.y+=vy+.012*stepRatio*stepRatio;p.z+=vz;
         }
-        for(let iteration=0;iteration<1;iteration++){
+        for(let iteration=0;iteration<3;iteration++){
           for(const e of sim.links){
             const a=sim.nodes[e.a],b=sim.nodes[e.b];
             const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
@@ -891,7 +891,7 @@ function create(root){
           if(!layer.smoothPositions)layer.smoothPositions=new Float32Array(vertices.length);
           const smooth=layer.smoothPositions;
           const elapsedFrame=layer.lastSmoothAt?Math.min(0.12,(now-layer.lastSmoothAt)/1000):1/24;
-          const blend=layer.lastSmoothAt?1-Math.exp(-elapsedFrame/0.095):1;
+          const blend=layer.lastSmoothAt?1-Math.exp(-elapsedFrame/0.025):1;
           layer.lastSmoothAt=now;
           for(let vtx=0;vtx<vertices.length;vtx+=stride){
             const x=vertices[vtx],y=vertices[vtx+1];
