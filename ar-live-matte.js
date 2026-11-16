@@ -262,6 +262,8 @@ function create(root,video,canvas,onFrame){
   ctx.clearRect(0,0,w,h);
   ctx.drawImage(f.foreground,0,0);
   visible=true;lastCapture=now;
+  root.__dcdMatteStatus||={engine:'mediapipe-main',frames:0};
+  root.__dcdMatteStatus.frames++;root.__dcdMatteStatus.lastFrameAt=now;
   measureVisibleHairCrown(now);
   root.classList.add('ar-matting-active');
   canvas.style.visibility='visible';canvas.style.opacity='1';
@@ -335,7 +337,7 @@ function create(root,video,canvas,onFrame){
     alphaCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
     hasAlpha=true;latestMaskAt=performance.now();
     lastCapture=performance.now();visible=true;
-    if(root.__dcdMatteStatus)root.__dcdMatteStatus.frames++;
+    if(root.__dcdMatteStatus){root.__dcdMatteStatus.frames++;root.__dcdMatteStatus.lastFrameAt=lastCapture;}
     measureVisibleHairCrown(lastCapture);
     root.classList.add('ar-matting-active');
     canvas.style.visibility='visible';canvas.style.opacity='1';
