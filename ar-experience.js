@@ -280,8 +280,9 @@ function enter(frame){
    function readyForStigmas(){
      if(state.frame!=='AR4')return;
      const matteReady=!!state.matte?.visible;
-     const elapsed=performance.now()-prepare;
-     if((matteReady&&state.faceBox)||elapsed>=6500){
+     const status=state.root.__dcdMatteStatus;
+     const fresh=status?.lastFrameAt&&performance.now()-status.lastFrameAt<1300;
+     if(matteReady&&state.faceBox&&fresh){
        typeStigmaHeading('THEY SAY',()=>{
          if(state.frame==='AR4')showStigmaSequence('first',()=>{if(state.frame==='AR4')enter('AR5');});
        });
@@ -376,7 +377,9 @@ function observeFace(points,now){
    const session=state.session;
    function waitForCutout(){
      if(!state.root||state.frame!=='AR3'||session!==state.session)return;
-     const ready=!!state.matte?.visible&&
+     const status=state.root.__dcdMatteStatus;
+     const ready=!!state.matte?.visible&&status?.frames>=2&&
+       performance.now()-(status.lastFrameAt||0)<1300&&
        state.root.classList.contains('ar-matting-active');
      if(ready){
        if(!visibleSince)visibleSince=performance.now();
@@ -582,9 +585,8 @@ function mount(stage,video){
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
   root.querySelector('.ar-ending-cta')?.addEventListener('click',()=>{
     if(state.frame!=='AR10')return;
-    state.sheets.forEach(sheet=>sheet.layer.remove());
-    state.sheets=[];state.maskCount=0;state.manualPeels=0;state.autoPeeling=false;
-    state.tulle?.clear();enter('AR3');
+    // Return to WEB01's initial pull-guide, skipping the preceding advert.
+    window.DCD_RESTART_WEB?.();
   });
  // Do NOT allocate GPU organza or start heavy matting before AR3 can see
  // the face. Those visuals are only needed after the detection transition.
