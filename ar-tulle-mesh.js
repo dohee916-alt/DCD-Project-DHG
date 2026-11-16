@@ -316,14 +316,14 @@ function canvasCloth(root){
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
     // Fallback also uses a larger head-covering sheet.
     const cw=fw*1.90;
-    const ch=fh*1.75;
-    const cx=(left.x+right.x)/2,cy=head.y+fh*.62;
+    const ch=fh*1.50;
+    const cx=(left.x+right.x)/2,cy=head.y+fh*.72;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
     for(let pass=0;pass<2;pass++)for(const layer of layers){
       const age=(now-layer.start)/1000;
-      const progress=clamp(age/.36,0,1);
+      const progress=clamp(age/1.65,0,1);
       const fly=1-progress*progress*progress;
       const shiftX=(layer.index%2?1:-1)*24*fly,shiftY=-55*fly;
       const exit=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
@@ -354,7 +354,7 @@ function canvasCloth(root){
       fold.addColorStop(1,'rgba(253,249,243,.22)');
       ctx.fillStyle=fold;ctx.fillRect(l,b-ch*.23,cw,ch*.23);
       }
-      const config=FIGMA_MASK_TEXT[layer.variant]?.[layer.index];
+      const config=null; // Stigma messages are now presented above the live face.
       if(pass===1&&config){
         const slot=embroiderySlot(config);
         const x=l+slot.u*cw,y=t+(1-slot.v)*ch;
@@ -579,11 +579,11 @@ function create(root){
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2+fh*.035;
     // Track the rigid head using the face, but NEVER sculpt cloth from skin.
     // Estimated skull volume includes the crown above landmark 10.
-    const centerY=forehead.y+fh*.34;
+    const centerY=forehead.y+fh*.48;
     const yaw=clamp(((points[1].x-(points[234].x+points[454].x)*.5)/
       Math.max(.08,Math.abs(points[454].x-points[234].x)))*1.1,-.52,.52);
     const pitch=clamp((points[1].z-(points[10].z+points[152].z)*.5)*2,-.32,.32);
-    const cw=fw*2.35,ch=fh*2.05;
+    const cw=fw*2.17,ch=fh*1.76;
     // Stabilize tracking without independently spinning the fitted veil.
     const prev=faceCenter,alpha=.22;
     const fx=prev?mix(prev.x,cx,alpha):cx;
@@ -591,10 +591,10 @@ function create(root){
     const fwidth=prev?mix(prev.fw,fw,.18):fw;
     const fheight=prev?mix(prev.fh,fh,.18):fh;
     const roll=prev?mix(prev.roll||0,clamp(angle,-.085,.085),.12):clamp(angle,-.085,.085);
-    faceCenter={x:fx,y:fy,cw:fwidth*2.35,ch:fheight*2.05,
+    faceCenter={x:fx,y:fy,cw:fwidth*2.17,ch:fheight*1.76,
       co:Math.cos(roll),si:Math.sin(roll),roll,fw:fwidth,fh:fheight,
       yaw:0,pitch:0,
-      radiusX:fwidth*.59,radiusY:fheight*.84,radiusZ:fwidth*.59};
+      radiusX:fwidth*.59,radiusY:fheight*.52,radiusZ:fwidth*.59};
     // Build the real tracked face surface in the same mirrored screen space.
     facePixels=new Float32Array(468*2);
     faceDepth=new Float32Array(468);
@@ -652,11 +652,11 @@ function create(root){
     const radiusX=faceCenter.radiusX/faceCenter.fw;
     const radiusZ=faceCenter.radiusZ/faceCenter.fw;
     const anchorY=-radiusY-.025,headY=0;
-    const contactAge=clamp((now-layer.start-250)/1000,0,1);
+    const contactAge=clamp((now-layer.start-450)/1650,0,1);
     // Freeze only the accumulating gravity/constraint solver after the
     // approved three-dimensional form settles. The render projection adds
     // bounded non-accumulating air movement; crown orientation stays fixed.
-    const locked=now-layer.start>1700;
+    const locked=now-layer.start>3100;
     if(contactAge>0&&!layer.removing&&!locked){
       const slices=Math.max(1,Math.ceil(frameStep));
       const stepRatio=frameStep/slices;
@@ -793,12 +793,12 @@ function create(root){
       // Composite each physical sheet with its own embroidery. A new sheet
       // veils both the face and the older embroidery beneath it.
       for(const layer of layers){
-        for(let pass=0;pass<2;pass++){
+        for(let pass=0;pass<1;pass++){
           gl.uniform1f(passUniform,pass);
           const tex=textures[layer.variant]?.[layer.index];
           if(!tex)continue;
           const seconds=(now-layer.start)/1000;
-          const progress=clamp(seconds/.36,0,1);
+          const progress=clamp(seconds/1.65,0,1);
           const approach=layer.removing?1:arrival(progress);
           const fly=1-approach;
           const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
@@ -815,7 +815,7 @@ function create(root){
             const flatY=(.5-v)*clothHeight*.04;
             const startX=center.x+flatX*center.co-flatY*center.si;
             const startY=center.y-clothHeight*.44+flatX*center.si+flatY*center.co;
-            const landing=ease(clamp((seconds-.12)/.75,0,1));
+            const landing=ease(clamp((seconds-.28)/1.65,0,1));
             const x=startX+(mesh[at]-startX)*landing;
             const y=startY+(mesh[at+1]-startY)*landing;
             const flutter=(1-landing)*Math.sin(u*17+now*.008+layer.index)*5;
