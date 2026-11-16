@@ -1517,7 +1517,7 @@ window.DCD_RESTART_WEB=()=>{
 // Deterministic, unhurried Reel0 -> Reel1 movement; browser-native
 // smooth scrolling is often too abrupt and varies by device.
 let reelTransitionFrame=0;
-function advanceReel(duration=2800){
+function advanceReel(duration=1800){
  const scroller=stage.querySelector('.reels-vertical-scroll');
  if(!scroller||s.page!=='reel0')return;
  cancelAnimationFrame(reelTransitionFrame);
