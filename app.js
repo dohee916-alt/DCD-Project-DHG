@@ -436,6 +436,9 @@ function bindNewSignature(){
     };
   }
   c.onpointerdown=e=>{
+    // This real prescription canvas stops event propagation, so unlock SFX
+    // here instead of relying on the outer stage pointerdown listener.
+    window.DCD_WEB_SFX?.unlock();
     e.stopPropagation();e.preventDefault();
     if(activePointer!==null)return;
     activePointer=e.pointerId;strokeMoved=false;c.setPointerCapture(e.pointerId);
@@ -444,7 +447,9 @@ function bindNewSignature(){
   c.onpointermove=e=>{
     if(activePointer!==e.pointerId)return;
     e.stopPropagation();e.preventDefault();
-    const p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();strokeMoved=true;
+    const p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();
+    if(!strokeMoved)window.DCD_WEB_SFX?.play('signature',{loop:true});
+    strokeMoved=true;
     if(!hasInk){
       hasInk=true;
       stage.querySelectorAll('.new-signature-sample,.new-signature-trace,.new-signature-guide').forEach(n=>n.remove());
@@ -456,6 +461,7 @@ function bindNewSignature(){
     if(activePointer!==e.pointerId)return;
     e.stopPropagation();e.preventDefault();
     activePointer=null;
+    window.DCD_WEB_SFX?.stop('signature');
     if(!strokeMoved)return;
     signatureInk=c.toDataURL('image/png');s.signed=true;save();
     // Keep the SAME canvas mounted so additional strokes remain possible.
