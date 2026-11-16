@@ -72,7 +72,12 @@ def ffmpeg(source,dest,*args):
 # Source files are public previews when this workflow runs remotely. They
 # are the same user-approved recordings, not substituted sound designs.
 bgm=OUT/"dcd-fashion-advertising-promo.mp3"
-fetch(music_url(),bgm)
+try:
+    fetch(music_url(),bgm)
+except Exception as exc:
+    # Pixabay may block GitHub's datacenter IP even for public audio.
+    # Continue installing CC previews so the other sound cues still work.
+    print("WARNING: Pixabay BGM download unavailable:",repr(exc),flush=True)
 sources={
     "creak":("dheming",274977),
     "pills":("unfa",170637),
@@ -91,4 +96,5 @@ ffmpeg(OUT/".dcd-source-whoosh.mp3",OUT/"dcd-pack-whoosh.ogg",
        "-t","3.2","-af","volume=0.8")
 for p in OUT.glob(".dcd-source-*"):p.unlink()
 for p in (bgm,OUT/"dcd-plastic-creak.ogg",OUT/"dcd-blister-burst-1p5s.ogg",OUT/"dcd-pack-whoosh.ogg"):
+    if not p.exists():continue
     print("READY",p,p.stat().st_size)
