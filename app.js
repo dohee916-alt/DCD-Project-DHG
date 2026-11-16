@@ -230,6 +230,7 @@ function reelStackMarkup(){
  '<section class="reel-screen reel-screen-zero" aria-label="Reel 0">'+
  '<img class="reel-background" src="assets/figma-current/hd/reel0-underlay-image.jpg" alt="" draggable="false">'+
  '<img class="reel-frame-overlay" src="assets/figma-current/hd/reel0-ui-scroll-no-status.png" alt="" draggable="false">'+
+ (!openingSoundEnabled?'<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>':'')+
  '</section>'+
  '<section class="reel-screen reel-screen-one" aria-label="Reel 1">'+introMarkup('00')+'</section>'+
  '</div>'+
@@ -238,8 +239,7 @@ function reelStackMarkup(){
 function introMarkup(p){
   if(p==='00')return blisterMotionLayer(A.blisterPingpong,'loop',A.blisterPingpongFirst)+
     '<img class="reel-frame-overlay reel1-figma-overlay" src="assets/figma-current/hd/reel1-ui-scroll-no-status.png" alt="" aria-hidden="true">'+
-    '<button class="full-hit" data-action="enter" aria-label="Continue to the interactive advertisement"></button>'+
-    (!openingSoundEnabled?'<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound on the opening advertisement"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>':'');
+    '<button class="full-hit" data-action="enter" aria-label="Continue to the interactive advertisement"></button>';
   // Approved GIFs entirely replace the superseded pair of alternating
   // poster photos. No old poster is allowed to flash behind a new GIF.
   let h='<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+
@@ -1094,6 +1094,9 @@ if(packHand){
    };
    reelScroll.addEventListener('scroll',syncReelAudio,{passive:true});
    syncReelAudio();
+   // Reel0 and its entire interface rise automatically into Reel1.
+   later(()=>{if(s.page==='reel0'&&reelScroll.isConnected&&reelScroll.scrollTop<190)
+     reelScroll.scrollTo({top:926,behavior:'smooth'});},4300);
   }
  }
  if(s.page==='14')bindNewSignature();
@@ -1509,7 +1512,7 @@ window.DCD_RESTART_WEB=()=>{
  s=fresh();sessionStorage.removeItem(key);
  setPage('01','guide');
 };
-function act(a){if(a==='openReel1'&&s.page==='reel0'){setPage('00','loop');return;}if(a==='enableSound'&&(s.page==='00'||s.page==='reel0')){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();return;}if(a==='enter'&&(s.page==='00'||s.page==='reel0'))runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
+function act(a){if(a==='openReel1'&&s.page==='reel0'){stage.querySelector('.reels-vertical-scroll')?.scrollTo({top:926,behavior:'smooth'});return;}if(a==='enableSound'&&(s.page==='00'||s.page==='reel0')){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();if(s.page==='reel0'){const reels=stage.querySelector('.reels-vertical-scroll');later(()=>{if(s.page==='reel0'&&reels?.isConnected)reels.scrollTo({top:926,behavior:'smooth'});},450);}return;}if(a==='enter'&&(s.page==='00'||s.page==='reel0'))runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
 stage.addEventListener('click',e=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('pointerdown',()=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();},{passive:true});
 stage.addEventListener('change',e=>{
