@@ -603,9 +603,20 @@ function create(root){
     const fheight=prev?mix(prev.fh,fh,.18):fh;
     const roll=prev?mix(prev.roll||0,clamp(angle,-.085,.085),.12):clamp(angle,-.085,.085);
     faceCenter={x:fx,y:fy,cw:fwidth*2.17,ch:fheight*1.76,
-      hairCrownY:Number.isFinite(crown)?crown:null,
+      hairCrownY:Number.isFinite(crown)?(prev?.hairCrownY!=null?mix(prev.hairCrownY,crown,.22):crown):(prev?.hairCrownY??null),
       hairOutline:measured&&performance.now()-measured.at<2300?measured.outline||null:null,
-      crownCurve:measured&&performance.now()-measured.at<2300?measured.curve||null:null,
+      crownCurve:(()=>{
+        const raw=measured&&performance.now()-measured.at<2300?measured.curve||null:null;
+        if(!raw?.length)return prev?.crownCurve||null;
+        const prior=prev?.crownCurve;
+        if(!prior?.length)return raw;
+        return raw.map(point=>{
+          let nearest=prior[0],distance=Infinity;
+          for(const p of prior){const d=Math.abs(p.x-point.x);if(d<distance){distance=d;nearest=p;}}
+          const limitedY=clamp(point.y,nearest.y-.012,nearest.y+.012);
+          return {x:point.x,y:mix(nearest.y,limitedY,.28)};
+        });
+      })(),
       co:Math.cos(roll),si:Math.sin(roll),roll,fw:fwidth,fh:fheight,
       yaw:0,pitch:0,
       radiusX:fwidth*.59,radiusY:fheight*.52,radiusZ:fwidth*.59};
