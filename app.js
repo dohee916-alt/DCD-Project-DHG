@@ -1152,6 +1152,8 @@ async function animatePackIntoPrescription(){
   if(s.page==='11')setPage('12');
 }
 async function beginPacking(){
+  // All four dolls are packed: the tray starts moving into the machine.
+  window.DCD_WEB_SFX?.play('machine-in');
   // Warm the exact four front-body references while the machine is running,
   // so the WEB12 front face does not stall at the moment of the fast release.
   s.figures.forEach(f=>window.DCDMorph.preload(f.kind,f.value,'front').catch(()=>{}));
@@ -1165,6 +1167,9 @@ async function beginPacking(){
   }
   if(s.page!=='08a')return;
   setPage('09');
+  // One complete isolated machine cycle, including the fading power-down tail.
+  // Its ~2.21s length matches the ~2.37s ejection animation.
+  window.DCD_WEB_SFX?.play('machine-out');
   // Wait for the foil's actual final ejection frame; do not pause on WEB11.
   const foil=stage.querySelector('.ejecting-pack');
   const ejected=new Promise(resolve=>{
@@ -1228,6 +1233,8 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 // painted/composited on different frames, making the liquid appear faster.
 function animateSyringeVolume(windowEl,plunger,mode,duration){
   if(!windowEl||!plunger)return Promise.resolve(false);
+  // The sound follows actual fluid movement, not needle contact or guide art.
+  window.DCD_WEB_SFX?.play(mode==='fill'?'suction':'injection');
   const filling=mode==='fill',start=performance.now();
   const needleTravel=69;
   return new Promise(resolve=>{
@@ -1302,6 +1309,8 @@ async function inject(host){
 function packActive(){s.figures[s.active].packed=true;s.packGuideDone=true;s.loaded=null;let n=s.figures.findIndex(f=>!f.packed);if(n<0){save();beginPacking();}else{s.active=n;save();render();}}
 async function animatePackActive(el){
   if(!el){packActive();return;}
+  // Play only on accepted drop, as the doll flips into its foil cavity.
+  window.DCD_WEB_SFX?.play('pack');
   s.phase='packing';const i=s.active,f=s.figures[i],q=packSlots[i];
   const back=el.cloneNode(false);back.classList.remove('active-figure','dragging');back.classList.add('packing-back');back.dataset.view='back';back.style.opacity='0';back.style.pointerEvents='none';el.parentElement.appendChild(back);
   // Start movement immediately on release; loading the back image must not
@@ -1448,7 +1457,8 @@ async function advanceNewPrescription(){
   if(from==='12')later(()=>{if(s.page==='13'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);
 }
 function act(a){if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
-stage.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
+stage.addEventListener('click',e=>{window.DCD_WEB_SFX?.unlock();let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
+stage.addEventListener('pointerdown',()=>window.DCD_WEB_SFX?.unlock(),{passive:true});
 stage.addEventListener('change',e=>{
   const t=e.target;
   if(!t.matches('input[data-kind]'))return;
@@ -1530,7 +1540,7 @@ stage.addEventListener('pointerup',e=>{
   }
 });
 stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){drag=null;render();}});
-function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};}
+function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){window.DCD_WEB_SFX?.play('signature',{loop:true});stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;window.DCD_WEB_SFX?.stop('signature');if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};c.onpointercancel=()=>{drawing=false;window.DCD_WEB_SFX?.stop('signature');};}
 // Resize never rotates the WEB canvas in code. It only reads the user's
 // real viewport layout. Device motion unlocks the next step under OS lock.
 function onViewportChange(){
