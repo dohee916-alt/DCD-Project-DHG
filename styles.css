@@ -1669,3 +1669,27 @@ canvas.figure{object-fit:contain!important}
    the uncut background and stale hair edges through semitransparent alpha. */
 .ar-immersive.ar-matting-active:not(.ar-choice-phase):not(.ar-final-mode) .ar-portrait-camera{opacity:0!important}
 .ar-immersive:not(.ar-matting-active) .ar-portrait-camera{opacity:1}
+
+/* Figma 04_AR: AR3-1 (1045:109), NEW AR4&5-2 (640:775), AR5 (636:456). */
+#stage .ar-immersive[data-ar-frame="AR3-1"] .ar-copy{
+ left:33px!important;right:auto!important;top:116px!important;width:362px!important;
+ color:#000!important;font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+ white-space:pre-line!important;text-align:center!important}
+#stage .ar-immersive[data-ar-frame="AR3-1"] .ar-face-guide{opacity:0!important}
+#stage .ar-immersive[data-ar-frame="AR3-1"] .ar-gesture-guide{display:none!important}
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-message{
+ display:block!important;position:absolute!important;left:54px!important;right:auto!important;
+ top:116px!important;width:306px!important;color:#000!important;z-index:12!important;
+ font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+ text-shadow:none!important;letter-spacing:0!important;text-align:center!important}
+#stage .ar-immersive .ar-stigma-heading{
+ font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+ color:#000!important;letter-spacing:0!important}
+#stage .ar-immersive .ar-stigma-typed{
+ margin:13px 0 0!important;width:306px!important;max-width:none!important;
+ min-height:46px!important;padding:0!important;
+ font:700 18px/23px "Turret Road",sans-serif!important;
+ color:#000!important;letter-spacing:0!important;
+ white-space:pre-line!important;overflow-wrap:normal!important;text-align:center!important}
+#stage .ar-immersive:is([data-ar-frame="AR5"],[data-ar-frame="AR5-1"]) .ar-copy{
+ font-size:25px!important;line-height:32px!important;top:116px!important;color:#000!important}
