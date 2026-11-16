@@ -25,7 +25,8 @@ function markup(){
  '<div class="ar-choice-pack" aria-hidden="true"></div>'+
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
- '<div class="ar-copy" aria-live="polite"></div>'+
+ '<div class="ar-copy" aria-live="polite"></div>'+ 
+ '<div class="ar-stigma-message" aria-live="polite"><div class="ar-stigma-heading">YOU AGREED TO</div><div class="ar-stigma-typed"></div></div>'+
   '<button type=\"button\" class=\"ar-ending-cta\" aria-label=\"READY TO SEE DIFFERENTLY?\"><span>READY TO SEE<br>DIFFERENTLY?</span></button>'+
  '<svg class="ar-face-guide" aria-hidden="true" width="289" height="375" viewBox="0 0 289 375" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="144.5" cy="187.5" rx="142" ry="185" stroke="#D83A00" stroke-width="5" stroke-linecap="round" stroke-dasharray="0.5 30"/></svg>'+
  '<div class="ar-gesture-guide" aria-hidden="true"></div>'+
@@ -34,6 +35,7 @@ function markup(){
 function clearScene(){
  if(!state.root)return;
  state.root.querySelector('.ar-copy').textContent='';
+ const stigma=state.root.querySelector('.ar-stigma-typed');if(stigma)stigma.textContent='';
  state.root.querySelector('.ar-flow-choices').innerHTML='';
  state.root.querySelector('.ar-choice-pack').innerHTML='';
   state.root.querySelector('.ar-ending-cta')?.classList.remove('visible');
@@ -98,7 +100,8 @@ function fabric(){
      copy.style.setProperty('transform','rotate('+design.r+'deg)','important');
      copy.style.setProperty('transform-origin','top left','important');
    }
-   layer.appendChild(copy);root.appendChild(layer);
+   // The stigma is now typed in the fixed header, never embroidered on the cloth.
+   root.appendChild(layer);
    const surface=state.tulle?.add(state.variant,i)||null;
    state.sheets.push({layer,surface});
    requestAnimationFrame(()=>requestAnimationFrame(()=>layer.classList.add('shown')));
@@ -107,6 +110,37 @@ function fabric(){
 function addFabric(){
  if(!state.root||state.maskCount>=5)return;
  state.maskCount++;fabric();
+}
+function typeStigma(text,onComplete){
+ const typed=state.root?.querySelector('.ar-stigma-typed');
+ if(!typed)return;
+ typed.textContent='';
+ const letters=[...text],session=state.session,frame=state.frame;
+ let index=0;
+ function next(){
+   if(!state.root||state.session!==session||state.frame!==frame)return;
+   typed.textContent=letters.slice(0,++index).join('');
+   if(index<letters.length)delay(next,55);
+   else onComplete?.();
+ }
+ delay(next,300);
+}
+function showStigmaSequence(variant,done){
+ const words=ORGANZA_TEXT[variant];
+ let index=0;
+ function next(){
+   if(index>=words.length){delay(done,2000);return;}
+   typeStigma(words[index],()=>{
+     // The viewer reads the completed phrase before seeing its physical consequence.
+     delay(()=>{
+       if(!state.root||state.variant!==variant)return;
+       addFabric();
+       // Clear the line only after the sheet has visibly approached and settled.
+       delay(()=>{index++;next();},3300);
+     },2200);
+   });
+ }
+ next();
 }
 function removeFabric(){
  if(state.maskCount===0)return;
@@ -152,13 +186,21 @@ function enter(frame){
    // Only after face recognition: start expensive cutout/fabric and hand model.
    startArVisuals();
    if(!state.hand)loadHandWhenNeeded(state.session);
-   caption('YOU AGREED TO THESE');
+   caption('');
    state.variant='first';state.maskCount=0;state.sheets.forEach(e=>e.layer.remove());
    state.sheets=[];state.tulle?.clear();
-   // Faster fabric flight (~1.25s) and a clear but brief reading hold.
-   const firstAt=250,between=2000;
-   for(let i=0;i<5;i++)delay(addFabric,firstAt+i*between);
-   delay(()=>enter('AR5'),firstAt+4*between+1250+1100);break;
+   // Allow face tracking and the cutout pipeline to initialize before the first arrival.
+   // Never advance five fabric layers on the old rapid fixed timer.
+   const prepare=performance.now();
+   function readyForStigmas(){
+     if(state.frame!=='AR4')return;
+     const matteReady=!!state.matte?.visible;
+     const elapsed=performance.now()-prepare;
+     if((matteReady&&state.faceBox)||elapsed>=6500){
+       showStigmaSequence('first',()=>{if(state.frame==='AR4')enter('AR5');});
+     }else delay(readyForStigmas,180);
+   }
+   delay(readyForStigmas,500);break;
  case 'AR5':
    caption('DO YOU WANT TO\nCHANGE YOUR CHOICE?');
    buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
@@ -178,14 +220,13 @@ function enter(frame){
    choiceArea.querySelector('[data-ar-choice=no]').addEventListener('click',e=>{e.stopPropagation();enter('AR5-2');});
    break;
  case 'AR5-2':
-   caption('YOU AGREED TO THESE');
-   // Remove the original five fabrics with time to see them separate.
-   for(let i=0;i<5;i++)delay(removeFabric,220+i*800);
+   caption('');
+   for(let i=0;i<5;i++)delay(removeFabric,400+i*900);
    delay(()=>{
+     if(state.frame!=='AR5-2')return;
      state.variant='replacement';
-     for(let i=0;i<5;i++)delay(addFabric,250+i*2000);
-     delay(()=>enter('AR6'),250+4*2000+1250+1100);
-   },220+4*800+700);break;
+     showStigmaSequence('replacement',()=>{if(state.frame==='AR5-2')enter('AR6');});
+   },6000);break;
  case 'AR6':
     state.manualPeels=0;state.autoPeeling=false;
     caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
