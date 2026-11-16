@@ -59,7 +59,7 @@ function unlockMusic(){
  }).catch(error=>console.warn('[DCD BGM] Decode:',error));
 }
 function startMusic(){
- if(!allowed||!musicContext||!musicBuffer||musicSource||scene==='arFace'||scene==='arClose')return;
+ if(!allowed||!musicContext||!musicBuffer||musicSource||scene!=='00')return;
  if(musicContext.state!=='running'){
    if(!sourceAwaitingResume){
      sourceAwaitingResume=true;
@@ -104,8 +104,8 @@ function setScene(page){
  if(page==='00'||page==='01'){
   if(allowed&&FX.creak.paused)attempt(FX.creak);
  }else{FX.creak.pause();try{FX.creak.currentTime=0;}catch{}}
- if(page==='arFace'||page==='arClose'){stopMusic();}
- else{startMusic();}
+ if(page==='00'){startMusic();}
+ else{stopMusic();}
 }
 function duck(ms){
  if(!musicGain)return;
