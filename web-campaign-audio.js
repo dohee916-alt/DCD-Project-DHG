@@ -61,11 +61,11 @@ function attempt(audio){
 }
 function gesture(){
  allowed=true;unlockMusic();startMusic();
- if(scene==='00'&&FX.creak.paused)attempt(FX.creak);
+ if(['00','01'].includes(scene)&&FX.creak.paused)attempt(FX.creak);
 }
 function setScene(page){
  scene=page;
- if(page==='00'){
+ if(page==='00'||page==='01'){
   if(allowed&&FX.creak.paused)attempt(FX.creak);
  }else{FX.creak.pause();try{FX.creak.currentTime=0;}catch{}}
  if(page==='arFace'||page==='arClose'){stopMusic();}
