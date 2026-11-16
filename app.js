@@ -1104,6 +1104,7 @@ if(packHand){
  }
  if(s.page==='14')window.DCD_CONSENT_AUDIO?.preload?.();
  if(s.page==='15')window.DCD_CONSENT_AUDIO?.start?.();
+ window.DCD_SCENE_AUDIO?.scene?.(s.page);
  if(s.page==='14')bindNewSignature();
  if(s.page==='arFace')attachArCamera();
  const animated=stage.querySelector('.opening-blister-motion');
@@ -1485,9 +1486,10 @@ async function advanceNewPrescription(){
   if(s.phase==='transition')return;
   const from=s.page;
   if(from==='12'&&!s.expected.length||from==='13'&&!s.side.length||from==='14'&&!s.signed)return;
-  if(from==='14'||from==='14done'){setPage('15');return;}
+  if(from==='14'||from==='14done'){window.DCD_SCENE_AUDIO?.play?.('prescription-next');setPage('15');return;}
   if(from!=='12'&&from!=='13')return;
-  s.phase='transition';stage.querySelector('.new-ui-button')?.setAttribute('disabled','');
+  window.DCD_SCENE_AUDIO?.play?.('prescription-next');
+ s.phase='transition';stage.querySelector('.new-ui-button')?.setAttribute('disabled','');
   const content=stage.querySelector('.new-flow-content');
   const moves=[];
   // Both expectation and side-effect sections leave upward on NEXT.
@@ -1542,11 +1544,12 @@ function advanceReel(duration=1800){
 }
 function act(a){if(a==='openReel1'&&s.page==='reel0'){advanceReel();return;}if(a==='enableSound'&&(s.page==='00'||s.page==='reel0')){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();if(s.page==='reel0'){advanceReel();}return;}if(a==='enter'&&(s.page==='00'||s.page==='reel0'))runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15'){window.DCD_CONSENT_AUDIO?.no?.();setPage('16');}if(a==='ar')beginAr();if(a==='openAr')openArPack();}
 stage.addEventListener('click',e=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
-stage.addEventListener('pointerdown',()=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();},{passive:true});
+stage.addEventListener('pointerdown',()=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();window.DCD_SCENE_AUDIO?.unlock?.();},{passive:true});
 stage.addEventListener('change',e=>{
   const t=e.target;
   if(!t.matches('input[data-kind]'))return;
   const kind=t.dataset.kind,index=Number(t.dataset.index);
+  window.DCD_SCENE_AUDIO?.play?.('prescription-check');
   const chosen=new Set(s[kind]);
   if(t.checked)chosen.add(index);else chosen.delete(index);
   s[kind]=[...chosen];
