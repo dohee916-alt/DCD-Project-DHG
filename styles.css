@@ -1790,7 +1790,7 @@ canvas.figure{object-fit:contain!important}
 /* A single GLP-1 word must not wrap after its hyphen. The entire message
    expands equally to the left and right while remaining centered. */
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-message{
- left:14px!important;width:400px!important;right:auto!important;
+ left:7px!important;width:400px!important;right:auto!important;
 }
 #stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-typed{
  width:400px!important;max-width:400px!important;
