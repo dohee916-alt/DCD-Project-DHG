@@ -19,17 +19,8 @@ SESSION.headers.update({"User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKi
 
 def webpage(url):
     r=SESSION.get(url,timeout=35)
-    if r.ok:
-        return r.text
-    # Pixabay rejects datacenter IPs with 403. Jina Reader has a public
-    # HTML mode and returns the page DOM, including the JSON-LD AudioObject.
-    print("Direct fetch",r.status_code,"retrying HTML reader",url,flush=True)
-    proxy=SESSION.get("https://r.jina.ai/"+url,headers={
-        "X-Return-Format":"html","X-Retain-Media":"html",
-        "X-Engine":"browser"
-    },timeout=110)
-    proxy.raise_for_status()
-    return proxy.text
+    r.raise_for_status()
+    return r.text
 
 def music_url():
     url="https://pixabay.com/music/electronic-fashion-advertising-promo-348345/"
