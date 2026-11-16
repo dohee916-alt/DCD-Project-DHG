@@ -1758,3 +1758,20 @@ canvas.figure{object-fit:contain!important}
   font:700 18px/23px "Turret Road",sans-serif!important;
   white-space:pre-line!important;text-align:center!important;
 }
+
+/* Final Figma typography sync, using each source node's size and y-position. */
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{
+ left:61px!important;top:144px!important;right:auto!important;
+ width:306px!important;height:64px!important;
+ font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+ text-align:center!important;white-space:pre-line!important;
+}
+#stage .ar-immersive[data-ar-frame="AR9"] .ar-copy{
+ left:61px!important;top:430px!important;right:auto!important;
+ width:306px!important;height:64px!important;
+ font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+}
+#stage .ar-immersive[data-ar-frame="AR10"] .ar-final-rest{
+ left:61px!important;top:454px!important;width:306px!important;
+ height:96px!important;font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+}
