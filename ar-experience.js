@@ -188,6 +188,7 @@ function addFabric(){
  // When the first piece of organza begins arriving, make whispering a
  // background layer so every typed stigma remains legible.
  whisperForLayers();
+ window.DCD_SCENE_AUDIO?.play?.('mask-arrive');
  fabric();
 }
 function typeStigmaHeading(text,onComplete){
@@ -241,6 +242,7 @@ function removeFabric(){
   whisperForLayers(state.frame==='AR7');
   const sheet=state.sheets.pop();
  if(!sheet)return;
+ window.DCD_SCENE_AUDIO?.play?.('mask-peel');
  sheet.layer.classList.add('peeling');
  state.tulle?.remove(sheet.surface);
  delay(()=>sheet.layer.remove(),720);
@@ -281,6 +283,7 @@ function enter(frame){
  if(['AR8','AR9','AR10'].includes(frame))stopWhisper(true);
  state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
+ window.DCD_SCENE_AUDIO?.scene?.(frame);
  switch(frame){
  case 'AR3':state.portraitPending=false;caption('POSITION YOUR FACE HERE');break;
  case 'AR3-1':
@@ -351,6 +354,7 @@ function enter(frame){
     caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
  case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
  case 'AR8':
+    window.DCD_SCENE_AUDIO?.play?.('mask-all-cleared');
     stopWhisper(true);
     // Explicitly clear the removed transition label, including when
    // returning from a previous scene in an existing browser session.
