@@ -3,7 +3,7 @@
 'use strict';
 const MAX_FRAME_AGE=1150, MAX_VISIBLE_AGE=1900;
 const scriptURL=document.currentScript.src;
-const workerURL=new URL('ar-matte-worker.js?v=cloth-contact-matte-20261110-156',scriptURL);
+const workerURL=new URL('ar-matte-worker.js?v=hd-matte-stability-20261116-20',scriptURL);
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
 const WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const SELFIE='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
@@ -276,7 +276,7 @@ function create(root,video,canvas,onFrame){
    try{
     const age=request?performance.now()-request.started:Infinity;
     if(age>MAX_FRAME_AGE){
-     if(!warmingUp&&++misses>=3)next(data.engine+' frame age '+Math.round(age)+' ms');
+     if(!warmingUp&&++misses>=6)next(data.engine+' frame age '+Math.round(age)+' ms');
      return;
     }
     misses=0;failures=0;
@@ -319,7 +319,7 @@ function create(root,video,canvas,onFrame){
  async function submit(now,metadata){
   if(!live)return;
   if(fallback){drawFallback(now);return;}
-  if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE&&ready){next('Portrait frame stalled');return;}
+  if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE*2.2&&ready){next('Portrait frame stalled');return;}
   if(pending&&performance.now()-pending.started>(firstFrame?4500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
   const time=metadata?.mediaTime??video.currentTime;
