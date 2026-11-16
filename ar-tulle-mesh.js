@@ -84,9 +84,9 @@ void main(){
   vec3 L=normalize(vec3(-.55,.65,1.0));
   float faceDiffuse=max(0.0,dot(N,L));
   float grazing=pow(1.0-clamp(N.z,0.0,1.0),3.0);
-  float fiberLight=clamp(.54+.48*faceDiffuse+.10*(left-right+up-down),.48,1.12);
+  float fiberLight=clamp(.38+.68*faceDiffuse+.18*(left-right+up-down),.38,1.24);
   // Slight pearlescent warm/cool scatter, not an opaque grid.
-  float sheen=clamp(0.5+0.5*(vLight-0.9)*3.0,0.0,1.0);
+  float sheen=clamp(.42+.58*pow(1.0-abs(dot(normalize(N),normalize(L))),2.0)+.42*pow(max(0.0,dot(N,L)),7.0),0.0,1.0);
   vec3 whiteNet=mix(vec3(.957,.966,.982),vec3(1.0,.982,.955),sheen)*fiberLight;
   // Give the photographic thread visible scattering while leaving the
   // spaces between woven fibers transparent. A faint organza body connects
@@ -95,7 +95,7 @@ void main(){
   // Avoid the coarse opaque mesh effect from the earlier yarn intensity.
   // Physical alpha compositing accumulates each sheet. A continuous
   // 12% body makes 1/3/5 layers distinguishable, even between fibers.
-  float netAlpha=.12+.19*strand+.025*detail+.025*grazing;
+  float netAlpha=.18+.18*strand+.025*detail+.055*grazing;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -599,6 +599,7 @@ function create(root){
     faceCenter={x:fx,y:fy,cw:fwidth*2.17,ch:fheight*1.76,
       hairCrownY:Number.isFinite(crown)?crown:null,
       hairOutline:measured&&performance.now()-measured.at<2300?measured.outline||null:null,
+      crownCurve:measured&&performance.now()-measured.at<2300?measured.curve||null:null,
       co:Math.cos(roll),si:Math.sin(roll),roll,fw:fwidth,fh:fheight,
       yaw:0,pitch:0,
       radiusX:fwidth*.59,radiusY:fheight*.52,radiusZ:fwidth*.59};
@@ -631,7 +632,7 @@ function create(root){
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
       const y=-.98+.025*Math.sin(c*.65+r*.43+layer.index);
-      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=1});
+      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.33});
     }
     const add=(a,b,rest,stiffness)=>links.push({a,b,rest,stiffness});
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
@@ -748,9 +749,36 @@ function create(root){
       mesh[at+8]=nX;mesh[at+9]=nY;
       mesh[at+10]=Math.sqrt(Math.max(.08,1-nX*nX-nY*nY));
     }
-    // HairSegmenter-style semantic crown measurement is the actual top edge.
-    // Keep the hanging hem fixed and fit only the upper mesh portion to it.
-    if(Number.isFinite(head.hairCrownY)){
+    // Actual hair crown is a SUPPORT CURVE across the full head width.
+    // Anchor upper fabric vertices along the observed curved scalp contour,
+    // then let everything below hang naturally under Verlet gravity.
+    const crownCurve=head.crownCurve;
+    if(crownCurve?.length>=8){
+      const sorted=[...crownCurve].sort((a,b)=>a.x-b.x);
+      const crownAt=x=>{
+        const nx=x/W;
+        if(nx<=sorted[0].x)return sorted[0].y*H;
+        if(nx>=sorted[sorted.length-1].x)return sorted[sorted.length-1].y*H;
+        for(let i=1;i<sorted.length;i++){
+          if(nx<=sorted[i].x){
+            const a=sorted[i-1],b=sorted[i];
+            return (a.y+(b.y-a.y)*(nx-a.x)/Math.max(.00001,b.x-a.x))*H;
+          }
+        }
+        return sorted[sorted.length-1].y*H;
+      };
+      let top=Infinity,bottom=-Infinity;
+      for(let j=1;j<mesh.length;j+=stride){top=Math.min(top,mesh[j]);bottom=Math.max(bottom,mesh[j]);}
+      const span=Math.max(1,bottom-top),headWidth=head.fw*1.5;
+      for(let j=0;j<mesh.length;j+=stride){
+        const x=mesh[j],y=mesh[j+1];
+        const lateral=ease(clamp((headWidth*.65-Math.abs(x-head.x))/(headWidth*.25),0,1));
+        const upper=Math.pow(1-clamp((y-top)/(span*.58),0,1),2.3);
+        const target=crownAt(x)-9;
+        // Move only the top of the drape. The lower panel remains free.
+        mesh[j+1]+=clamp(target-top,-head.fh*.85,head.fh*.85)*upper*lateral;
+      }
+    }else if(Number.isFinite(head.hairCrownY)){
       let top=Infinity,bottom=-Infinity;
       for(let i=1;i<mesh.length;i+=stride){
         top=Math.min(top,mesh[i]);bottom=Math.max(bottom,mesh[i]);
