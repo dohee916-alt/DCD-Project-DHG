@@ -335,26 +335,33 @@ function newPackMarkup(){
   return group(208,21,185.497,391.108,'new-pack-assembly',inside);
 }
 function newTicker(x,reverse=false){
-  const copy='>> THE BRAND NEW GLP-1    >> EASIEST CUT FOR YOUR DIET    ';
+  const phrase='>> THE BRAND NEW GLP-1    >> EASIEST CUT FOR YOUR DIET    ';
+  // Each identical repeat must be taller than the 428px ticker viewport.
+  // Otherwise the top/bottom of the strip can visibly empty while scrolling.
+  const copy=phrase.repeat(3);
   return '<div class="lay new-ticker'+(reverse?' reverse':'')+'" '+box(x,0,25,428)+' aria-hidden="true"><div class="new-ticker-track"><span>'+copy+'</span><span>'+copy+'</span><span>'+copy+'</span></div></div>';
 }
 function startNewTickers(){
-  stage.querySelectorAll('.new-ticker-track').forEach(track=>{
-    if(track.dataset.running==='1')return;
-    const first=track.firstElementChild;
-    const distance=first?.offsetHeight||0; // Unscaled layout px: getBoundingClientRect was scaled by #stage and left empty gaps.
-    if(!distance)return;
-    // The second copy immediately follows the first. Moving exactly one
-    // copy height makes the wrap seamless, with no blank jump or reset.
-    // Center copy covers the viewport at the beginning. The preceding and
-    // following copies cover both ends of every frame, including the seam.
-    track.style.top=(-distance)+'px';
-    track.dataset.running='1';
-    track.animate(
-      [{transform:'translateY(0)'},{transform:'translateY(-'+distance+'px)'}],
-      {duration:distance*26,easing:'linear',iterations:Infinity}
-    );
-  });
+  const tracks=[...stage.querySelectorAll('.new-ticker-track')];
+  if(!tracks.length)return;
+  // Font substitution after the first measurement changes the loop length.
+  // Measure only after the actual typeface has loaded, and skip detached pages.
+  const start=()=>{
+    tracks.forEach(track=>{
+      if(!track.isConnected||track.dataset.running==='1')return;
+      const first=track.firstElementChild;
+      const distance=first?.offsetHeight||0;
+      if(distance<428)return;
+      track.style.top=(-distance)+'px';
+      track.dataset.running='1';
+      track.animate(
+        [{transform:'translateY(0)'},{transform:'translateY(-'+distance+'px)'}],
+        {duration:distance*26,easing:'linear',iterations:Infinity}
+      );
+    });
+  };
+  if(document.fonts?.ready)document.fonts.ready.then(start);
+  else start();
 }
 function newButton(label,action,x,y,disabled=false,size=null,signatureArrow=false){
   // WEB14 signature has its own right-pointing Figma button in two editable states.
