@@ -1647,11 +1647,7 @@ canvas.figure{object-fit:contain!important}
   outline:3px solid #fff;outline-offset:5px;
 }
 
-/* Match the portrait AR blister backdrop to the approved WEB15/16 prescription gradient palette. */
-.ar-prescription-gradient{
-  pointer-events:none;
-  background:
-    linear-gradient(112deg,rgba(255,255,255,.82) 0%,rgba(255,255,255,0) 53%,rgba(255,255,255,.56) 100%),
-    linear-gradient(34deg,rgba(229,155,115,.85) 0%,rgba(233,166,124,.58) 34%,rgba(255,255,255,.72) 82%),
-    linear-gradient(160deg,#fff 5%,#f9eee7 45%,#e9a67c 100%);
-}
+/* Rotate the exact WEB15/16 gradient composition into the 428x926 AR portrait.
+   The original 926x428 layer coordinates, image, colors and blend modes remain unchanged. */
+.ar-prescription-background{overflow:hidden;background:#fff;pointer-events:none}
+.ar-prescription-landscape{position:absolute;left:0;top:0;width:926px;height:428px;transform-origin:top left;transform:translateX(428px) rotate(90deg);isolation:isolate}
