@@ -1,83 +1,107 @@
-/* DCD approved user-supplied sound effect cues, packed into one MP3 sprite.
-   These offsets are measured in the assembled 16 kHz mono sprite:
-   suction 15.0-17.5s source; injection 43.8-45.58s source;
-   pack approved UI click; machine original 0-2.214s; signature 0.16-1.60s.
-   Browser receives mp3 data as text because Github repository asset writes
-   accept UTF-8 only. No remote audio service or login is needed. */
+/* DCD sound cues from user-approved source recordings.
+ * Separate high-quality Ogg sprite for syringe suction/injection and actual
+ * signature ink. Previous very-low-bitrate MP3 is retained ONLY for pack
+ * insertion and machine until those originals are replaced.
+ */
 (()=>{
 'use strict';
-const url='assets/audio/dcd-approved-workbench-cues.mp3.b64?v=20261117';
+const PATH='assets/audio/';
+const parts=Array.from({length:8},(_,i)=>PATH+'dcd-fixed-sfx-part'+(i+1)+'.txt');
+const legacy=PATH+'dcd-approved-workbench-cues.mp3.b64';
 const clips={
- suction:{start:0,duration:2.5,gain:.48},
- injection:{start:2.7,duration:1.78,gain:.52},
- pack:{start:4.68,duration:.456,gain:.58},
- 'machine-in':{start:5.336,duration:1.45,gain:.65},
- 'machine-out':{start:5.336,duration:2.214,gain:.67},
- signature:{start:7.75,duration:1.44,gain:.44}
+ suction:{source:'hq',start:0,duration:1.33,gain:.85},
+ injection:{source:'hq',start:1.48,duration:1.04,gain:.85},
+ signature:{source:'hq',start:2.67,duration:1.36,gain:.65},
+ pack:{source:'legacy',start:4.68,duration:.456,gain:.70},
+ 'machine-in':{source:'legacy',start:5.336,duration:1.45,gain:.72},
+ 'machine-out':{source:'legacy',start:5.336,duration:2.214,gain:.74}
 };
-let context=null,bus=null,decoded=null,loadPromise=null,payloadPromise=null;
+let context=null,bus=null,loadHQ=null,loadLegacy=null;
+const buffers={hq:null,legacy:null};
 const voices=new Map(),pending=new Map();
-const Context=window.AudioContext||window.webkitAudioContext;
-function getPayload(){
- if(!payloadPromise)payloadPromise=fetch(url).then(async response=>{
-  if(!response.ok)throw Error('Sound sprite HTTP '+response.status);
-  const encoded=(await response.text()).trim();
-  if(!/^[A-Za-z0-9+/=]+$/.test(encoded))throw Error('Invalid sound sprite');
-  const binary=atob(encoded),bytes=new Uint8Array(binary.length);
-  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-  return bytes.buffer;
- }).catch(error=>{payloadPromise=null;console.warn('[DCD SFX] Loading:',error);throw error;});
- return payloadPromise;
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+async function fetchText(url){
+ const r=await fetch(url);if(!r.ok)throw Error('SFX '+r.status+' '+url);return r.text();
 }
-function unlock(){
- if(!Context)return;
- try{
-  if(!context){
-   context=new Context();
-   bus=context.createGain();bus.gain.value=.9;bus.connect(context.destination);
-  }
-  context.resume()?.catch?.(e=>console.warn('[DCD SFX] Unlock:',e));
-  if(!loadPromise){
-   loadPromise=getPayload().then(data=>context.decodeAudioData(data.slice(0)))
-    .then(buffer=>{decoded=buffer;for(const [id,option] of pending){pending.delete(id);start(id,option);}})
-    .catch(error=>{loadPromise=null;console.warn('[DCD SFX] Decode:',error);});
-  }
- }catch(error){console.warn('[DCD SFX] Context:',error);}
+function bytesFromBase64(b64,expected){
+ const raw=atob(b64.trim()),bytes=new Uint8Array(raw.length);
+ for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+ if(expected&&bytes.length!==expected)throw Error('SFX size mismatch: '+bytes.length);
+ return bytes.buffer;
+}
+async function decode(data){
+ try{return await context.decodeAudioData(data.slice(0));}
+ catch(error){
+   console.warn('[DCD SFX] Native decoder unavailable, using JS decoder:',error);
+   const module=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
+   return module.default(data.slice(0));
+ }
 }
 function stop(id){
  pending.delete(id);
- const v=voices.get(id);
- if(!v)return;
+ const voice=voices.get(id);if(!voice)return;
  voices.delete(id);
- try{v.source.stop();}catch{}
- try{v.source.disconnect();v.gain.disconnect();}catch{}
+ try{voice.node.stop();}catch{}
+ voice.node.disconnect();voice.gain.disconnect();
 }
 function start(id,options={}){
- const clip=clips[id];if(!clip||!decoded||!context||context.state!=='running')return;
+ const clip=clips[id],buffer=buffers[clip?.source];
+ if(!buffer||!context||context.state!=='running')return false;
  stop(id);
- const source=context.createBufferSource();
- const gain=context.createGain();
- source.buffer=decoded;
+ const node=context.createBufferSource(),gain=context.createGain();
+ node.buffer=buffer;
  gain.gain.value=clip.gain;
- source.connect(gain);gain.connect(bus);
+ node.connect(gain);gain.connect(bus);
  if(options.loop){
-   source.loop=true;source.loopStart=clip.start;source.loopEnd=clip.start+clip.duration;
-   source.start(0,clip.start);
- }else{
-   source.start(0,clip.start,clip.duration);
+  node.loop=true;node.loopStart=clip.start;node.loopEnd=clip.start+clip.duration;
+  node.start(0,clip.start);
+ }else node.start(0,clip.start,clip.duration);
+ const voice={node,gain};voices.set(id,voice);
+ node.onended=()=>{if(voices.get(id)===voice){voices.delete(id);node.disconnect();gain.disconnect();}};
+ return true;
+}
+function flush(source){
+ for(const [id,options] of [...pending]){
+  if(clips[id]?.source!==source)continue;
+  pending.delete(id);start(id,options);
  }
- const voice={source,gain};
- voices.set(id,voice);
- source.onended=()=>{if(voices.get(id)===voice){voices.delete(id);source.disconnect();gain.disconnect();}};
+}
+function unlock(){
+ if(!AudioCtx)return;
+ try{
+  if(!context){
+    context=new AudioCtx();
+    bus=context.createGain();bus.gain.value=.87;bus.connect(context.destination);
+  }
+  context.resume()?.catch(error=>console.warn('[DCD SFX] Resume:',error));
+  if(!loadHQ){
+   loadHQ=Promise.all(parts.map(fetchText)).then(arr=>bytesFromBase64(arr.join(''),19493))
+     .then(decode).then(buffer=>{
+       buffers.hq=buffer;console.info('[DCD SFX] Syringe+signature HD ready,',buffer.duration.toFixed(2),'s');
+       flush('hq');
+     }).catch(error=>{console.error('[DCD SFX] High-quality sound:',error);loadHQ=null;});
+  }
+  if(!loadLegacy){
+   loadLegacy=fetchText(legacy).then(text=>bytesFromBase64(text,9692))
+     .then(decode).then(buffer=>{buffers.legacy=buffer;flush('legacy');})
+     .catch(error=>{console.error('[DCD SFX] Pack machine:',error);loadLegacy=null;});
+  }
+ }catch(error){console.warn('[DCD SFX] Setup:',error);}
 }
 function play(id,options={}){
  if(!clips[id])return;
  unlock();
- if(decoded&&context?.state==='running')start(id,options);
- else{pending.set(id,options);context?.resume()?.then(()=>{
-   if(decoded&&pending.has(id)){const next=pending.get(id);pending.delete(id);start(id,next);}
- });}
+ if(!start(id,options)){
+  pending.set(id,options);
+  context?.resume()?.then(()=>{
+   if(pending.has(id)&&buffers[clips[id].source]){
+    const next=pending.get(id);pending.delete(id);start(id,next);
+   }
+  });
+ }
 }
-getPayload().catch(()=>{});
-window.DCD_WEB_SFX={unlock,play,stop,clips};
+window.DCD_WEB_SFX={unlock,play,stop,clips,status:()=>({
+ context:context?.state,hd:!!buffers.hq,legacy:!!buffers.legacy,
+ durationHQ:buffers.hq?.duration,durationLegacy:buffers.legacy?.duration
+})};
 })();
