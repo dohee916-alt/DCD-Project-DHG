@@ -580,8 +580,10 @@ function create(root){
     // Track the rigid head using the face, but NEVER sculpt cloth from skin.
     // Estimated skull volume includes the crown above landmark 10.
     const measured=root.parentElement?.__dcdHairCrown||root.closest('.ar-immersive')?.__dcdHairCrown;
+    // Crown from the portrait alpha is already in MIRRORED, CROPPED design
+    // coordinates. Never apply the video crop twice.
     const crown=measured&&performance.now()-measured.at<2300
-      ?oy+measured.y*dh:null;
+      ?measured.y*H:null;
     const centerY=forehead.y+fh*.48;
     const yaw=clamp(((points[1].x-(points[234].x+points[454].x)*.5)/
       Math.max(.08,Math.abs(points[454].x-points[234].x)))*1.1,-.52,.52);
