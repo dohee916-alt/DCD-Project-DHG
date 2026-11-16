@@ -1842,3 +1842,16 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive .ar-ending-cta:focus-visible{
  outline:3px solid white;outline-offset:3px;
 }
+
+/* Figma Reel0 / Reel1 overlays are actual exported transparent UI artwork.
+   Keep the existing animated blister GIF unchanged beneath Reel1. */
+#stage.page-reel0 .reel0-figma-underlay{
+ position:absolute;left:0;top:0;width:428px;height:925px;
+ object-fit:fill;z-index:0;pointer-events:none;
+}
+#stage .reel-figma-overlay{
+ position:absolute;left:0;top:0;width:428px;height:926px;
+ object-fit:fill;pointer-events:none;z-index:8;
+}
+#stage .reel1-figma-overlay{height:927px;}
+#stage.page-reel0 .full-hit,#stage.page-00 .full-hit{z-index:10;}
