@@ -1803,3 +1803,65 @@ canvas.figure{object-fit:contain!important}
  background:transparent url('assets/figma-current/hd/ar-ending-yes-blank-250x90.svg?v=full-yes-body-20261117') center / 100% 100% no-repeat!important;
  filter:drop-shadow(0 4px 6px rgba(255,106,106,.16))!important;
 }
+
+/* 2026-11-17 native Figma geometry, read directly from 04_AR text nodes.
+   Heading stays at its unchanged Figma x54/y116/306 width; only the
+   sentence underneath is permitted to widen by 47px each way. */
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-message{
+  position:absolute!important;top:116px!important;left:54px!important;
+  right:auto!important;width:306px!important;height:auto!important;
+  margin:0!important;padding:0!important;box-sizing:border-box!important;
+  text-align:center!important;display:block!important;transform:none!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-heading{
+  display:block!important;width:306px!important;height:32px!important;
+  margin:0!important;padding:0!important;box-sizing:border-box!important;
+  font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+  text-align:center!important;transform:none!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-typed{
+  position:relative!important;left:-47px!important;top:0!important;
+  display:block!important;width:400px!important;max-width:400px!important;
+  min-height:46px!important;margin:13px 0 0!important;
+  padding:0!important;box-sizing:border-box!important;
+  font:700 18px/23px "Turret Road",Arial,sans-serif!important;
+  letter-spacing:0!important;text-align:center!important;
+  word-break:keep-all!important;overflow-wrap:normal!important;
+  white-space:pre-line!important;transform:none!important;
+}
+/* AR6/7 typography is positioned independently from the raised legacy
+   guide selector. Exact design frame: x50,y141,w342,h44, Doto 16px. */
+#stage .ar-immersive:is([data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
+  position:absolute!important;left:50px!important;top:141px!important;
+  right:auto!important;width:342px!important;height:44px!important;
+  padding:0!important;margin:0!important;box-sizing:border-box!important;
+  font:900 16px/32px "Doto",Arial,sans-serif!important;
+  font-variation-settings:"wght" 900,"ROND" 0!important;
+  letter-spacing:0!important;text-align:center!important;
+  white-space:pre-line!important;transform:none!important;
+}
+/* Exact Figma 1024:11 AR10 CTA: native 250x90 frame with 100 corner radius,
+   2px inside gradient stroke, specified gradient stops and two shadows.
+   Do not use the altered/cropped/warped YES SVG export as a CSS background. */
+#stage .ar-immersive .ar-ending-cta{
+  left:89px!important;top:748px!important;width:250px!important;height:90px!important;
+  border:2px solid rgba(255,250,247,.95)!important;border-radius:100px!important;
+  padding:0!important;
+  background:linear-gradient(155deg,
+    rgba(255,225,220,1) 0%,
+    rgba(255,131,85,.70) 53.846%,
+    rgba(255,224,220,1) 100%)!important;
+  box-shadow:0 2.5419px 5.0839px rgba(255,106,106,.15),
+             0 8.8968px 8.8968px rgba(255,106,106,.13)!important;
+  filter:none!important;
+  backdrop-filter:blur(9px)!important;-webkit-backdrop-filter:blur(9px)!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  text-align:center!important;box-sizing:border-box!important;
+  color:#fff!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
+}
+#stage .ar-immersive .ar-ending-cta span{
+  width:228px!important;height:60px!important;
+  display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:center!important;
+  white-space:normal!important;font:700 20px/24px "Source Sans 3",Arial,sans-serif!important;
+}
