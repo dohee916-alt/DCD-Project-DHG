@@ -1657,3 +1657,9 @@ canvas.figure{object-fit:contain!important}
    After rotation those inset edges became a horizontal red stripe. */
 .ar-prescription-landscape>.bg{left:0!important;width:926px!important}
 .ar-prescription-landscape>.new-orange-tint{left:0!important;width:926px!important}
+
+/* AR4/AR5-2: one stigma at a time, independent of the camera-tracked cloth. */
+.ar-immersive .ar-stigma-message{display:none;position:absolute;top:88px;left:30px;width:368px;z-index:12;text-align:center;pointer-events:none;color:#d83a00;font:700 23px/1.22 'Source Sans 3',Arial,sans-serif;text-shadow:0 1px 6px rgba(255,255,255,.85)}
+.ar-immersive[data-ar-frame="AR4"] .ar-stigma-message,.ar-immersive[data-ar-frame="AR5-2"] .ar-stigma-message{display:block}
+.ar-stigma-heading{font-size:22px;font-weight:700;letter-spacing:.01em}
+.ar-stigma-typed{margin:12px auto 0;max-width:350px;min-height:58px;white-space:normal;font-weight:700;overflow-wrap:break-word}
