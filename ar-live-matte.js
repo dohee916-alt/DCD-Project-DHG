@@ -284,17 +284,20 @@ function create(root,video,canvas,onFrame){
     const width=data.cutout.displayWidth||data.cutout.width;
     const height=data.cutout.displayHeight||data.cutout.height;
     const scale=Math.max(w/width,h/height),dw=width*scale,dh=height*scale;
+    // Render ORIGINAL camera pixels, preserving source camera resolution.
+    // The segmentation model supplies only alpha. Drawing its downsized
+    // RGBA portrait directly was blurring the full face and hair.
+    subjectCtx.clearRect(0,0,w,h);
+    subjectCtx.globalCompositeOperation='source-over';
+    subjectCtx.drawImage(data.source,(w-dw)/2,(h-dh)/2,dw,dh);
+    subjectCtx.globalCompositeOperation='destination-in';
+    subjectCtx.imageSmoothingEnabled=true;
+    subjectCtx.imageSmoothingQuality='high';
+    subjectCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+    subjectCtx.globalCompositeOperation='source-over';
     ctx.clearRect(0,0,w,h);
     ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
-    // Composite in source orientation, then mirror as a whole.
-    // Only confirmed background beyond a wide hair-protection margin
-    // is attenuated; no trimap edge is substituted for Longpipe's edge.
-    // Preserve Longpipe's original high-resolution hair alpha. The 256px
-    // semantic class map is used solely for crown localization; multiplying
-    // it into the cutout previously introduced blocky hair/shoulder edges.
-    ctx.imageSmoothingEnabled=true;
-    ctx.imageSmoothingQuality='high';
-    ctx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
+    ctx.drawImage(subject,0,0);
     ctx.restore();
     lastCapture=performance.now();visible=true;
     measureVisibleHairCrown(lastCapture);
