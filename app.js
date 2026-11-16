@@ -13,7 +13,7 @@ const bottleLiquids={purple:{x:125,y:86,rx:39,ry:34},orange:{x:129,y:174,rx:39,r
 const key='DCD_IMPLEMENTATION_1';
 const signaturePath='M2.50021 39.3162C3.97397 25.5131 15.0272 6.78039 32.7124 3.08321C57.2822 -2.05324 36.3968 27.7477 15.0272 52.6265C3.31169 66.2659 29.4323 61.4999 52.6083 32.6614C71.0303 9.7382 81.3467 24.5272 52.6083 61.4999';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const fresh=()=>({page:'00',phase:'intro',initialPresetVersion:5,figures:Array.from({length:4},(_,i)=>({kind:i+1,value:[85,75,65,95][i],orange:0,purple:0,packed:false})),active:0,loaded:null,firstFill:false,firstInject:false,handGuideDismissed:false,packGuideDone:false,packGuideHandFinished:false,packGuideHandStartedAt:null,used:{orange:false,purple:false},expected:[],side:[],signed:false,arReturnPage:null,arPackOpened:false});
+const fresh=()=>({page:'reel0',phase:'ready',initialPresetVersion:5,figures:Array.from({length:4},(_,i)=>({kind:i+1,value:[85,75,65,95][i],orange:0,purple:0,packed:false})),active:0,loaded:null,firstFill:false,firstInject:false,handGuideDismissed:false,packGuideDone:false,packGuideHandFinished:false,packGuideHandStartedAt:null,used:{orange:false,purple:false},expected:[],side:[],signed:false,arReturnPage:null,arPackOpened:false});
 let s=fresh(),drag=null,gesture=new Map(),timers=[],scale=1,offset={x:0,y:0},videoEnded=false;
 let syringeInjectionAngle=45,rotateGuideFinished=false,signatureInk=null;
 let openingSoundEnabled=false;
@@ -51,7 +51,7 @@ function beginRuptureGif(gif){
   gif.src=source;
   if(gif.complete&&gif.naturalWidth)loaded();
 }
-if(s.page==='00'||s.page==='01')preloadRuptureGif();
+if(s.page==='reel0'||s.page==='00'||s.page==='01')preloadRuptureGif();
 let arCameraStream=null,arDropFrame=0,arDropFinished=false,arCameraReady=false,arCameraError='';
 function warmPackingAssets(){
   if(packingAssetsWarmed)return;
@@ -226,6 +226,10 @@ function blisterMotionLayer(source,mode,still){
   return fallback+img(source,-16,0,467,934,cls);
 }
 function introMarkup(p){
+  if(p==='00')return blisterMotionLayer(A.blisterPingpong,'loop',A.blisterPingpongFirst)+
+    '<img class="lay reel-figma-overlay reel1-figma-overlay" src="assets/figma-current/hd/reel1-ui-overlay-no-sound.png" alt="" aria-hidden="true">'+
+    '<button class="full-hit" data-action="enter" aria-label="Continue to the interactive advertisement"></button>'+
+    (!openingSoundEnabled?'<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound on the opening advertisement"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>':'');
   // Approved GIFs entirely replace the superseded pair of alternating
   // poster photos. No old poster is allowed to flash behind a new GIF.
   let h='<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+
@@ -1042,7 +1046,10 @@ function openArPack(){
 function render(){
  fit();stage.className='stage page-'+s.page+' phase-'+s.phase;
  stage.dataset.mobileLandscape=String(mobilePortraitLandscape());
- let h='';if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03'){
+ let h='';if(s.page==='reel0')h='<img class="lay reel0-figma-underlay" src="assets/figma-current/hd/reel0-underlay-image.jpg" alt="" aria-hidden="true">'+
+  '<img class="lay reel-figma-overlay reel0-figma-overlay" src="assets/figma-current/hd/reel0-ui-overlay.png" alt="" aria-hidden="true">'+
+  '<button class="full-hit" data-action="openReel1" aria-label="Open the next reel"></button>';
+  else if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03'){
  // Preserve the actual workbench interaction in the portrait-locked phone:
  // its preview is the same WEB04 scene, rotated only within the existing
  // portrait stage to fit the phone, not a static photo or a disabled overlay.
@@ -1480,7 +1487,7 @@ window.DCD_RESTART_WEB=()=>{
  s=fresh();sessionStorage.removeItem(key);
  setPage('01','guide');
 };
-function act(a){if(a==='enableSound'&&s.page==='00'){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.gesture();stage.querySelector('[data-action="enableSound"]')?.remove();return;}if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
+function act(a){if(a==='openReel1'&&s.page==='reel0'){setPage('00','loop');return;}if(a==='enableSound'&&s.page==='00'){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();return;}if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
 stage.addEventListener('click',e=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('pointerdown',()=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();},{passive:true});
 stage.addEventListener('change',e=>{
