@@ -315,9 +315,13 @@ function canvasCloth(root){
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
     // Fallback also uses a larger head-covering sheet.
-    const cw=fw*1.90;
-    const ch=fh*1.50;
-    const cx=(left.x+right.x)/2,cy=head.y+fh*.72;
+    const cw=fw*2.18;
+    const ch=fh*2.15;
+    const cx=(left.x+right.x)/2;
+    const measured=root.parentElement?.__dcdHairCrown;
+    const crownY=measured&&performance.now()-measured.at<2200
+      ?measured.y*H:head.y-fh*.28;
+    const cy=crownY+ch*.44;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
@@ -335,11 +339,12 @@ function canvasCloth(root){
       const l=-cw/2,r=cw/2,t=-ch*.50,b=ch*.50;
       ctx.beginPath();
       ctx.moveTo(0,-ch*.5);
-       ctx.bezierCurveTo(cw*.37,-ch*.53,cw*.48,-ch*.37,cw*.47,-ch*.22);
-       ctx.bezierCurveTo(cw*.58,ch*.10,cw*.53,ch*.37,cw*.43,ch*.48);
-       ctx.quadraticCurveTo(0,ch*.54,-cw*.43,ch*.48);
-       ctx.bezierCurveTo(-cw*.53,ch*.37,-cw*.58,ch*.10,-cw*.47,-ch*.22);
-       ctx.bezierCurveTo(-cw*.48,-ch*.37,-cw*.37,-ch*.53,0,-ch*.5);
+       ctx.bezierCurveTo(cw*.23,-ch*.58,cw*.43,-ch*.47,cw*.49,-ch*.25);
+       ctx.bezierCurveTo(cw*.61,-ch*.04,cw*.59,ch*.33,cw*.51,ch*.58);
+       ctx.bezierCurveTo(cw*.49,ch*.76,cw*.33,ch*.82,0,ch*.80);
+       ctx.bezierCurveTo(-cw*.33,ch*.82,-cw*.49,ch*.76,-cw*.51,ch*.58);
+       ctx.bezierCurveTo(-cw*.59,ch*.33,-cw*.61,-ch*.04,-cw*.49,-ch*.25);
+       ctx.bezierCurveTo(-cw*.43,-ch*.47,-cw*.23,-ch*.58,0,-ch*.5);
        ctx.closePath();ctx.clip();
       if(pass===0){
       ctx.fillStyle='rgba(250,248,243,.12)';
