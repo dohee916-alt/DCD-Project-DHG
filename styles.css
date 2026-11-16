@@ -1815,7 +1815,7 @@ canvas.figure{object-fit:contain!important}
  display:block;padding:0;border:0;background:transparent;cursor:pointer;
 }
 #stage .opening-sound-gate .opening-sound-figma-asset{
- position:absolute;left:89px;top:372px;width:250px;height:100px;
+ position:absolute;left:89px;top:397px;width:250px;height:100px;
  display:block;pointer-events:none;object-fit:fill;
 }
 #stage .opening-sound-gate:focus-visible .opening-sound-figma-asset{
