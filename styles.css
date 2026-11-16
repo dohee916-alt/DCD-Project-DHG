@@ -1911,3 +1911,18 @@ canvas.figure{object-fit:contain!important}
 #stage.page-reel0 .opening-sound-gate .opening-sound-figma-asset{
  left:89px;top:397px;width:250px;height:100px;
 }
+
+/* Reel0's first-screen sound control is its real Figma graphic.
+   The small click target must not block automatic or manual reel scrolling. */
+#stage.page-reel0 .reel-screen-zero .opening-sound-gate{
+ position:absolute;inset:auto!important;
+ left:89px!important;top:402px!important;
+ width:250px!important;height:90px!important;
+ z-index:20;border:0;padding:0;background:none;
+ touch-action:pan-y;
+}
+#stage.page-reel0 .reel-screen-zero .opening-sound-gate .opening-sound-figma-asset{
+ position:absolute;left:0!important;top:-5px!important;
+ width:250px!important;height:100px!important;
+ object-fit:fill;pointer-events:none;
+}
