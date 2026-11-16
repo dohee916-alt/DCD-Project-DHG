@@ -229,7 +229,7 @@ function reelStackMarkup(){
  return '<div class="reels-vertical-scroll" aria-label="Reels feed">'+
  '<section class="reel-screen reel-screen-zero" aria-label="Reel 0">'+
  '<img class="reel-background" src="assets/figma-current/hd/reel0-underlay-image.jpg" alt="" draggable="false">'+
- '<img class="reel-frame-overlay" src="assets/figma-current/hd/reel0-ui-scroll-no-status.png" alt="" draggable="false">'+
+ '<img class="reel-frame-overlay" src="assets/figma-current/hd/reel0-ui-scroll-no-status.png?v=complete-frame-20261117" alt="" draggable="false">'+
  (!openingSoundEnabled?'<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>':'')+
  '</section>'+
  '<section class="reel-screen reel-screen-one" aria-label="Reel 1">'+introMarkup('00')+'</section>'+
@@ -238,7 +238,11 @@ function reelStackMarkup(){
 }
 function introMarkup(p){
   if(p==='00')return blisterMotionLayer(A.blisterPingpong,'loop',A.blisterPingpongFirst)+
-    '<img class="reel-frame-overlay reel1-figma-overlay" src="assets/figma-current/hd/reel1-ui-scroll-no-status.png" alt="" aria-hidden="true">'+
+    figmaGlassText('easiest',64.5,90.5,299,17,
+      'assets/figma-current/hd/poster-tagline-base.svg',
+      'assets/figma-current/hd/poster-tagline.svg')+
+    posterWords()+
+    '<img class="reel-frame-overlay reel1-figma-overlay" src="assets/figma-current/hd/reel1-ui-scroll-no-status.png?v=complete-frame-20261117" alt="" aria-hidden="true">'+
     '<button class="full-hit" data-action="enter" aria-label="Continue to the interactive advertisement"></button>';
   // Approved GIFs entirely replace the superseded pair of alternating
   // poster photos. No old poster is allowed to flash behind a new GIF.
@@ -1067,7 +1071,7 @@ function render(){
 }else if(s.page==='workbench'){warmPackingAssets();h=workbenchMarkup();}else if(['08a','08b','09','10','11'].includes(s.page))h=packingMarkup();else if(['12','13','14','14done','15','16'].includes(s.page))h=newPrescriptionMarkup();else if(['ar','arOpen','arFace'].includes(s.page))h=arMarkup();
 stage.innerHTML=mobilePortraitLandscape()
  ?'<div class="rotate-preview"><div class="scene-content">'+h+'</div></div>'
- :(dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h);if(['00','01','02'].includes(s.page)&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');
+ :(dimensions()[0]===874?'<div class="scene-content">'+h+'</div>':h);if(['reel0','00','01','02'].includes(s.page)&&window.DCDFigmaGlass)window.DCDFigmaGlass.render(stage);drawFigures();startNewTickers();const packHand=stage.querySelector('.pack-guide-hand');
 if(packHand){
   // The workbench re-renders after injections; keep the animation clock
   // independent of each newly created DOM image.
