@@ -1,0 +1,35 @@
+name: Build Safari-compatible MP3 sound assets
+on:
+  push:
+    paths:
+      - ".github/workflows/build-safari-mp3.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  transcode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Convert approved sound originals to Safari-compatible MP3
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          for name in dcd-fashion-loop dcd-fixed-sfx dcd-plastic-creak dcd-blister-burst-1p5s dcd-pack-whoosh; do
+            ffmpeg -hide_banner -loglevel error -y -i "assets/audio/${name}.ogg" -codec:a libmp3lame -qscale:a 2 "assets/audio/${name}.mp3"
+            ffprobe -v error -show_entries stream=codec_name -of default=noprint_wrappers=1 "assets/audio/${name}.mp3"
+            test -s "assets/audio/${name}.mp3"
+          done
+      - name: Commit validated MP3 assets
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/audio/dcd-fashion-loop.mp3 assets/audio/dcd-fixed-sfx.mp3 assets/audio/dcd-plastic-creak.mp3 assets/audio/dcd-blister-burst-1p5s.mp3 assets/audio/dcd-pack-whoosh.mp3
+          if ! git diff --cached --quiet; then
+            git commit -m "Provide Safari MP3 versions of original approved DCD sound effects"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
