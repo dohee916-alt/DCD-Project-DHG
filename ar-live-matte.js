@@ -1,7 +1,7 @@
 /* Present only recent cutouts, with the source frame for face/hand tracking. */
 (() => {
 'use strict';
-const MAX_FRAME_AGE=380, MAX_VISIBLE_AGE=1100;
+const MAX_FRAME_AGE=1150, MAX_VISIBLE_AGE=1900;
 const scriptURL=document.currentScript.src;
 const workerURL=new URL('ar-matte-worker.js?v=cloth-contact-matte-20261110-156',scriptURL);
 const SDK='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/+esm';
@@ -317,7 +317,7 @@ function create(root,video,canvas,onFrame){
   if(!live)return;
   if(fallback){drawFallback(now);return;}
   if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE&&ready){next('Portrait frame stalled');return;}
-  if(pending&&performance.now()-pending.started>(firstFrame?3500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
+  if(pending&&performance.now()-pending.started>(firstFrame?4500:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
   const time=metadata?.mediaTime??video.currentTime;
   if(time<=lastVideoTime)return;
