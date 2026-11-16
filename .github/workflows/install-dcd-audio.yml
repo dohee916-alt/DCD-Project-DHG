@@ -26,5 +26,6 @@ jobs:
           if test -f assets/audio/dcd-fashion-advertising-promo.mp3; then git add assets/audio/dcd-fashion-advertising-promo.mp3; fi
           if ! git diff --cached --quiet; then
             git commit -m "Install approved DCD campaign soundtrack"
-            git push
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
