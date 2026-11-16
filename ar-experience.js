@@ -32,36 +32,55 @@ function markup(){
  '<div class="ar-gesture-guide" aria-hidden="true"></div>'+
  '<div class="ar-flow-choices"></div></div>';
 }
-// CC0 hushed crowd murmur. The previous -28 dB RMS track at 32% volume
-// was barely audible. This replacement has a verified louder source level.
-const WHISPER_AUDIO='https://pixabay.com/sound-effects/download/murmur-27730/';
-function whisperElement(){
- if(!state.whisperAudio){
-   const audio=new Audio(WHISPER_AUDIO);
-   audio.preload='auto';audio.loop=true;
-   audio.onerror=()=>console.warn('[DCD AR] Whisper source failed:',audio.error?.code);
-   state.whisperAudio=audio;
- }
- return state.whisperAudio;
-}
-// Called synchronously from the user's blister-pack click, satisfying the
-// gesture restriction before FaceLandmarker and AR3 timers take over.
+// Approved Freesound Ben_0815 Murmur (CC0), bundled as an actual Ogg/Opus
+// file encoded as UTF-8 base64 so GitHub Pages serves it without an external
+// redirect or an unavailable Freesound download endpoint.
+const WHISPER_B64='assets/audio/murmur-ben0815-clip.opus.b64';
+let whisperContext=null,whisperGain=null,whisperBuffer=null,whisperNode=null;
+let whisperLoading=null,whisperWanted=false;
 function primeWhisper(){
- const audio=whisperElement();
- state.whisperPrimed=true;audio.volume=.005;
- audio.play()?.catch?.(e=>console.warn('[DCD AR] Whisper unlock:',e));
+ // This is called synchronously from the user's pack-click gesture.
+ // An unlocked AudioContext can play a decoded buffer later in the AR flow.
+ const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+ if(!AudioContextClass)return;
+ try{
+  whisperContext ||=new AudioContextClass();
+  state.whisperPrimed=true;
+  whisperContext.resume()?.catch?.(error=>console.warn('[DCD AR] Audio permission:',error));
+  if(!whisperGain){whisperGain=whisperContext.createGain();whisperGain.gain.value=.85;whisperGain.connect(whisperContext.destination);}
+  if(!whisperLoading){
+   whisperLoading=fetch(WHISPER_B64).then(response=>{
+     if(!response.ok)throw new Error('Murmur audio HTTP '+response.status);
+     return response.text();
+   }).then(encoded=>{
+     const raw=atob(encoded.trim()),bytes=new Uint8Array(raw.length);
+     for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+     return whisperContext.decodeAudioData(bytes.buffer);
+   }).then(buffer=>{
+     whisperBuffer=buffer;
+     if(whisperWanted)playWhisperBuffer();
+   }).catch(error=>{whisperLoading=null;console.warn('[DCD AR] Murmur decode:',error);});
+  }
+ }catch(error){console.warn('[DCD AR] Murmur setup:',error);}
+}
+function playWhisperBuffer(){
+ if(!whisperBuffer||!whisperContext||!whisperWanted||whisperNode)return;
+ whisperContext.resume()?.catch?.(()=>{});
+ const node=whisperContext.createBufferSource();
+ node.buffer=whisperBuffer;node.loop=true;
+ node.connect(whisperGain);node.start();
+ whisperNode=node;
+ node.onended=()=>{if(whisperNode===node)whisperNode=null;};
 }
 function startWhisper(){
- const audio=whisperElement();
- audio.volume=1;
- // Preserve the timeline across the whisper scene and stigma sequence.
- if(audio.paused)audio.play()?.catch?.(e=>console.warn('[DCD AR] Whisper playback:',e));
+ whisperWanted=true;
+ if(!whisperContext)primeWhisper();
+ playWhisperBuffer();
 }
 function stopWhisper(force=false){
- const audio=state.whisperAudio;
- if(!audio)return;
- if(!force&&state.whisperPrimed&&state.frame==='AR3'){audio.volume=.005;return;}
- audio.pause();try{audio.currentTime=0;}catch{}
+ if(!force&&state.whisperPrimed&&state.frame==='AR3')return;
+ whisperWanted=false;
+ if(whisperNode){try{whisperNode.stop();}catch{}whisperNode.disconnect();whisperNode=null;}
  state.whisperPrimed=false;
 }
 function clearScene(){
