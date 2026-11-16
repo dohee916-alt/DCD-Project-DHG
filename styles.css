@@ -1663,3 +1663,9 @@ canvas.figure{object-fit:contain!important}
 .ar-immersive[data-ar-frame="AR4"] .ar-stigma-message,.ar-immersive[data-ar-frame="AR5-2"] .ar-stigma-message{display:block}
 .ar-stigma-heading{font-size:22px;font-weight:700;letter-spacing:.01em}
 .ar-stigma-typed{margin:12px auto 0;max-width:350px;min-height:58px;white-space:normal;font-weight:700;overflow-wrap:break-word}
+
+/* Live portrait matte must be the only visible camera composite once ready.
+   The original camera video continues playing for tracking but must not leak
+   the uncut background and stale hair edges through semitransparent alpha. */
+.ar-immersive.ar-matting-active:not(.ar-choice-phase):not(.ar-final-mode) .ar-portrait-camera{opacity:0!important}
+.ar-immersive:not(.ar-matting-active) .ar-portrait-camera{opacity:1}
