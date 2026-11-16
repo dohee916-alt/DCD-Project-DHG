@@ -402,7 +402,8 @@ function create(root){
     root.classList.add('ar-tulle-fallback');
     const backup=canvasCloth(root),layers=[];
     let frameId=0,live=true;
-    function tick(now){if(!live)return;backup.draw(layers,now);frameId=requestAnimationFrame(tick);}
+    let lastFallback=0;
+    function tick(now){if(!live)return;if(now-lastFallback>=41){lastFallback=now;backup.draw(layers,now);}frameId=requestAnimationFrame(tick);}
     frameId=requestAnimationFrame(tick);
     return {
       setConnections(){return true},
@@ -711,7 +712,7 @@ function create(root){
           p.ox=p.x;p.oy=p.y;p.oz=p.z;
           p.x+=vx;p.y+=vy+.012*stepRatio*stepRatio;p.z+=vz;
         }
-        for(let iteration=0;iteration<4;iteration++){
+        for(let iteration=0;iteration<2;iteration++){
           for(const e of sim.links){
             const a=sim.nodes[e.a],b=sim.nodes[e.b];
             const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
@@ -918,7 +919,7 @@ function create(root){
     if(!live)return;
     // Thirty FPS is sufficient for a translucent face cloth and prevents
     // a second 60 FPS WebGL loop from competing with camera inference.
-    if(now-lastRendered>=16){lastRendered=now;render(now);}
+    if(now-lastRendered>=42){lastRendered=now;render(now);}
     frameId=requestAnimationFrame(loop);
   }
   frameId=requestAnimationFrame(loop);
