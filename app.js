@@ -237,7 +237,7 @@ function introMarkup(p){
   if(p==='00'){
     h+=figmaGlassText('come',98.76,815.92,230,17,'assets/figma-current/hd/poster-cta-base.svg','assets/figma-current/hd/poster-cta.svg');
     h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';
-    if(!openingSoundEnabled)h+='<button type="button" data-action="enableSound" aria-label="Enable sound on the opening advertisement" style="position:absolute;inset:0;width:100%;height:100%;z-index:999;border:0;background:rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center;cursor:pointer;"><span style="display:block;padding:17px 24px;background:#d83a00;color:#fff;font:700 21px/1.2 Turret Road,sans-serif;letter-spacing:.04em;text-align:center;border:2px solid white;box-shadow:0 4px 26px #0007;">TAP TO ENABLE SOUND</span></button>';
+    if(!openingSoundEnabled)h+='<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound on the opening advertisement"><span class="dcd-figma-glass-pill opening-sound-control"><span class="dcd-figma-glass-label">ENABLE SOUND</span></span></button>';
   }else if(s.phase==='guide'){
     h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
     // WEB01 approved guide; left hand Y=415, all other guides unchanged.
