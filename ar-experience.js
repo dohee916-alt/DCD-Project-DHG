@@ -68,6 +68,7 @@ function clearScene(){
  if(!state.root)return;
  state.root.querySelector('.ar-copy').textContent='';
  const stigma=state.root.querySelector('.ar-stigma-typed');if(stigma)stigma.textContent='';
+ const heading=state.root.querySelector('.ar-stigma-heading');if(heading)heading.textContent='';
  state.root.querySelector('.ar-flow-choices').innerHTML='';
  state.root.querySelector('.ar-choice-pack').innerHTML='';
   state.root.querySelector('.ar-ending-cta')?.classList.remove('visible');
@@ -142,6 +143,20 @@ function fabric(){
 function addFabric(){
  if(!state.root||state.maskCount>=5)return;
  state.maskCount++;fabric();
+}
+function typeStigmaHeading(text,onComplete){
+ const heading=state.root?.querySelector('.ar-stigma-heading');
+ if(!heading)return;
+ heading.textContent='';
+ const letters=[...text],session=state.session,frame=state.frame;
+ let index=0;
+ function next(){
+   if(!state.root||state.session!==session||state.frame!==frame)return;
+   heading.textContent=letters.slice(0,++index).join('');
+   if(index<letters.length)delay(next,85);
+   else onComplete?.();
+ }
+ delay(next,250);
 }
 function typeStigma(text,onComplete){
  const typed=state.root?.querySelector('.ar-stigma-typed');
@@ -235,7 +250,9 @@ function enter(frame){
      const matteReady=!!state.matte?.visible;
      const elapsed=performance.now()-prepare;
      if((matteReady&&state.faceBox)||elapsed>=6500){
-       showStigmaSequence('first',()=>{if(state.frame==='AR4')enter('AR5');});
+       typeStigmaHeading('THEY SAY',()=>{
+         if(state.frame==='AR4')showStigmaSequence('first',()=>{if(state.frame==='AR4')enter('AR5');});
+       });
      }else delay(readyForStigmas,180);
    }
    delay(readyForStigmas,500);break;
@@ -259,6 +276,9 @@ function enter(frame){
    break;
  case 'AR5-2':
    caption('');
+   // The previous THEY SAY disappears when the removal starts.
+   // Reveal NOW THEY SAY once, by typing; hold it throughout the new labels.
+   typeStigmaHeading('NOW THEY SAY');
    for(let i=0;i<5;i++)delay(removeFabric,400+i*900);
    delay(()=>{
      if(state.frame!=='AR5-2')return;
