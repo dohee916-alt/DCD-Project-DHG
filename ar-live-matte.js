@@ -115,7 +115,7 @@ function create(root,video,canvas,onFrame){
  const alphaCanvas=document.createElement('canvas');
  alphaCanvas.width=canvas.width;alphaCanvas.height=canvas.height;
  const alphaCtx=alphaCanvas.getContext('2d',{alpha:true});
- let hasAlpha=false,latestMaskAt=0,paintFrame=0,lastPaint=0;
+ let hasAlpha=false,latestMaskAt=0,paintFrame=0,lastPaint=0,maskAnchor=null;
  function paintLive(now){
    if(!live)return;
    paintFrame=requestAnimationFrame(paintLive);
@@ -129,7 +129,14 @@ function create(root,video,canvas,onFrame){
      subjectCtx.clearRect(0,0,w,h);
      subjectCtx.drawImage(video,(w-dw)/2,(h-dh)/2,dw,dh);
      subjectCtx.globalCompositeOperation='destination-in';
-     subjectCtx.drawImage(alphaCanvas,0,0,w,h);
+     // Translate the cached alpha with CURRENT face landmarks. A portrait
+     // inference can take many frames; leaving its alpha at old coordinates
+     // clips moving hair/cheeks even when the live camera image is fresh.
+     const face=root.__dcdFaceRegion;
+     const aligned=face&&maskAnchor&&now-face.at<450;
+     const dx=aligned?Math.max(-w*.24,Math.min(w*.24,(face.cx-maskAnchor.cx)*dw)):0;
+     const dy=aligned?Math.max(-h*.18,Math.min(h*.18,(face.top-maskAnchor.top)*dh)):0;
+     subjectCtx.drawImage(alphaCanvas,dx,dy,w,h);
      subjectCtx.globalCompositeOperation='source-over';
      ctx.clearRect(0,0,w,h);
      ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
@@ -336,6 +343,7 @@ function create(root,video,canvas,onFrame){
     alphaCtx.clearRect(0,0,w,h);
     alphaCtx.drawImage(data.cutout,(w-dw)/2,(h-dh)/2,dw,dh);
     hasAlpha=true;latestMaskAt=performance.now();
+    maskAnchor=request?.faceRegion||root.__dcdFaceRegion||null;
     lastCapture=performance.now();visible=true;
     if(root.__dcdMatteStatus){root.__dcdMatteStatus.frames++;root.__dcdMatteStatus.lastFrameAt=lastCapture;}
     measureVisibleHairCrown(lastCapture);
@@ -366,7 +374,7 @@ function create(root,video,canvas,onFrame){
   if(time<=lastVideoTime)return;
   lastVideoTime=time;
   const current=worker;
-  const request={started:performance.now()};pending=request;
+  const request={started:performance.now(),faceRegion:root.__dcdFaceRegion?{...root.__dcdFaceRegion}:null};pending=request;
   let source;
   try{
    const timestamp=Math.round(time*1e6);
