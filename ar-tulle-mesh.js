@@ -603,18 +603,27 @@ function create(root){
     const fheight=prev?mix(prev.fh,fh,.73):fh;
     const roll=prev?mix(prev.roll||0,clamp(angle,-.14,.14),.67):clamp(angle,-.085,.085);
     faceCenter={x:fx,y:fy,cw:fwidth*2.17,ch:fheight*1.76,
-      hairCrownY:Number.isFinite(crown)?(prev?.hairCrownY!=null?mix(prev.hairCrownY,crown,.72):crown):(prev?.hairCrownY??null),
+      // When expensive hair segmentation is late, move the LAST measured
+      // crown with the newest face landmarks instead of freezing it at the
+      // old screen position. This is essential for motion responsiveness.
+      hairCrownY:Number.isFinite(crown)
+        ?(prev?.hairCrownY!=null?mix(prev.hairCrownY+(fy-prev.y),crown,.72):crown)
+        :(prev?.hairCrownY!=null?prev.hairCrownY+(fy-prev.y):null),
       hairOutline:measured&&performance.now()-measured.at<2300?measured.outline||null:null,
       crownCurve:(()=>{
-        const raw=measured&&performance.now()-measured.at<2300?measured.curve||null:null;
-        if(!raw?.length)return prev?.crownCurve||null;
+        const raw=measured&&performance.now()-measured.at<1400?measured.curve||null:null;
         const prior=prev?.crownCurve;
-        if(!prior?.length)return raw;
+        const shifted=prior?.map(point=>({
+          x:point.x+(fx-prev.x)/W,
+          y:point.y+(fy-prev.y)/H
+        }))||null;
+        if(!raw?.length)return shifted;
+        if(!shifted?.length)return raw;
         return raw.map(point=>{
-          let nearest=prior[0],distance=Infinity;
-          for(const p of prior){const d=Math.abs(p.x-point.x);if(d<distance){distance=d;nearest=p;}}
+          let nearest=shifted[0],distance=Infinity;
+          for(const p of shifted){const d=Math.abs(p.x-point.x);if(d<distance){distance=d;nearest=p;}}
           const limitedY=clamp(point.y,nearest.y-.065,nearest.y+.065);
-          return {x:point.x,y:mix(nearest.y,limitedY,.68)};
+          return {x:mix(nearest.x,point.x,.7),y:mix(nearest.y,limitedY,.68)};
         });
       })(),
       co:Math.cos(roll),si:Math.sin(roll),roll,fw:fwidth,fh:fheight,
