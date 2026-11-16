@@ -75,8 +75,16 @@ function unlock(){
   }
   context.resume()?.catch(error=>console.warn('[DCD SFX] Resume:',error));
   if(!loadHQ){
-   loadHQ=Promise.all(parts.map(fetchText)).then(arr=>bytesFromBase64(arr.join(''),19493))
-     .then(decode).then(buffer=>{
+   loadHQ=fetch(PATH+'dcd-fixed-sfx.ogg').then(async response=>{
+       if(!response.ok)throw Error('Original SFX HTTP '+response.status);
+       const data=await response.arrayBuffer();
+       if(data.byteLength!==19493)throw Error('Original SFX media corrupted');
+       return data;
+     }).catch(async error=>{
+       console.warn('[DCD SFX] Using verified text backup:',error);
+       const arr=await Promise.all(parts.map(fetchText));
+       return bytesFromBase64(arr.join(''),19493);
+     }).then(decode).then(buffer=>{
        buffers.hq=buffer;console.info('[DCD SFX] Syringe+signature HD ready,',buffer.duration.toFixed(2),'s');
        flush('hq');
      }).catch(error=>{console.error('[DCD SFX] High-quality sound:',error);loadHQ=null;});
