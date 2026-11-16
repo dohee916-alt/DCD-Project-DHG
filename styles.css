@@ -1944,3 +1944,11 @@ canvas.figure{object-fit:contain!important}
 #stage.page-reel0 .reel-screen-one .poster-word{
  z-index:5;pointer-events:none;
 }
+
+/* While the deliberate Reel0-to-Reel1 animation runs, disable native snap
+   so Safari cannot jump to Reel1 ahead of the controlled 2.8s animation. */
+#stage.page-reel0 .reels-vertical-scroll.reel-transitioning{
+ scroll-snap-type:none!important;
+ scroll-behavior:auto!important;
+ overflow-y:hidden!important;
+}
