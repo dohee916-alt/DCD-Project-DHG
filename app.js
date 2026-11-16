@@ -1514,7 +1514,30 @@ window.DCD_RESTART_WEB=()=>{
  s=fresh();sessionStorage.removeItem(key);
  setPage('01','guide');
 };
-function act(a){if(a==='openReel1'&&s.page==='reel0'){stage.querySelector('.reels-vertical-scroll')?.scrollTo({top:926,behavior:'smooth'});return;}if(a==='enableSound'&&(s.page==='00'||s.page==='reel0')){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();if(s.page==='reel0'){const reels=stage.querySelector('.reels-vertical-scroll');reels?.classList.add('sound-unlocked');reels?.scrollTo({top:926,behavior:'smooth'});}return;}if(a==='enter'&&(s.page==='00'||s.page==='reel0'))runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
+// Deterministic, unhurried Reel0 -> Reel1 movement; browser-native
+// smooth scrolling is often too abrupt and varies by device.
+let reelTransitionFrame=0;
+function advanceReel(duration=2800){
+ const scroller=stage.querySelector('.reels-vertical-scroll');
+ if(!scroller||s.page!=='reel0')return;
+ cancelAnimationFrame(reelTransitionFrame);
+ scroller.classList.add('sound-unlocked','reel-transitioning');
+ const start=scroller.scrollTop;
+ const target=scroller.clientHeight;
+ let began=null;
+ function frame(now){
+  if(s.page!=='reel0'||!scroller.isConnected)return;
+  if(began===null)began=now;
+  const t=Math.min(1,(now-began)/duration);
+  // Gentle acceleration and deceleration, without sudden jumps.
+  const eased=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+  scroller.scrollTop=start+(target-start)*eased;
+  if(t<1)reelTransitionFrame=requestAnimationFrame(frame);
+  else{scroller.scrollTop=target;scroller.classList.remove('reel-transitioning');reelTransitionFrame=0;}
+ }
+ reelTransitionFrame=requestAnimationFrame(frame);
+}
+function act(a){if(a==='openReel1'&&s.page==='reel0'){advanceReel();return;}if(a==='enableSound'&&(s.page==='00'||s.page==='reel0')){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();if(s.page==='reel0'){advanceReel();}return;}if(a==='enter'&&(s.page==='00'||s.page==='reel0'))runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
 stage.addEventListener('click',e=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('pointerdown',()=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();},{passive:true});
 stage.addEventListener('change',e=>{
