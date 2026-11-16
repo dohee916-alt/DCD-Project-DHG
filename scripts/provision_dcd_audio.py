@@ -74,8 +74,19 @@ def fetch(url,destination):
 
 def ffmpeg(source,dest,*args):
     if dest.exists() and dest.stat().st_size>1500:return
+    # Seek before reading input; putting -ss AFTER -i creates quiet output
+    # despite correct-looking durations for this filtered source material.
+    args=list(args)
+    pre=[]
+    for flag in ("-ss","-t"):
+        if flag in args:
+            ix=args.index(flag)
+            pre.extend(args[ix:ix+2])
+            del args[ix:ix+2]
     subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y",
-      "-i",str(source),*args,"-ar","24000","-ac","1","-c:a","libopus","-b:a","30k",str(dest)],check=True)
+      *pre,"-i",str(source),*args,"-ar","24000","-ac","1","-c:a","libopus","-b:a","30k",str(dest)],check=True)
+    if dest.stat().st_size<1800:
+        raise RuntimeError(f"Unexpected near-silent sound export: {dest}")
 
 # Source files are public previews when this workflow runs remotely. They
 # are the same user-approved recordings, not substituted sound designs.
