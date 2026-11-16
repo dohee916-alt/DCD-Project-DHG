@@ -1,9 +1,8 @@
-<svg width="250" height="90" viewBox="0 0 250 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g transform="translate(-61.2,-4.37) scale(2.8,1.72)" filter="url(#filter0_dd_636_503)" data-figma-bg-blur-radius="9">
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="90" viewBox="13 -6.45801 108 75.7935" preserveAspectRatio="none" fill="none">
+<g filter="url(#filter0_dd_636_503)" data-figma-bg-blur-radius="9">
 <path d="M22 27.042C22 13.511 32.969 2.54199 46.5 2.54199H87.5C101.031 2.54199 112 13.511 112 27.042C112 40.573 101.031 51.542 87.5 51.542H46.5C32.969 51.542 22 40.573 22 27.042Z" fill="url(#paint0_linear_636_503)"/>
 <path d="M46.5 3.54199H87.5C100.479 3.54199 111 14.0633 111 27.042C111 40.0207 100.479 50.542 87.5 50.542H46.5C33.5213 50.542 23 40.0207 23 27.042C23 14.0633 33.5213 3.54199 46.5 3.54199Z" stroke="url(#paint1_linear_636_503)" stroke-opacity="0.95" stroke-width="2"/>
 </g>
-
 <defs>
 <filter id="filter0_dd_636_503" x="13" y="-6.45801" width="108" height="75.7935" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
@@ -19,7 +18,8 @@
 <feBlend mode="normal" in2="effect1_dropShadow_636_503" result="effect2_dropShadow_636_503"/>
 <feBlend mode="normal" in="SourceGraphic" in2="effect2_dropShadow_636_503" result="shape"/>
 </filter>
-<linearGradient id="paint0_linear_636_503" x1="102.331" y1="5.05481" x2="13.0773" y2="23.5364" gradientUnits="userSpaceOnUse">
+<clipPath id="bgblur_0_636_503_clip_path" transform="translate(-13 6.45801)"><path d="M22 27.042C22 13.511 32.969 2.54199 46.5 2.54199H87.5C101.031 2.54199 112 13.511 112 27.042C112 40.573 101.031 51.542 87.5 51.542H46.5C32.969 51.542 22 40.573 22 27.042Z"/>
+</clipPath><linearGradient id="paint0_linear_636_503" x1="102.331" y1="5.05481" x2="13.0773" y2="23.5364" gradientUnits="userSpaceOnUse">
 <stop stop-color="#FFE1DC" style="stop-color:#FFE1DC;stop-color:color(display-p3 1.0000 0.8822 0.8614);stop-opacity:1;"/>
 <stop offset="0.538462" stop-color="#FF8355" stop-opacity="0.7" style="stop-color:#FF8355;stop-color:color(display-p3 1.0000 0.5129 0.3317);stop-opacity:0.7;"/>
 <stop offset="1" stop-color="#FFE0DC" style="stop-color:#FFE0DC;stop-color:color(display-p3 1.0000 0.8788 0.8627);stop-opacity:1;"/>
