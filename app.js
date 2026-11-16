@@ -73,7 +73,7 @@ function mobilePortraitLandscape(){return landscapePages.has(s.page)&&mobilePort
 if(s.page==='03'&&s.phase==='waiting'&&phoneDevice()){
  s.page='workbench';s.phase='ready';
 }
-function save(){if(!['00','01','02'].includes(s.page))sessionStorage.setItem(key,JSON.stringify(s));}
+function save(){if(!['reel0','00','01','02'].includes(s.page))sessionStorage.setItem(key,JSON.stringify(s));}
 function later(fn,ms){let id=setTimeout(fn,ms);timers.push(id);return id;}
 function clearTimers(){timers.forEach(clearTimeout);timers=[];}
 function box(x,y,w,h,extra=''){return 'style="left:'+x+'px;top:'+y+'px;width:'+w+'px;height:'+h+'px;'+extra+'"';}
@@ -126,7 +126,7 @@ function syringeMarkup(cls=''){
     '<span class="syringe-tip-marker" aria-hidden="true"></span>');
 }
 function setPage(p,phase='ready'){window.DCD_CAMPAIGN_AUDIO?.setScene(p);if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
-function dimensions(){return mobilePortraitLandscape()||['00','01','02','03','ar','arOpen','arFace'].includes(s.page)?[428,926]:[874,428];}
+function dimensions(){return mobilePortraitLandscape()||['reel0','00','01','02','03','ar','arOpen','arFace'].includes(s.page)?[428,926]:[874,428];}
 function fit(){
  const [w,h]=dimensions(),v=document.querySelector('#viewport');
  const W=v.clientWidth,H=v.clientHeight;
@@ -225,9 +225,19 @@ function blisterMotionLayer(source,mode,still){
   const cls=(still?'opening-blister-motion opening-blister-awaiting ':'opening-blister-still ')+'opening-blister-'+mode;
   return fallback+img(source,-16,0,467,934,cls);
 }
+function reelStackMarkup(){
+ return '<div class="reels-vertical-scroll" aria-label="Reels feed">'+
+ '<section class="reel-screen reel-screen-zero" aria-label="Reel 0">'+
+ '<img class="reel-background" src="assets/figma-current/hd/reel0-underlay-image.jpg" alt="" draggable="false">'+
+ '<img class="reel-frame-overlay" src="assets/figma-current/hd/reel0-ui-scroll-no-status.png" alt="" draggable="false">'+
+ '</section>'+
+ '<section class="reel-screen reel-screen-one" aria-label="Reel 1">'+introMarkup('00')+'</section>'+
+ '</div>'+
+ '<img class="reels-fixed-status-bar" src="assets/figma-current/hd/reel-fixed-status-bar.png" alt="" aria-hidden="true">';
+}
 function introMarkup(p){
   if(p==='00')return blisterMotionLayer(A.blisterPingpong,'loop',A.blisterPingpongFirst)+
-    '<img class="lay reel-figma-overlay reel1-figma-overlay" src="assets/figma-current/hd/reel1-ui-overlay-no-sound.png" alt="" aria-hidden="true">'+
+    '<img class="reel-frame-overlay reel1-figma-overlay" src="assets/figma-current/hd/reel1-ui-scroll-no-status.png" alt="" aria-hidden="true">'+
     '<button class="full-hit" data-action="enter" aria-label="Continue to the interactive advertisement"></button>'+
     (!openingSoundEnabled?'<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound on the opening advertisement"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>':'');
   // Approved GIFs entirely replace the superseded pair of alternating
@@ -1046,9 +1056,7 @@ function openArPack(){
 function render(){
  fit();stage.className='stage page-'+s.page+' phase-'+s.phase;
  stage.dataset.mobileLandscape=String(mobilePortraitLandscape());
- let h='';if(s.page==='reel0')h='<img class="lay reel0-figma-underlay" src="assets/figma-current/hd/reel0-underlay-image.jpg" alt="" aria-hidden="true">'+
-  '<img class="lay reel-figma-overlay reel0-figma-overlay" src="assets/figma-current/hd/reel0-ui-overlay.png" alt="" aria-hidden="true">'+
-  '<button class="full-hit" data-action="openReel1" aria-label="Open the next reel"></button>';
+ let h='';if(s.page==='reel0')h=reelStackMarkup();
   else if(s.page==='00'||s.page==='01')h=introMarkup(s.page);else if(s.page==='02')h=resultMarkup();else if(s.page==='03'){
  // Preserve the actual workbench interaction in the portrait-locked phone:
  // its preview is the same WEB04 scene, rotated only within the existing
@@ -1074,6 +1082,20 @@ if(packHand){
   packHand.addEventListener('animationend',endHand,{once:true});
   setTimeout(endHand,Math.max(0,PACK_HAND_TOTAL_MS-elapsed)+40);
 }
+ if(s.page==='reel0'){
+  const reelScroll=stage.querySelector('.reels-vertical-scroll');
+  if(reelScroll){
+   let reelAudioScene='reel0';
+   const syncReelAudio=()=>{
+    const next=reelScroll.scrollTop>=reelScroll.clientHeight*.5?'00':'reel0';
+    if(next===reelAudioScene)return;
+    reelAudioScene=next;
+    window.DCD_CAMPAIGN_AUDIO?.setScene(next);
+   };
+   reelScroll.addEventListener('scroll',syncReelAudio,{passive:true});
+   syncReelAudio();
+  }
+ }
  if(s.page==='14')bindNewSignature();
  if(s.page==='arFace')attachArCamera();
  const animated=stage.querySelector('.opening-blister-motion');
@@ -1487,7 +1509,7 @@ window.DCD_RESTART_WEB=()=>{
  s=fresh();sessionStorage.removeItem(key);
  setPage('01','guide');
 };
-function act(a){if(a==='openReel1'&&s.page==='reel0'){setPage('00','loop');return;}if(a==='enableSound'&&s.page==='00'){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();return;}if(a==='enter'&&s.page==='00')runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
+function act(a){if(a==='openReel1'&&s.page==='reel0'){setPage('00','loop');return;}if(a==='enableSound'&&(s.page==='00'||s.page==='reel0')){openingSoundEnabled=true;window.DCD_CAMPAIGN_AUDIO?.enableMusic?.();stage.querySelector('[data-action="enableSound"]')?.remove();return;}if(a==='enter'&&(s.page==='00'||s.page==='reel0'))runIntro('01');if(a==='start')startRotateGuide();if(a==='next')advanceNewPrescription();if(a==='decline'&&s.page==='15')setPage('16');if(a==='ar')beginAr();if(a==='openAr')openArPack();}
 stage.addEventListener('click',e=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();let b=e.target.closest('[data-action]');if(b)act(b.dataset.action);});
 stage.addEventListener('pointerdown',()=>{window.DCD_WEB_SFX?.unlock();window.DCD_CAMPAIGN_AUDIO?.gesture();},{passive:true});
 stage.addEventListener('change',e=>{
