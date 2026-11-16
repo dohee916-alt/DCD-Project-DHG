@@ -859,8 +859,8 @@ function phoneDevice(){
     (navigator.maxTouchPoints>1&&/Macintosh/i.test(navigator.userAgent));
 }
 async function beginAr(){
-  if(s.page==='15')window.DCD_CONSENT_AUDIO?.yes?.();
   if(arHandoffActive||!['15','16'].includes(s.page))return;
+  if(s.page==='15')window.DCD_CONSENT_AUDIO?.yes?.();
   arHandoffActive=true;
   arDropFinished=false;arCameraReady=false;arCameraError='';
   [A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[1]]
