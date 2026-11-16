@@ -6,21 +6,22 @@
 'use strict';
 const BASE='assets/audio/';
 const FX={
- creak:new Audio(BASE+'dcd-plastic-creak.ogg'),
- burst:new Audio(BASE+'dcd-blister-burst-1p5s.ogg'),
- whoosh:new Audio(BASE+'dcd-pack-whoosh.ogg')
+ creak:new Audio(BASE+'dcd-plastic-creak.mp3'),
+ burst:new Audio(BASE+'dcd-blister-burst-1p5s.mp3'),
+ whoosh:new Audio(BASE+'dcd-pack-whoosh.mp3')
 };
 FX.creak.loop=true;FX.creak.volume=.65;
 FX.burst.volume=.8;FX.whoosh.volume=.7;
 let allowed=false,scene='00',musicContext=null,musicGain=null,musicSource=null,musicBuffer=null;
+let sourceAwaitingResume=false;
 let musicLoading=null,duckTimer=0;
 const Context=window.AudioContext||window.webkitAudioContext;
 const PARTS=[1,2,3,4,5].map(n=>BASE+'dcd-fashion-loop-part'+n+'.txt');
-let packedMusic=fetch(BASE+'dcd-fashion-loop.ogg')
+let packedMusic=fetch(BASE+'dcd-fashion-loop.mp3')
  .then(async response=>{
    if(!response.ok)throw Error('Bundled original fashion loop HTTP '+response.status);
    const buffer=await response.arrayBuffer();
-   if(buffer.byteLength!==10756)throw Error('Fashion loop damaged');
+   if(buffer.byteLength<50000)throw Error('Fashion MP3 damaged');
    return buffer;
  }).catch(async error=>{
    console.warn('[DCD BGM] Falling back to verified parts:',error);
@@ -51,11 +52,22 @@ function unlockMusic(){
     const mod=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
     musicBuffer=await mod.default(data.slice(0));
    }
-   if(allowed)startMusic();
+   if(allowed){
+     await musicContext.resume();
+     startMusic();
+   }
  }).catch(error=>console.warn('[DCD BGM] Decode:',error));
 }
 function startMusic(){
  if(!allowed||!musicContext||!musicBuffer||musicSource||scene==='arFace'||scene==='arClose')return;
+ if(musicContext.state!=='running'){
+   if(!sourceAwaitingResume){
+     sourceAwaitingResume=true;
+     musicContext.resume().then(()=>{sourceAwaitingResume=false;startMusic();})
+       .catch(error=>{sourceAwaitingResume=false;console.warn('[DCD BGM] Resume:',error);});
+   }
+   return;
+ }
  const source=musicContext.createBufferSource();
  source.buffer=musicBuffer;source.loop=true;source.connect(musicGain);source.start();
  musicSource=source;source.onended=()=>{if(musicSource===source)musicSource=null;};
@@ -69,9 +81,24 @@ function attempt(audio){
  const result=audio.play();result?.catch?.(error=>console.warn('[DCD audio] Effect:',audio.src,error));
 }
 function gesture(){
- allowed=true;unlockMusic();startMusic();
+ allowed=true;
+ unlockMusic();
+ startMusic();
  if(['00','01'].includes(scene)&&FX.creak.paused)attempt(FX.creak);
 }
+function enableOnGesture(){
+ // Capture the very first interaction anywhere on the advertisement.
+ // Safari requires a gesture after a page reload; do not defer audio
+ // activation until pressing the ad CTA to open WEB01.
+ gesture();
+}
+document.addEventListener('touchstart',enableOnGesture,{capture:true,passive:true});
+document.addEventListener('pointerdown',enableOnGesture,{capture:true,passive:true});
+document.addEventListener('keydown',enableOnGesture,{capture:true});
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState==='visible'&&allowed)gesture();
+});
+window.addEventListener('pageshow',()=>{if(allowed)gesture();});
 function setScene(page){
  scene=page;
  if(page==='00'||page==='01'){
@@ -101,4 +128,8 @@ function stop(){
  stopMusic();Object.values(FX).forEach(a=>a.pause());
 }
 window.DCD_CAMPAIGN_AUDIO={gesture,setScene,burst,whoosh,stop,fx:FX,musicReady:()=>!!musicBuffer};
+// Try starting on WEB00 immediately. Safari will reject unmuted autoplay
+// without a gesture; the first touch ON WEB00 then unlocks both sounds.
+unlockMusic();
+setScene('00');
 })();
