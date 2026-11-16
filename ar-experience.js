@@ -34,7 +34,7 @@ function markup(){
 }
 // CC0 hushed crowd murmur. The previous -28 dB RMS track at 32% volume
 // was barely audible. This replacement has a verified louder source level.
-const WHISPER_AUDIO='https://sfxmint.com/dl/crowd-murmur-47.mp3';
+const WHISPER_AUDIO='https://pixabay.com/sound-effects/download/murmur-27730/';
 function whisperElement(){
  if(!state.whisperAudio){
    const audio=new Audio(WHISPER_AUDIO);
@@ -54,7 +54,7 @@ function primeWhisper(){
 function startWhisper(){
  const audio=whisperElement();
  audio.volume=1;
- try{audio.currentTime=0;}catch{}
+ // Preserve the timeline across the whisper scene and stigma sequence.
  if(audio.paused)audio.play()?.catch?.(e=>console.warn('[DCD AR] Whisper playback:',e));
 }
 function stopWhisper(force=false){
@@ -225,7 +225,11 @@ function buttons(yes,no){
 }
 function enter(frame){
  if(!state.root||!frameNames.includes(frame))return;
- stopTimers();stopWhisper();state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
+ stopTimers();
+ // Whispering is one continuous ambience from AR3-1 through all five first
+ // stigma labels and cloth arrivals. Do not restart at every new frame.
+ if(frame!=='AR3-1'&&frame!=='AR4')stopWhisper();
+ state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
  switch(frame){
  case 'AR3':state.portraitPending=false;caption('POSITION YOUR FACE HERE');break;
