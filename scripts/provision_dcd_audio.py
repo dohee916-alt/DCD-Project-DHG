@@ -74,8 +74,8 @@ def fetch(url,destination):
 
 def ffmpeg(source,dest,*args):
     if dest.exists() and dest.stat().st_size>1500:return
-    subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y",*args,
-      "-i",str(source),"-ar","24000","-ac","1","-c:a","libopus","-b:a","30k",str(dest)],check=True)
+    subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y",
+      "-i",str(source),*args,"-ar","24000","-ac","1","-c:a","libopus","-b:a","30k",str(dest)],check=True)
 
 # Source files are public previews when this workflow runs remotely. They
 # are the same user-approved recordings, not substituted sound designs.
