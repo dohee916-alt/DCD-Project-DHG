@@ -1924,3 +1924,51 @@ canvas.figure{object-fit:contain!important}
 #stage .opening-sound-gate:focus-visible .opening-sound-control{
   outline:3px solid white;outline-offset:5px;
 }
+
+
+/* Opening audio control: Figma 409:156 WEB orange glass, independent of AR10 CTA.
+   Native WEB control has 112x60; extend width for approved sound label. */
+#stage .opening-sound-gate .opening-web-glass{
+ position:relative;display:block;flex:0 0 auto;
+ width:250px;height:60px;pointer-events:none;isolation:isolate;
+ font:700 20px/24px "Source Sans 3",Arial,sans-serif;
+}
+#stage .opening-sound-gate .opening-web-glass-perimeter,
+#stage .opening-sound-gate .opening-web-glass-face,
+#stage .opening-sound-gate .opening-web-glass-core,
+#stage .opening-sound-gate .opening-web-glass-rim{
+ position:absolute;display:block;pointer-events:none;
+}
+#stage .opening-sound-gate .opening-web-glass-perimeter{
+ inset:0;border-radius:145px;
+ background:linear-gradient(to bottom,#ea5a06 0%,#f2ddd6 50.481%,#e0480a 100%);
+ box-shadow:0 11px 22px rgba(214,77,15,.14);
+}
+#stage .opening-sound-gate .opening-web-glass-face{
+ inset:3.33% 1.79%;border-radius:139px;
+ border:1px solid rgba(255,242,227,.3);
+ background:radial-gradient(ellipse 56% 52% at 50% 50%,
+ rgba(255,99,11,.97) 0%,rgba(255,122,39,.94) 19%,
+ rgba(255,145,66,.91) 38%,rgba(255,166,106,.91) 54%,
+ rgba(255,186,145,.91) 70%,rgba(255,212,185,.935) 85%,
+ rgba(255,237,224,.96) 100%);
+}
+#stage .opening-sound-gate .opening-web-glass-core{
+ inset:3.33% 1.79%;border-radius:125px;
+ background:radial-gradient(ellipse 70% 48% at 50% 50%,
+ rgba(255,51,0,.43) 0%,rgba(255,87,26,.28) 45%,
+ rgba(255,204,153,0) 100%);
+}
+#stage .opening-sound-gate .opening-web-glass-rim{
+ inset:0;border-radius:145px;
+ border:.5px solid rgba(255,255,255,.85);
+}
+#stage .opening-sound-gate .opening-web-glass-label{
+ position:absolute;inset:0;
+ display:flex;align-items:center;justify-content:center;
+ font:700 20px/24px "Source Sans 3",Arial,sans-serif;
+ color:#fff;text-align:center;white-space:nowrap;
+}
+#stage .opening-sound-gate:focus-visible .opening-web-glass{
+ outline:3px solid #fff;outline-offset:5px;border-radius:145px;
+}
