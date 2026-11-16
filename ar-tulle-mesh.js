@@ -579,6 +579,9 @@ function create(root){
     const cx=(left.x+right.x)/2,cy=(forehead.y+chin.y)/2+fh*.035;
     // Track the rigid head using the face, but NEVER sculpt cloth from skin.
     // Estimated skull volume includes the crown above landmark 10.
+    const measured=root.parentElement?.__dcdHairCrown||root.closest('.ar-immersive')?.__dcdHairCrown;
+    const crown=measured&&performance.now()-measured.at<2300
+      ?oy+measured.y*dh:null;
     const centerY=forehead.y+fh*.48;
     const yaw=clamp(((points[1].x-(points[234].x+points[454].x)*.5)/
       Math.max(.08,Math.abs(points[454].x-points[234].x)))*1.1,-.52,.52);
@@ -592,6 +595,7 @@ function create(root){
     const fheight=prev?mix(prev.fh,fh,.18):fh;
     const roll=prev?mix(prev.roll||0,clamp(angle,-.085,.085),.12):clamp(angle,-.085,.085);
     faceCenter={x:fx,y:fy,cw:fwidth*2.17,ch:fheight*1.76,
+      hairCrownY:Number.isFinite(crown)?crown:null,
       co:Math.cos(roll),si:Math.sin(roll),roll,fw:fwidth,fh:fheight,
       yaw:0,pitch:0,
       radiusX:fwidth*.59,radiusY:fheight*.52,radiusZ:fwidth*.59};
@@ -740,6 +744,20 @@ function create(root){
       mesh[at+6]=Math.min(u,1-u,v,1-v);mesh[at+7]=0;
       mesh[at+8]=nX;mesh[at+9]=nY;
       mesh[at+10]=Math.sqrt(Math.max(.08,1-nX*nX-nY*nY));
+    }
+    // HairSegmenter-style semantic crown measurement is the actual top edge.
+    // Keep the hanging hem fixed and fit only the upper mesh portion to it.
+    if(Number.isFinite(head.hairCrownY)){
+      let top=Infinity,bottom=-Infinity;
+      for(let i=1;i<mesh.length;i+=stride){
+        top=Math.min(top,mesh[i]);bottom=Math.max(bottom,mesh[i]);
+      }
+      const span=Math.max(1,bottom-top);
+      const correction=head.hairCrownY-8-top;
+      for(let i=1;i<mesh.length;i+=stride){
+        const weight=Math.pow(1-clamp((mesh[i]-top)/span,0,1),1.5);
+        mesh[i]+=correction*weight;
+      }
     }
   }
   function arrival(t){
