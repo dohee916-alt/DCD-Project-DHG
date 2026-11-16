@@ -731,7 +731,7 @@ async function askArCamera(){
   if(arCameraRequest)return arCameraRequest;
   arCameraRequest=(async()=>{
     try{
-      const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'user'}}});
+      const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'user'},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}}});
       if(!['ar','arOpen','arFace'].includes(s.page)){
         stream.getTracks().forEach(t=>t.stop());
         return;
