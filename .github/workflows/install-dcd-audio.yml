@@ -21,7 +21,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/audio/dcd-fashion-advertising-promo.mp3 assets/audio/dcd-plastic-creak.ogg assets/audio/dcd-blister-burst-1p5s.ogg assets/audio/dcd-pack-whoosh.ogg
+          git add assets/audio/dcd-*.ogg
+          if test -f assets/audio/dcd-fashion-advertising-promo.mp3; then git add assets/audio/dcd-fashion-advertising-promo.mp3; fi
           if ! git diff --cached --quiet; then
             git commit -m "Install approved DCD campaign soundtrack"
             git push
