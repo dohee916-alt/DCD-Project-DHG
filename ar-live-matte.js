@@ -143,7 +143,7 @@ function create(root,video,canvas,onFrame){
  }
  function offerSemanticFrame(source,sourceTime){
   const now=performance.now();
-  if(!semanticReady||semanticBusy||!semantic||now-semanticLast<100)return false;
+  if(!semanticReady||semanticBusy||!semantic||now-semanticLast<300)return false;
   semanticLast=now;semanticBusy=true;
   // Copy the original, unmasked frame before closing the VideoFrame.
   Promise.resolve().then(()=>createImageBitmap(source)).then(bitmap=>{
@@ -197,7 +197,7 @@ function create(root,video,canvas,onFrame){
   const f=fallback;
   if(!f||video.readyState<2||!video.videoWidth)return;
   const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
-  if(now-f.lastSegment>=33){
+  if(now-f.lastSegment>=80){
    f.source.width=vw;f.source.height=vh;
    f.sourceCtx.drawImage(video,0,0,vw,vh);
    f.lastSegment=now;
