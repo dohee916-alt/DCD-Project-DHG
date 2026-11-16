@@ -235,7 +235,7 @@ function completeHandPeel(){
     },i*900);
     delay(()=>{
       if(state.frame==='AR7'&&state.maskCount===0)enter('AR8');
-    },3*900+300);
+    },3*900+550);
   }
 }
 function buttons(yes,no){
@@ -313,7 +313,7 @@ function enter(frame){
        if(state.frame==='AR5-2')
          showStigmaSequence('replacement',()=>{if(state.frame==='AR5-2')enter('AR6');});
      });
-   },5000);break;
+   },5500);break;
  case 'AR6':
     state.manualPeels=0;state.autoPeeling=false;
     caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
