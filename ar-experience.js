@@ -47,7 +47,7 @@ function primeWhisper(){
   whisperContext ||=new AudioContextClass();
   state.whisperPrimed=true;
   whisperContext.resume()?.catch?.(error=>console.warn('[DCD AR] Audio permission:',error));
-  if(!whisperGain){whisperGain=whisperContext.createGain();whisperGain.gain.value=.85;whisperGain.connect(whisperContext.destination);}
+  if(!whisperGain){whisperGain=whisperContext.createGain();whisperGain.gain.value=1.7;whisperGain.connect(whisperContext.destination);}
   if(!whisperLoading){
    whisperLoading=fetch(WHISPER_B64).then(response=>{
      if(!response.ok)throw new Error('Murmur audio HTTP '+response.status);
@@ -55,7 +55,13 @@ function primeWhisper(){
    }).then(encoded=>{
      const raw=atob(encoded.trim()),bytes=new Uint8Array(raw.length);
      for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
-     return whisperContext.decodeAudioData(bytes.buffer);
+     // iOS Safari cannot reliably decode Ogg/Opus natively. Keep a
+     // pristine copy for the WASM fallback; decodeAudioData may detach its input.
+     return whisperContext.decodeAudioData(bytes.buffer.slice(0)).catch(async nativeError=>{
+       console.info('[DCD AR] Native Opus decoder unavailable, loading browser decoder:',nativeError);
+       const decoder=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
+       return decoder.default(bytes.buffer.slice(0));
+     });
    }).then(buffer=>{
      whisperBuffer=buffer;
      if(whisperWanted)playWhisperBuffer();
