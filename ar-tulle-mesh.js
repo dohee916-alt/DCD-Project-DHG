@@ -474,7 +474,7 @@ function create(root){
   const canvasBackup=canvasCloth(root);
   // Cloth uses only the observed facial mesh and its canonical material UVs.
   const oval=FACE_RIM;
-  const GRID_COLS=24,GRID_ROWS=24;
+  const GRID_COLS=32,GRID_ROWS=32;
   const faceVertexCount=(GRID_COLS+1)*(GRID_ROWS+1);
   // Face and tulle share the same 428x926 screen projection and relative
   // MediaPipe depth. An occluder cannot work if they use different spaces.
@@ -638,7 +638,7 @@ function create(root){
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
       const y=-.98+.025*Math.sin(c*.65+r*.43+layer.index);
-      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.18});
+      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=1&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.16});
     }
     const add=(a,b,rest,stiffness)=>links.push({a,b,rest,stiffness});
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
@@ -712,7 +712,7 @@ function create(root){
           p.ox=p.x;p.oy=p.y;p.oz=p.z;
           p.x+=vx;p.y+=vy+.012*stepRatio*stepRatio;p.z+=vz;
         }
-        for(let iteration=0;iteration<2;iteration++){
+        for(let iteration=0;iteration<1;iteration++){
           for(const e of sim.links){
             const a=sim.nodes[e.a],b=sim.nodes[e.b];
             const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
@@ -873,6 +873,20 @@ function create(root){
             for(let j=3;j<stride;j++)vertices[at+j]=mesh[at+j];
             vertices[at+5]*=1-.20*curl;
             vertices[at+7]=-.52*(1-landing)-.14*curl;
+          }
+          // Blend consecutive projected vertex positions to eliminate stair-step
+          // jumps from 7-8 Hz face landmark updates on a ~24 FPS cloth render.
+          // Apply only to XY: preserve UV, opacity and cloth normals intact.
+          if(!layer.smoothPositions)layer.smoothPositions=new Float32Array(vertices.length);
+          const smooth=layer.smoothPositions;
+          const elapsedFrame=layer.lastSmoothAt?Math.min(0.12,(now-layer.lastSmoothAt)/1000):1/24;
+          const blend=layer.lastSmoothAt?1-Math.exp(-elapsedFrame/0.095):1;
+          layer.lastSmoothAt=now;
+          for(let vtx=0;vtx<vertices.length;vtx+=stride){
+            const x=vertices[vtx],y=vertices[vtx+1];
+            if(blend===1){smooth[vtx]=x;smooth[vtx+1]=y;}
+            else{smooth[vtx]+=blend*(x-smooth[vtx]);smooth[vtx+1]+=blend*(y-smooth[vtx+1]);}
+            vertices[vtx]=smooth[vtx];vertices[vtx+1]=smooth[vtx+1];
           }
           gl.bindBuffer(gl.ARRAY_BUFFER,vb);
           gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
