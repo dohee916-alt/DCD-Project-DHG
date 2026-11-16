@@ -1855,3 +1855,59 @@ canvas.figure{object-fit:contain!important}
 }
 #stage .reel1-figma-overlay{height:927px;}
 #stage.page-reel0 .full-hit,#stage.page-00 .full-hit{z-index:10;}
+
+/* The Figma Reel0 and Reel1 are successive 428x926 scroll panels.
+   The only fixed UI is the actual Figma Status Bar, exported separately. */
+#stage.page-reel0 .reels-vertical-scroll{
+ position:absolute;inset:0;
+ width:428px;height:926px;
+ overflow-x:hidden;overflow-y:auto;
+ -webkit-overflow-scrolling:touch;
+ touch-action:pan-y;
+ overscroll-behavior-y:contain;
+ scroll-snap-type:y mandatory;
+ scrollbar-width:none;
+ background:transparent;
+ z-index:1;
+}
+#stage.page-reel0 .reels-vertical-scroll::-webkit-scrollbar{display:none;}
+#stage.page-reel0 .reel-screen{
+ position:relative;
+ display:block;
+ width:428px;height:926px;
+ flex:none;
+ overflow:hidden;
+ scroll-snap-align:start;
+ scroll-snap-stop:always;
+ isolation:isolate;
+}
+#stage.page-reel0 .reel-screen .reel-background{
+ position:absolute;left:0;top:0;
+ width:428px;height:925px;
+ object-fit:fill;pointer-events:none;z-index:0;
+}
+#stage.page-reel0 .reel-screen .reel-frame-overlay{
+ position:absolute;left:0;top:0;
+ width:428px;height:926px;
+ object-fit:fill;pointer-events:none;z-index:8;
+}
+#stage.page-reel0 .reel-screen-one .reel1-figma-overlay{height:927px;}
+#stage.page-reel0 .reel-screen-one .full-hit{
+ position:absolute;inset:0;z-index:10;
+ border:0;background:transparent;
+ touch-action:pan-y;
+}
+#stage.page-reel0 .reel-screen-one .opening-sound-gate{
+ position:absolute;inset:0;z-index:20;
+ touch-action:pan-y;
+}
+#stage.page-reel0 .reels-fixed-status-bar{
+ position:absolute;left:0;top:0;
+ width:428px;height:62px;
+ z-index:1002;pointer-events:none;
+ object-fit:fill;
+}
+/* Preserve normal Reel1 audio control art inside the moving Reel1 panel. */
+#stage.page-reel0 .opening-sound-gate .opening-sound-figma-asset{
+ left:89px;top:397px;width:250px;height:100px;
+}
