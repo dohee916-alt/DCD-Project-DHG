@@ -60,7 +60,15 @@ def sound_url(username,number):
         if match:found=match.group(0).replace("\\/","/")
     if not ("cdn.freesound.org/previews/" in found and ".mp3" in found):
         raise RuntimeError(f"Freesound preview URL missing for {number}")
-    return html.unescape(found).replace("-lq.mp3","-hq.mp3")
+    found=html.unescape(found)
+    # The Freesound page puts a site URL before the absolute preview URL in
+    # some metadata fields. Extract the embedded CDN URL explicitly.
+    cdn="https://cdn.freesound.org/previews/"
+    if cdn in found:
+        found=found[found.rfind(cdn):]
+    else:
+        raise RuntimeError("No absolute CDN URL in Freesound preview")
+    return found.split()[0].replace("-lq.mp3","-hq.mp3")
 
 def fetch(url,destination):
     if destination.exists() and destination.stat().st_size>3000:
