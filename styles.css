@@ -1698,7 +1698,7 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive:is([data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{left:50px!important;width:342px!important;right:auto!important}
 #stage .ar-immersive[data-ar-frame="AR3-1"] .ar-copy{
   position:absolute!important;left:33px!important;top:116px!important;
-  right:auto!important;width:362px!important;height:64px!important;
+  right:auto!important;width:362px!important;height:32px!important;
   margin:0!important;padding:0!important;
   font:700 25px/32px "Source Sans 3",sans-serif!important;
   color:#000!important;text-align:center!important;white-space:pre-line!important;
@@ -1973,4 +1973,43 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive .ar-matting-video,
 #stage .ar-immersive .ar-medium-live-video{
  display:none!important;visibility:hidden!important;opacity:0!important;
+}
+
+/* 04_AR definitive typography bounds — directly reread from Figma nodes.
+   The 428×926 stage uses a single outer fit() transform, the same coordinate
+   model used by WEB. Never subtract a mock-phone offset from these y values.
+   This final scoped table supersedes stale earlier duplicate AR typography. */
+#stage .ar-immersive[data-ar-frame="AR3-1"] .ar-copy{
+ box-sizing:border-box!important;
+ left:33px!important;top:116px!important;width:362px!important;height:32px!important;
+ font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+ margin:0!important;padding:0!important;letter-spacing:0!important;
+ transform:none!important;translate:none!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5"] .ar-copy{
+ box-sizing:border-box!important;
+ left:61px!important;top:116px!important;width:306px!important;height:64px!important;
+ font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+ margin:0!important;padding:0!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{
+ box-sizing:border-box!important;
+ left:61px!important;top:144px!important;width:306px!important;height:64px!important;
+ font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+ margin:0!important;padding:0!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-message{
+ box-sizing:border-box!important;
+ left:54px!important;top:116px!important;width:306px!important;height:auto!important;
+ margin:0!important;padding:0!important;transform:none!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-heading{
+ box-sizing:border-box!important;width:306px!important;height:32px!important;
+ font:700 25px/32px "Source Sans 3",Arial,sans-serif!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-typed{
+ box-sizing:border-box!important;position:relative!important;
+ left:-47px!important;top:0!important;width:400px!important;
+ min-height:46px!important;margin:13px 0 0!important;
+ font:700 18px/23px "Turret Road",Arial,sans-serif!important;
 }
