@@ -1750,7 +1750,8 @@ canvas.figure{object-fit:contain!important}
  0%{opacity:.12;filter:blur(2.8px)}
  13%,37%{opacity:1;filter:blur(0)}
  46%{opacity:.8;filter:blur(.8px)}
- 57%,83%,100%{opacity:1;filter:blur(0)}
+ 57%,64%{opacity:1;filter:blur(0)}
+ 82%,100%{opacity:0;filter:blur(3px)}
 }
 @keyframes dcdWhisperEcho{
  0%,13%{opacity:0;transform:translate(0);filter:blur(0)}
