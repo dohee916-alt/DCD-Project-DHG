@@ -792,13 +792,39 @@ function create(root){
       const screenY=head.y+scale*((x+windX)*head.si+
         (p.y+windY)*head.co-(z+windZ)*head.pitch*.32)
         +head.fh*.23*frontHem+head.fh*.52*sideFall;
+      // Align the upper cloth to the ACTUAL hair silhouette already
+      // measured by the running portrait cutout (root.__dcdHairCrown).
+      // The original physical sheet was ~2.62 face widths across, leaving
+      // an oversized dome even when its center was pinned to the crown.
+      const hairRows=head.hairOutline;
+      const crownTop=Number.isFinite(head.hairCrownY)
+        ?head.hairCrownY:head.y-head.fh*.87;
+      const foreheadLine=head.y-head.fh*.48;
+      let hairCenter=head.x,hairHalf=head.fw*.58;
+      if(hairRows?.length){
+        const sampleY=clamp(screenY,crownTop,foreheadLine)/H;
+        let nearest=hairRows[0],distance=Infinity;
+        for(const row of hairRows){
+          const d=Math.abs(row.y-sampleY);
+          if(d<distance){distance=d;nearest=row;}
+        }
+        const measuredHalf=(nearest.right-nearest.left)*W*.5;
+        if(measuredHalf>head.fw*.18&&measuredHalf<head.fw*1.05){
+          hairHalf=measuredHalf+Math.min(10,head.fw*.045);
+          hairCenter=(nearest.left+nearest.right)*W*.5;
+        }
+      }
+      const nearScalp=1-ease(clamp((screenY-crownTop)/Math.max(1,head.fh*.9),0,1));
+      const upperScale=Math.min(1,hairHalf/Math.max(1,head.fw*1.25));
+      const headFitX=hairCenter+(screenX-head.x)*upperScale;
+      const fittedX=screenX+(headFitX-screenX)*nearScalp*.92;
       const prevL=c>0?nodes[id-1]:p,nextR=c<GRID_COLS?nodes[id+1]:p;
       const prevT=r>0?nodes[id-(GRID_COLS+1)]:p,nextB=r<GRID_ROWS?nodes[id+(GRID_COLS+1)]:p;
       const dx=nextR.x-prevL.x,dz=nextR.z-prevL.z;
       const dy=nextB.y-prevT.y,dySide=nextR.y-prevL.y;
       const nX=clamp(-dySide/(Math.abs(dx)+.3),-.7,.7);
       const nY=clamp(-dy/(Math.abs(nextB.z-prevT.z)+.3),-.7,.7);
-      mesh[at]=screenX;mesh[at+1]=screenY;
+      mesh[at]=fittedX;mesh[at+1]=screenY;
       mesh[at+2]=clamp(-.24+(z+windZ)*.18,-.76,.62);
       mesh[at+3]=u;mesh[at+4]=v;
       mesh[at+5]=clamp(.89+.16*Math.abs(nX)+.09*Math.cos(u*35+p.y*3),.68,1.18);
