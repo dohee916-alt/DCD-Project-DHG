@@ -1038,7 +1038,7 @@ canvas.figure{object-fit:contain!important}
 /* WEB 01 user-approved try-webguide 607:336, not legacy WEB 01.
    Figma target shapes (30%) are reference points ONLY; no ghost rendering.
    Source: 여기확인1, 70% opacity, upper X-mirrored.
-   Upper visible bounds (18,395) => (-71,272); lower (250,560) => (351,676). */
+   Upper visible bounds (18,379) => (-71,256); lower (250,556) => (351,672). */
 #stage.page-01.phase-guide .gesture{
  object-fit:cover!important;object-position:center!important;transform-origin:center!important;
  mix-blend-mode:normal!important;pointer-events:none!important;
@@ -1551,12 +1551,7 @@ canvas.figure{object-fit:contain!important}
  position:absolute;inset:0;z-index:20;
  touch-action:pan-y;
 }
-#stage.page-reel0 .reels-fixed-status-bar{
- position:absolute;left:0;top:0;
- width:428px;height:62px;
- z-index:1002;pointer-events:none;
- object-fit:fill;
-}
+
 /* Preserve normal Reel1 audio control art inside the moving Reel1 panel. */
 #stage.page-reel0 .opening-sound-gate .opening-sound-figma-asset{
  left:89px;top:397px;width:250px;height:100px;
