@@ -267,7 +267,35 @@ function typeStigma(text,onComplete){
  const wide=text==='WHY DON’T YOU JUST TAKE GLP-1?';
  const rect=AR_TEXT_RECTS[state.frame]?.typed;
  if(rect)placeText(typed,wide?[24,rect[1],380,rect[3]]:rect);
- typeStigmaTimed(typed,text,24,onComplete);
+ // Keep the typed copy and the three visual echoes in the same Figma box.
+ // Each echo mirrors only the characters already revealed by the typewriter.
+ typed.replaceChildren();
+ const main=document.createElement('span');
+ main.className='ar-whisper-main';
+ const echoes=['left','right','far'].map(direction=>{
+   const span=document.createElement('span');
+   span.className='ar-whisper-echo '+direction;
+   span.setAttribute('aria-hidden','true');
+   typed.appendChild(span);
+   return span;
+ });
+ typed.appendChild(main);
+ const words=text.split(/\n/);
+ // Limit tracking on long copy so the original wrapping and alignment survive.
+ const longest=Math.max(...words.map(line=>[...line].length));
+ const tracking=Math.min(1.8,Math.max(.45,18/Math.max(1,longest)));
+ typed.style.setProperty('--whisper-tracking',tracking+'px');
+ const letters=[...text],session=state.session,frame=state.frame,started=performance.now();
+ function next(){
+   if(!state.root||state.session!==session||state.frame!==frame||!main.isConnected)return;
+   const count=Math.min(letters.length,1+Math.floor((performance.now()-started)/24));
+   const current=letters.slice(0,count).join('');
+   main.textContent=current;
+   echoes.forEach(span=>{span.textContent=current;});
+   if(count<letters.length)delay(next,24);
+   else onComplete?.();
+ }
+ next();
 }
 function showStigmaSequence(variant,done){
  const words=ORGANZA_TEXT[variant];
