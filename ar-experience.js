@@ -119,7 +119,41 @@ function stopWhisper(force=false){
   whisperTarget=0;
   if(whisperGain&&whisperContext)whisperGain.gain.setValueAtTime(0,whisperContext.currentTime);
 }
-function clearScene(){
+// Same frame-local absolute-box model as app.js text()/box().
+ // One immutable Figma rectangle per page and per independent text layer.
+ const AR_TEXT_RECTS={
+   'AR3':{copy:[68,141,292,44]},
+   'AR3-1':{copy:[33,116,362,32]},
+   'AR4':{heading:[54,116,306,32],typed:[54,161,306,46]},
+   'AR5':{copy:[61,116,306,64]},
+   'AR5-1':{copy:[61,144,306,64]},
+   'AR5-2':{heading:[54,116,306,32],typed:[54,161,306,46]},
+   'AR6':{copy:[50,141,342,44]},
+   'AR7':{copy:[50,141,342,44]},
+   'AR8':{},
+   'AR9':{copy:[61,430,306,64]},
+   'AR10':{copy:[0,0,428,926],not:[61,382,306,70],rest:[61,454,306,96]}
+ };
+ function placeText(node,rect){
+   if(!node||!rect)return;
+   const [x,y,w,h]=rect;
+   Object.assign(node.style,{position:'absolute',left:x+'px',top:y+'px',width:w+'px',height:h+'px',right:'auto',bottom:'auto',margin:'0',padding:'0',transform:'none',translate:'none'});
+ }
+ function layoutText(){
+   const root=state.root,rects=AR_TEXT_RECTS[state.frame];
+   if(!root||!rects)return;
+   const copy=root.querySelector('.ar-copy'),message=root.querySelector('.ar-stigma-message');
+   copy.removeAttribute('style');
+   message.removeAttribute('style');
+   message.querySelectorAll('div').forEach(node=>node.removeAttribute('style'));
+   placeText(copy,rects.copy);
+   // Heading and typed text are independent children within a full-frame
+   // transparent overlay, not sequential flow boxes with inherited offsets.
+   placeText(message,[0,0,428,926]);
+   placeText(message.querySelector('.ar-stigma-heading'),rects.heading);
+   placeText(message.querySelector('.ar-stigma-typed'),rects.typed);
+ }
+ function clearScene(){
  if(!state.root)return;
  state.root.querySelector('.ar-copy').textContent='';
  const stigma=state.root.querySelector('.ar-stigma-typed');if(stigma)stigma.textContent='';
@@ -150,6 +184,8 @@ function typeCaption(value,duration=1200,onComplete=null){
    element.innerHTML='<span class="ar-final-not"></span><span class="ar-final-rest"></span>';
    element.querySelector('.ar-final-not').textContent=top;
    element.querySelector('.ar-final-rest').textContent=lower;
+   placeText(element.querySelector('.ar-final-not'),AR_TEXT_RECTS.AR10.not);
+   placeText(element.querySelector('.ar-final-rest'),AR_TEXT_RECTS.AR10.rest);
   }else element.textContent=chars;
   if(i<letters.length)delay(write,period);
    else onComplete?.();
@@ -302,7 +338,7 @@ function enter(frame){
  if(['AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'].includes(frame))
    window.DCD_STIGMA_VOICES?.stop?.();
  state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
- state.root.dataset.arFrame=frame;clearScene();
+ state.root.dataset.arFrame=frame;clearScene();layoutText();
  window.DCD_SCENE_AUDIO?.scene?.(frame);
  switch(frame){
  case 'AR3':state.portraitPending=false;caption('POSITION YOUR FACE HERE');break;
