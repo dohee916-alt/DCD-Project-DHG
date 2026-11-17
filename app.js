@@ -229,7 +229,7 @@ function reelStackMarkup(){
  return '<div class="reels-vertical-scroll" aria-label="Reels feed">'+
  '<section class="reel-screen reel-screen-zero" aria-label="Reel 0">'+
  '<img class="reel-background" src="assets/figma-current/hd/reel0-underlay-image.jpg" alt="" draggable="false">'+
- '<img class="reel-frame-overlay" src="assets/figma-current/hd/reel0-ui-scroll-no-status.png?v=complete-frame-20261117" alt="" draggable="false">'+
+ '<img class="reel-frame-overlay reel-progress-art" src="assets/figma-current/hd/reel0-ui-scroll-no-status.png?v=complete-frame-20261117" alt="" draggable="false">'+
  (!openingSoundEnabled?'<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>':'')+
  '</section>'+
  '<section class="reel-screen reel-screen-one" aria-label="Reel 1">'+introMarkup('00')+'</section>'+
@@ -241,7 +241,8 @@ function introMarkup(p){
       'assets/figma-current/hd/poster-tagline-base.svg',
       'assets/figma-current/hd/poster-tagline.svg')+
     posterWords()+
-    '<img class="reel-frame-overlay reel1-figma-overlay" src="assets/figma-current/hd/reel1-ui-scroll-no-status.png?v=complete-frame-20261117" alt="" aria-hidden="true">'+
+    '<img class="reel-frame-overlay reel1-figma-overlay reel-progress-art" src="assets/figma-current/hd/reel1-ui-scroll-no-status.png?v=complete-frame-20261117" alt="" aria-hidden="true">'+
+    '<div class="reel-progress-track" aria-hidden="true"><div class="reel-progress-active"></div></div>'+ 
     '<button class="full-hit" data-action="enter" aria-label="Continue to the interactive advertisement"></button>';
   // Approved GIFs entirely replace the superseded pair of alternating
   // poster photos. No old poster is allowed to flash behind a new GIF.
@@ -1141,6 +1142,16 @@ if(packHand){
   packHand.addEventListener('animationend',endHand,{once:true});
   setTimeout(endHand,Math.max(0,PACK_HAND_TOTAL_MS-elapsed)+40);
 }
+ const reelProgress=stage.querySelector('.reel-progress-active');
+ if(reelProgress){
+  const updateReelProgress=()=>{
+   if(!reelProgress.isConnected)return;
+   const p=window.DCD_CAMPAIGN_AUDIO?.musicProgress?.()||0;
+   reelProgress.style.transform='scaleX('+Math.max(0,Math.min(1,p))+')';
+   requestAnimationFrame(updateReelProgress);
+  };
+  updateReelProgress();
+ }
  if(s.page==='reel0'){
   const reelScroll=stage.querySelector('.reels-vertical-scroll');
   if(reelScroll){
