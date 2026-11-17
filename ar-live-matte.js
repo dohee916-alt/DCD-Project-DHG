@@ -122,7 +122,10 @@ function create(root,video,canvas,onFrame){
  function paintLive(now){
    if(!live)return;
    paintFrame=requestAnimationFrame(paintLive);
-   if(!hasAlpha||!visible||video.readyState<2||now-lastPaint<33)return;
+   const portraitVisible=['AR5-1','AR9','AR10'].includes(root.dataset.arFrame);
+   // In camera/veil scenes the matte is hidden and only supplies scalp data.
+   // Do not composite the full HD video thirty times a second behind it.
+   if(!hasAlpha||!visible||video.readyState<2||now-lastPaint<(portraitVisible?33:100))return;
    lastPaint=now;
    const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
    if(!vw||!vh)return;
@@ -389,6 +392,8 @@ function create(root,video,canvas,onFrame){
   if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE*2.2&&ready){next('Portrait frame stalled');return;}
   if(pending&&performance.now()-pending.started>(firstFrame?9000:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
+  const portraitVisible=['AR5-1','AR9','AR10'].includes(root.dataset.arFrame);
+  if(lastCapture&&now-lastCapture<(portraitVisible?80:175))return;
   const time=metadata?.mediaTime??video.currentTime;
   if(time<=lastVideoTime)return;
   lastVideoTime=time;
