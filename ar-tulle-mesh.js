@@ -8,6 +8,8 @@ const FIGMA_MASK_TEXT={first:[{"text":"THAT’S\nCHEATING.","x":92.9706116,"y":3
 
 const W=428,H=926,TEXTURE_SIZE=1024,clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const mix=(a,b,t)=>a+(b-a)*t;
+// Approximate 2 mm clearance in tracked head-relative coordinates, not device pixels.
+const scalpClearance=fw=>Math.max(2,fw*2/145);
 const ease=t=>t*t*(3-2*t);
 // MediaPipe eye landmark numbering changes left/right after the selfie
 // mirror. atan2(leftEye-rightEye) may point toward PI and rotate the entire
@@ -333,7 +335,7 @@ function canvasCloth(root){
     const measured=root.parentElement?.__dcdHairCrown;
     const crownY=measured&&performance.now()-measured.at<2200
       ?measured.y*H:head.y-fh*.37;
-    const cy=crownY+ch*.44;
+    const cy=crownY+ch*.44-scalpClearance(fw);
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
     // in a separate final pass; later nets must not erase earlier words.
@@ -343,7 +345,7 @@ function canvasCloth(root){
       const fly=1-progress*progress*progress;
       const profile=clothProfile(layer);
       const shiftX=profile.approach*fly,shiftY=-55*fly;
-      const layerWidth=cw*profile.width,layerHeight=ch*profile.length;
+      const layerWidth=cw*profile.width+2*scalpClearance(fw),layerHeight=ch*profile.length;
       const exit=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
       const alpha=layer.removing?1-ease(exit):clamp(age/.14,0,1);
       if(alpha<=0)continue;
@@ -759,7 +761,7 @@ function create(root){
              // not the scalp crown. Follow a skull dome above it instead.
              const fallbackY=foreheadFallbackY(faceCenter,px);
              const crownY=Number.isFinite(measuredY)?measuredY:fallbackY;
-             const py=clamp((crownY-12-faceCenter.y)/faceCenter.fw,-2.65,-.35);
+             const py=clamp((crownY-12-scalpClearance(faceCenter.fw)-faceCenter.y)/faceCenter.fw,-2.65,-.35);
              p.x=p.ox=px;p.z=p.oz=pz;p.y=p.oy=py;continue;
            }
           const vx=(p.x-p.ox)*.94,vy=(p.y-p.oy)*.94,vz=(p.z-p.oz)*.94;
@@ -855,10 +857,13 @@ function create(root){
           leftBound=l;rightBound=rr;
         }
       }
-      const margin=Math.max(3,head.fw*.025);
+      const margin=Math.max(3,head.fw*.025)+scalpClearance(head.fw);
       const limit=clamp(screenX,leftBound-margin,rightBound+margin);
       // Smooth correction of exterior vertices only; no global X shrink.
-      const fittedX=mix(screenX,limit,influence*.96);
+      const clearance=scalpClearance(head.fw);
+      const upper=1-ease(clamp((screenY-foreheadY)/Math.max(1,head.fh*.45),0,1));
+      const radial=clamp((screenX-head.x)/Math.max(1,head.fw*.50),-1,1);
+      const fittedX=mix(screenX+radial*clearance*upper,limit,influence*.96);
       mesh[at]=fittedX;mesh[at+1]=screenY;
       mesh[at+2]=clamp(-.24+(z+windZ)*.18,-.76,.62);
       mesh[at+3]=u;mesh[at+4]=v;
