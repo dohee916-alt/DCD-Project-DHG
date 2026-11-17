@@ -655,12 +655,12 @@ function create(root){
   // ellipsoid collider. A single crown contact prevents the fabric sliding
   // off while the rest of the material falls and folds freely.
   function makeDrape(layer){
-    const N=GRID_COLS+1,side=2.62,step=side/GRID_COLS;
+    const N=GRID_COLS+1,side=3.34,step=side/GRID_COLS;
     const nodes=[],links=[];
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
       const y=-.98+.025*Math.sin(c*.65+r*.43+layer.index);
-      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=3&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.22});
+      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=2&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.25});
     }
     const add=(a,b,rest,stiffness)=>links.push({a,b,rest,stiffness});
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
@@ -693,7 +693,7 @@ function create(root){
     function foreheadFallbackY(head,localX){
       const foreheadY=head.y-head.fh*.48;
       const lateral=Math.min(1,Math.abs(localX)/Math.max(.6,head.radiusX/head.fw));
-      return foreheadY-head.fh*(.36-.11*lateral*lateral);
+      return foreheadY-head.fh*(.43-.13*lateral*lateral);
     }
     function measuredCrownY(x){
       if(!hairLine)return null;
@@ -731,10 +731,7 @@ function create(root){
              // not the scalp crown. Follow a skull dome above it instead.
              const fallbackY=foreheadFallbackY(faceCenter,px);
              const crownY=Number.isFinite(measuredY)?measuredY:fallbackY;
-             // Follow the live hair curve while retaining the scalp's
-             // front-to-back roundness; a flat anchor patch creates a peak.
-             const domeDepth=(physicalY-anchorY)*.34;
-             const py=clamp((crownY-7-faceCenter.y)/faceCenter.fw+domeDepth,-2.65,-.35);
+             const py=clamp((crownY-12-faceCenter.y)/faceCenter.fw,-2.65,-.35);
              p.x=p.ox=px;p.z=p.oz=pz;p.y=p.oy=py;continue;
            }
           const vx=(p.x-p.ox)*.94,vy=(p.y-p.oy)*.94,vz=(p.z-p.oz)*.94;
@@ -785,13 +782,9 @@ function create(root){
       const edge=clamp((Math.abs(u-.5)-.11)/.39,0,1);
       const wave=Math.sin(t*1.55+u*7.2+v*4.4+layer.index*.72);
       const fold=Math.sin(t*.92-u*5.1+v*8.4+layer.index*1.09);
-      // Crown and upper scalp stay fixed to the measured head. Only the
-      // fabric hanging below the head is allowed to flutter freely.
-      const hanging=ease(clamp((p.y+head.radiusY/head.fw*.15)/
-        Math.max(.1,head.radiusY/head.fw*1.65),0,1));
-      const windX=hanging*looseness*(.046*wave+.034*fold)*(0.32+.68*edge);
-      const windY=hanging*looseness*(.023*wave-.016*fold)*(.4+.6*front);
-      const windZ=hanging*looseness*(.045*wave+.025*fold)*(0.4+.6*front);
+      const windX=looseness*(.046*wave+.034*fold)*(0.32+.68*edge);
+      const windY=looseness*(.023*wave-.016*fold)*(.4+.6*front);
+      const windZ=looseness*(.045*wave+.025*fold)*(0.4+.6*front);
       const screenX=head.x+scale*((x+windX)*head.co-(p.y+windY)*head.si);
       // Front panel drapes below the chin instead of stopping at face height.
       const frontHem=Math.pow(Math.max(0,(.5-r/GRID_ROWS)*2),1.6);
@@ -800,45 +793,14 @@ function create(root){
       const sideFall=ease(clamp((Math.abs(u-.5)-.15)/.35,0,1));
       const screenY=head.y+scale*((x+windX)*head.si+
         (p.y+windY)*head.co-(z+windZ)*head.pitch*.32)
-        +head.fh*.23*frontHem+head.fh*.52*sideFall;
-      // Align the upper cloth to the ACTUAL hair silhouette already
-      // measured by the running portrait cutout (root.__dcdHairCrown).
-      // The original physical sheet was ~2.62 face widths across, leaving
-      // an oversized dome even when its center was pinned to the crown.
-      const hairRows=head.hairOutline;
-      const crownTop=Number.isFinite(head.hairCrownY)
-        ?head.hairCrownY:head.y-head.fh*.87;
-      const foreheadLine=head.y-head.fh*.48;
-      let hairCenter=head.x,hairHalf=head.fw*.58;
-      if(hairRows?.length){
-        const sampleY=clamp(screenY,crownTop,foreheadLine)/H;
-        let nearest=hairRows[0],distance=Infinity;
-        for(const row of hairRows){
-          const d=Math.abs(row.y-sampleY);
-          if(d<distance){distance=d;nearest=row;}
-        }
-        const measuredHalf=(nearest.right-nearest.left)*W*.5;
-        if(measuredHalf>head.fw*.18&&measuredHalf<head.fw*1.05){
-          hairHalf=measuredHalf+Math.min(10,head.fw*.045);
-          hairCenter=(nearest.left+nearest.right)*W*.5;
-        }
-      }
-      const nearScalp=1-ease(clamp((screenY-crownTop)/Math.max(1,head.fh*.9),0,1));
-      const upperScale=Math.min(1,hairHalf/Math.max(1,head.fw*1.25));
-      const headFitX=hairCenter+(screenX-head.x)*upperScale;
-      const fittedX=screenX+(headFitX-screenX)*nearScalp*.92;
-      // The top of the veil must not extend above the LIVE matte outline.
-      // Limit only the upper mesh, leaving the hanging hem unrestricted.
-      const localCrown=measuredCrownY(fittedX);
-      const fittedY=Number.isFinite(localCrown)
-        ?Math.max(screenY,localCrown-7):Math.max(screenY,crownTop-7);
+        +head.fh*.32*frontHem+head.fh*.76*sideFall;
       const prevL=c>0?nodes[id-1]:p,nextR=c<GRID_COLS?nodes[id+1]:p;
       const prevT=r>0?nodes[id-(GRID_COLS+1)]:p,nextB=r<GRID_ROWS?nodes[id+(GRID_COLS+1)]:p;
       const dx=nextR.x-prevL.x,dz=nextR.z-prevL.z;
       const dy=nextB.y-prevT.y,dySide=nextR.y-prevL.y;
       const nX=clamp(-dySide/(Math.abs(dx)+.3),-.7,.7);
       const nY=clamp(-dy/(Math.abs(nextB.z-prevT.z)+.3),-.7,.7);
-      mesh[at]=fittedX;mesh[at+1]=fittedY;
+      mesh[at]=screenX;mesh[at+1]=screenY;
       mesh[at+2]=clamp(-.24+(z+windZ)*.18,-.76,.62);
       mesh[at+3]=u;mesh[at+4]=v;
       mesh[at+5]=clamp(.89+.16*Math.abs(nX)+.09*Math.cos(u*35+p.y*3),.68,1.18);
