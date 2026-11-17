@@ -1421,7 +1421,7 @@ canvas.figure{object-fit:contain!important}
 /* Rotate the exact WEB15/16 gradient composition into the 428x926 AR portrait.
    The original 926x428 layer coordinates, image, colors and blend modes remain unchanged. */
 .ar-prescription-background{overflow:hidden;background:#fff;pointer-events:none}
-.ar-prescription-landscape{position:absolute;left:0;top:0;width:926px;height:428px;transform-origin:top left;transform:translateX(428px) rotate(90deg);isolation:isolate}
+.ar-prescription-landscape{position:absolute;left:0;top:0;width:926px;height:428px;transform-origin:top left;transform:translateY(926px) rotate(-90deg);isolation:isolate}
 
 /* WEB15 -> portrait AR: eliminate the exposed straight left edges of
    WEB15's inset workbench image (x=52) and hard-light tint (x=43).
