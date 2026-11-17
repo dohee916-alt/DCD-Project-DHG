@@ -688,6 +688,11 @@ function create(root){
     const anchorY=-radiusY-.025,headY=0;
     const hairLine=faceCenter.crownCurve?.length>=8
       ?[...faceCenter.crownCurve].sort((a,b)=>a.x-b.x):null;
+    function foreheadFallbackY(head,localX){
+      const foreheadY=head.y-head.fh*.48;
+      const lateral=Math.min(1,Math.abs(localX)/Math.max(.6,head.radiusX/head.fw));
+      return foreheadY-head.fh*(.43-.13*lateral*lateral);
+    }
     function measuredCrownY(x){
       if(!hairLine)return null;
       const pos=x/W;
@@ -719,13 +724,12 @@ function create(root){
              const xy=px/radiusX,zz=pz/radiusZ;
              const physicalY=-radiusY*Math.sqrt(Math.max(.08,1-xy*xy-zz*zz))-.025;
              const screenX=faceCenter.x+faceCenter.fw*px;
-             const crownY=measuredCrownY(screenX);
-             // Anchor the physical solver itself to the observed scalp arc.
-             // No post-simulation vertex translation, which caused snapping.
-             const targetY=Number.isFinite(crownY)
-               ?clamp((crownY-24-faceCenter.y)/faceCenter.fw,-2.15,-.25)
-               :physicalY;
-             const py=Number.isFinite(crownY)?targetY:physicalY;
+             const measuredY=measuredCrownY(screenX);
+             // Without segmentation, landmark 10 is a forehead point,
+             // not the scalp crown. Follow a skull dome above it instead.
+             const fallbackY=foreheadFallbackY(faceCenter,px);
+             const crownY=Number.isFinite(measuredY)?measuredY:fallbackY;
+             const py=clamp((crownY-12-faceCenter.y)/faceCenter.fw,-2.65,-.35);
              p.x=p.ox=px;p.z=p.oz=pz;p.y=p.oy=py;continue;
            }
           const vx=(p.x-p.ox)*.94,vy=(p.y-p.oy)*.94,vz=(p.z-p.oz)*.94;
