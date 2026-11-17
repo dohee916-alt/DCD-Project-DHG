@@ -125,7 +125,7 @@ function syringeMarkup(cls=''){
     img(A.syringeBarrel,0,0,22,219,'syringe-barrel')+
     '<span class="syringe-tip-marker" aria-hidden="true"></span>');
 }
-function setPage(p,phase='ready'){if(s.page==='15'&&p!=='15'&&window.DCD_CONSENT_AUDIO?.status?.()!=='yes')window.DCD_CONSENT_AUDIO?.no?.();window.DCD_CAMPAIGN_AUDIO?.setScene(p);if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
+function setPage(p,phase='ready'){if((s.page==='12'||s.page==='13')&&p!==s.page)window.DCD_SCENE_AUDIO?.stop?.('prescription-typing',.06);if(s.page==='15'&&p!=='15'&&window.DCD_CONSENT_AUDIO?.status?.()!=='yes')window.DCD_CONSENT_AUDIO?.no?.();window.DCD_CAMPAIGN_AUDIO?.setScene(p);if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){window.DCD_SCENE_AUDIO?.stop?.('prescription-typing',.08);s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
 function dimensions(){return mobilePortraitLandscape()||['reel0','00','01','02','03','ar','arOpen','arFace'].includes(s.page)?[428,926]:[874,428];}
 function fit(){
  const [w,h]=dimensions(),v=document.querySelector('#viewport');
@@ -1106,6 +1106,15 @@ if(packHand){
  if(s.page==='14')window.DCD_CONSENT_AUDIO?.preload?.();
  if(s.page==='15')window.DCD_CONSENT_AUDIO?.start?.();
  window.DCD_SCENE_AUDIO?.scene?.(s.page);
+ if((s.page==='12'||s.page==='13')&&s.phase==='typing'){
+   // Match CSS typing: heading 0-.75s, SELECT prompt .42-1.17s,
+   // silence, then the eight rows from 1.30 to 3.74s.
+   const page=s.page, audio=window.DCD_SCENE_AUDIO;
+   audio?.play?.('prescription-typing',{loop:true});
+   later(()=>{if(s.page===page&&s.phase==='typing')audio?.stop?.('prescription-typing',.04);},1170);
+   later(()=>{if(s.page===page&&s.phase==='typing')audio?.play?.('prescription-typing',{loop:true});},1300);
+   later(()=>{if(s.page===page)audio?.stop?.('prescription-typing',.08);},3790);
+ }
  if(s.page==='14')bindNewSignature();
  if(s.page==='arFace')attachArCamera();
  const animated=stage.querySelector('.opening-blister-motion');
@@ -1510,7 +1519,7 @@ async function advanceNewPrescription(){
   await Promise.allSettled(moves);
   if(s.page!==from)return;
   setPage(from==='12'?'13':'14',from==='12'?'typing':'ready');
-  if(from==='12')later(()=>{if(s.page==='13'&&s.phase==='typing'){s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);
+  if(from==='12')later(()=>{if(s.page==='13'&&s.phase==='typing'){window.DCD_SCENE_AUDIO?.stop?.('prescription-typing',.08);s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);
 }
 window.DCD_RESTART_WEB=()=>{
  document.querySelectorAll('.dcd-ar-handoff').forEach(el=>el.remove());
