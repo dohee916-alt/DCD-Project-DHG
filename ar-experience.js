@@ -264,6 +264,10 @@ function removeFabric(){
 // First three masks are removed by hand; the last two peel one at a time.
 function completeHandPeel(){
   if(state.frame!=='AR7'||state.autoPeeling||state.maskCount===0)return;
+  // One held pinch cannot be counted more than once on tracker dropouts.
+  const now=performance.now();
+  if(now-(state.lastPeelAt||0)<1250)return;
+  state.lastPeelAt=now;
   state.manualPeels++;
   state.pinchReady=false;
   state.pinchStart=null;
@@ -364,7 +368,7 @@ function enter(frame){
    },7350);break;
  case 'AR6':
      whisperForLayers();
-     state.manualPeels=0;state.autoPeeling=false;
+     state.manualPeels=0;state.autoPeeling=false;state.lastPeelAt=0;
     caption('REACH YOUR HANDS TOWARD YOUR FACE\n(NOT THE CAMERA!)');break;
  case 'AR7':caption('PINCH AND PULL THE MASKS OFF');break;
  case 'AR8':
@@ -461,7 +465,7 @@ function observeHands(hands,now){
   if(!choices.length){
     // A brief occlusion of fingertips by the face should not lose the grip.
     if(state.pinchStart&&now-state.pinchStart.lastSeen<420)return;
-    state.pinchStart=null;state.pinchReady=true;return;
+    state.pinchStart=null;return;
   }
   const mid={x:(box.l+box.r)*.5,y:(box.t+box.b)*.5};
   if(state.pinchStart){
