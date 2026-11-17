@@ -67,9 +67,9 @@ async function play(name,options={}){
  if(!sounds[name])return;
  // Repeated pages must not restart ongoing atmospheric loops.
  if(options.loop&&voices.has(name))return;
- const ticket=(serials.get(name)||0)+1;serials.set(name,ticket);
  if(!options.loop)stop(name);
- const latest=serials.get(name);
+ const latest=(serials.get(name)||0)+1;
+ serials.set(name,latest);
  try{
   if(!enabled)return;
   const b=await buffer(name);
@@ -95,7 +95,9 @@ function scene(page){
  if(workbenchPages.has(page)){
   if(!workbenchPages.has(previous))play('workbench-ambience',{loop:true});
  }else if(workbenchPages.has(previous))stop('workbench-ambience',.5);
- if((page==='12'||page==='13')&&page!==previous)play('prescription-typing');
+ // Typing is driven by the actual CSS reveal phases in app.js, including
+ // the silent gap between the prompt and the first checkbox row.
+ if(page!=='12'&&page!=='13')stop('prescription-typing',.08);
  if(page==='AR9'){
   play('final-message',{loop:false});
  }else if(page!=='AR10'&&previous==='AR9'||(page!=='AR9'&&page!=='AR10'&&previous==='AR10')){
