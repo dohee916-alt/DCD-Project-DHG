@@ -238,9 +238,9 @@ function fabric(){
 function addFabric(){
  if(!state.root||state.maskCount>=5)return;
  state.maskCount++;
- // When the first piece of organza begins arriving, make whispering a
- // background layer so every typed stigma remains legible.
- whisperForLayers();
+ // First stigma sequence retains the original background volume.
+ // Layer-driven volume changes are reserved for the later sequence.
+ if(state.frame==='AR5-2')whisperForLayers();
  window.DCD_SCENE_AUDIO?.play?.('mask-arrive');
  fabric();
 }
