@@ -577,10 +577,6 @@ function track(frame,width,height,now=performance.now()){
      // Do not let a WebGL/organza rendering failure block AR3 face
      // recognition and progression. Face observation happens first.
      observeFace(points,now);
-     try{state.tulle?.update(points,width,height);}
-     catch(error){
-       if(!state.tulleWarning){console.warn('[DCD AR] Cloth update:',error);state.tulleWarning=true;}
-     }
      if(points?.length){
        const rawX=[points[234].x,points[454].x];
        state.root.__dcdFaceRegion={
@@ -601,6 +597,12 @@ function track(frame,width,height,now=performance.now()){
        }
        state.guideSince=0;
      }
+   }
+   // Keep cloth landmarks aligned with the current face frame, not one
+   // tracked frame behind the matte's live head metadata.
+   try{state.tulle?.update(points,width,height);}
+   catch(error){
+     if(!state.tulleWarning){console.warn('[DCD AR] Cloth update:',error);state.tulleWarning=true;}
    }
    if(handsDue(now)){
      state.lastHand=now;
