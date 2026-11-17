@@ -280,10 +280,10 @@ function completeHandPeel(){
     // No fourth gesture is needed and the first two gestures remove one each.
     for(let i=0;i<3;i++)delay(()=>{
       if(state.frame==='AR7'&&state.maskCount>0)removeFabric();
-    },i*900);
+    },i*1350);
     delay(()=>{
       if(state.frame==='AR7'&&state.maskCount===0)enter('AR8');
-    },3*900+550);
+    },2*1350+1250);
   }
 }
 function buttons(yes,no){
@@ -356,7 +356,7 @@ function enter(frame){
    // Keep both headings hidden until the old five sheets have fully exited.
    for(let i=0;i<5;i++)delay(()=>{
      if(state.frame==='AR5-2')removeFabric();
-   },400+i*900);
+   },400+i*1350);
    delay(()=>{
      if(state.frame!=='AR5-2'||state.maskCount!==0)return;
      state.variant='replacement';
@@ -365,7 +365,7 @@ function enter(frame){
        if(state.frame==='AR5-2')
          showStigmaSequence('replacement',()=>{if(state.frame==='AR5-2')enter('AR6');});
      });
-   },7350);break;
+   },8950);break;
  case 'AR6':
      whisperForLayers();
      state.manualPeels=0;state.autoPeeling=false;state.lastPeelAt=0;
