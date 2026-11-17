@@ -597,12 +597,11 @@ function track(frame,width,height,now=performance.now()){
        }
        state.guideSince=0;
      }
-   }
-   // Keep cloth landmarks aligned with the current face frame, not one
-   // tracked frame behind the matte's live head metadata.
-   try{state.tulle?.update(points,width,height);}
-   catch(error){
-     if(!state.tulleWarning){console.warn('[DCD AR] Cloth update:',error);state.tulleWarning=true;}
+     // Update inside the landmark scope, after current-frame metadata.
+     try{state.tulle?.update(points,width,height);}
+     catch(error){
+       if(!state.tulleWarning){console.warn('[DCD AR] Cloth update:',error);state.tulleWarning=true;}
+     }
    }
    if(handsDue(now)){
      state.lastHand=now;
