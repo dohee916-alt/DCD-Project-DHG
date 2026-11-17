@@ -361,7 +361,7 @@ function enter(frame){
        if(state.frame==='AR5-2')
          showStigmaSequence('replacement',()=>{if(state.frame==='AR5-2')enter('AR6');});
      });
-   },5500);break;
+   },7350);break;
  case 'AR6':
      whisperForLayers();
      state.manualPeels=0;state.autoPeeling=false;
