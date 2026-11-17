@@ -275,6 +275,18 @@ function faceOutline(connections){
 // WebGL context or shader cannot draw. The fallback follows tracked facial
 // landmarks and NEVER draws the old static CSS oval.
 const FACE_RIM=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
+// Stable, independently shaped cloths for each stack. No frame-to-frame
+// randomization: each sheet retains its folds and its own exit identity.
+const CLOTH_PROFILES=[
+ {width:1,length:1,shift:-.035,depth:.025,skew:.045,phase:.4,speed:1.42,fold:.1,front:.025,side:-.055,asym:-.085,approach:-31},
+ {width:.94,length:1.13,shift:.065,depth:-.085,skew:-.11,phase:2.7,speed:1.17,fold:1.2,front:.14,side:.025,asym:.13,approach:36},
+ {width:1.055,length:.92,shift:-.085,depth:.07,skew:.12,phase:4.9,speed:1.65,fold:-.8,front:-.09,side:.085,asym:-.16,approach:-45},
+ {width:.97,length:1.06,shift:.09,depth:-.045,skew:-.075,phase:7.4,speed:1.31,fold:.65,front:.08,side:-.12,asym:.09,approach:22},
+ {width:1.025,length:.96,shift:-.015,depth:.095,skew:.055,phase:10.1,speed:1.81,fold:-.35,front:-.04,side:.13,asym:-.04,approach:42}
+];
+function clothProfile(layer){
+ return CLOTH_PROFILES[(layer.index+(layer.variant==='replacement'?2:0))%5];
+}
 function canvasCloth(root){
   const canvas=document.createElement('canvas');
   canvas.className='ar-tulle-2d';canvas.width=W;canvas.height=H;
@@ -329,13 +341,18 @@ function canvasCloth(root){
       const age=(now-layer.start)/1000;
       const progress=clamp(age/1.65,0,1);
       const fly=1-progress*progress*progress;
-      const shiftX=(layer.index%2?1:-1)*24*fly,shiftY=-55*fly;
+      const profile=clothProfile(layer);
+      const shiftX=profile.approach*fly,shiftY=-55*fly;
+      const layerWidth=cw*profile.width,layerHeight=ch*profile.length;
       const exit=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
       const alpha=layer.removing?1-ease(exit):clamp(age/.14,0,1);
       if(alpha<=0)continue;
       ctx.save();ctx.globalAlpha=alpha;
-      ctx.translate(cx+shiftX+exit*45,cy+shiftY-exit*155);
+      ctx.translate(cx+shiftX+exit*45+profile.shift*fw,cy+shiftY-exit*155);
       ctx.rotate(angle);
+      // Keep crown contact fixed while varying the lower panel's dimensions.
+      ctx.translate(0,-ch*.44);ctx.scale(layerWidth/cw,layerHeight/ch);ctx.translate(0,ch*.44);
+      ctx.transform(1,profile.asym*.12,profile.skew*.08,1,0,0);
       const l=-cw/2,r=cw/2,t=-ch*.50,b=ch*.50;
       ctx.beginPath();
       ctx.moveTo(0,-ch*.5);
@@ -655,14 +672,21 @@ function create(root){
   // ellipsoid collider. A single crown contact prevents the fabric sliding
   // off while the rest of the material falls and folds freely.
   function makeDrape(layer){
+    const profile=clothProfile(layer);
     const N=GRID_COLS+1,side=3.34,step=side/GRID_COLS;
+    const sx=side*profile.width,sz=side*profile.length;
     const nodes=[],links=[];
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
-      const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
-      const y=-.98+.025*Math.sin(c*.65+r*.43+layer.index);
+      const u=c/GRID_COLS-.5,v=r/GRID_ROWS-.5;
+      const x=u*sx+profile.shift+v*profile.skew;
+      const z=v*sz+profile.depth;
+      const y=-.98+.055*Math.sin(c*.65+r*.43+profile.phase)+.026*Math.cos(r*.53-c*.24+profile.phase*1.7);
       nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=2&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.25});
     }
-    const add=(a,b,rest,stiffness)=>links.push({a,b,rest,stiffness});
+    const add=(a,b,rest,stiffness)=>{
+      const p=nodes[a],q=nodes[b];
+      links.push({a,b,rest:Math.hypot(p.x-q.x,p.y-q.y,p.z-q.z),stiffness});
+    };
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const a=r*N+c;
       if(c<GRID_COLS)add(a,a+1,step,.82);
@@ -674,7 +698,7 @@ function create(root){
       if(c+2<=GRID_COLS)add(a,a+2,step*2,.25);
       if(r+2<=GRID_ROWS)add(a,a+N*2,step*2,.25);
     }
-    const sim={nodes,links,last:0,settled:0};
+    const sim={nodes,links,last:0,settled:0,profile};
     layer.drape=sim;
     return sim;
   }
@@ -762,7 +786,7 @@ function create(root){
         }
       }
     }
-    const {nodes}=sim;
+    const {nodes,profile}=sim;
     const head=faceCenter,scale=head.fw,cosYaw=Math.cos(head.yaw),sinYaw=Math.sin(head.yaw);
     // On arrival the flat cloth is in front of/above the head, then the
     // settled fabric attaches to the tracked head frame.
@@ -780,8 +804,8 @@ function create(root){
       const looseness=ease(clamp((crownDistance-.12)/.68,0,1));
       const front=clamp((.54-v)/.54,0,1);
       const edge=clamp((Math.abs(u-.5)-.11)/.39,0,1);
-      const wave=Math.sin(t*1.55+u*7.2+v*4.4+layer.index*.72);
-      const fold=Math.sin(t*.92-u*5.1+v*8.4+layer.index*1.09);
+      const wave=Math.sin(t*profile.speed+u*7.2+v*4.4+profile.phase);
+      const fold=Math.sin(t*.92-u*(5.1+profile.fold)+v*8.4+profile.phase*1.3);
       const windX=looseness*(.046*wave+.034*fold)*(0.32+.68*edge);
       const windY=looseness*(.023*wave-.016*fold)*(.4+.6*front);
       const windZ=looseness*(.045*wave+.025*fold)*(0.4+.6*front);
@@ -793,7 +817,8 @@ function create(root){
       const sideFall=ease(clamp((Math.abs(u-.5)-.15)/.35,0,1));
       const screenY=head.y+scale*((x+windX)*head.si+
         (p.y+windY)*head.co-(z+windZ)*head.pitch*.32)
-        +head.fh*.32*frontHem+head.fh*.76*sideFall;
+        +head.fh*(.32+profile.front)*frontHem+head.fh*(.76+profile.side)*sideFall
+        +head.fh*profile.asym*(u-.5)*2*ease(clamp((p.y+.15)/1.05,0,1));
       const prevL=c>0?nodes[id-1]:p,nextR=c<GRID_COLS?nodes[id+1]:p;
       const prevT=r>0?nodes[id-(GRID_COLS+1)]:p,nextB=r<GRID_ROWS?nodes[id+(GRID_COLS+1)]:p;
       const dx=nextR.x-prevL.x,dz=nextR.z-prevL.z;
@@ -900,7 +925,7 @@ function create(root){
           const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
           const opacity=layer.removing?1-ease(clamp(leave,0,1)):clamp(seconds/.10,0,1);
           if(opacity<=0)continue;
-          const shiftX=(layer.index%2?-1:1)*24*fly;
+          const shiftX=clothProfile(layer).approach*fly;
           const shiftY=-55*fly;
           const center=faceCenter;
           const clothWidth=center.cw,clothHeight=center.ch;
