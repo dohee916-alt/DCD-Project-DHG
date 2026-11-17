@@ -631,7 +631,6 @@ canvas.figure{object-fit:contain!important}
 .page-14 .new-signature-canvas,
 .page-14 .new-signature-ink,
 .page-14 .new-signature-trace,
-.page-14 .new-signature-guide,
 .page-14 .new-ui-button[data-action="next"]{
   animation:dcdSignatureArrival .38s ease-out both;
 }
