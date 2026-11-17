@@ -224,6 +224,7 @@ function showStigmaSequence(variant,done){
  let index=0;
  function next(){
    if(index>=words.length){delay(done,2000);return;}
+   window.DCD_STIGMA_VOICES?.play?.(variant,index);
    typeStigma(words[index],()=>{
      // The viewer reads the completed phrase before seeing its physical consequence.
      delay(()=>{
@@ -281,6 +282,8 @@ function enter(frame){
  // Whispering is one continuous ambience from AR3-1 through all five first
  // stigma labels and cloth arrivals. Do not restart at every new frame.
  if(['AR8','AR9','AR10'].includes(frame))stopWhisper(true);
+ if(['AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'].includes(frame))
+   window.DCD_STIGMA_VOICES?.stop?.();
  state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  state.root.dataset.arFrame=frame;clearScene();
  window.DCD_SCENE_AUDIO?.scene?.(frame);
