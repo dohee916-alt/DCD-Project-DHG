@@ -122,17 +122,17 @@ function stopWhisper(force=false){
 // Same frame-local absolute-box model as app.js text()/box().
  // One immutable Figma rectangle per page and per independent text layer.
  const AR_TEXT_RECTS={
-   'AR3':{copy:[68,141,292,44]},
-   'AR3-1':{copy:[33,116,362,32]},
-   'AR4':{heading:[54,116,306,32],typed:[54,161,306,46]},
-   'AR5':{copy:[61,116,306,64]},
-   'AR5-1':{copy:[61,144,306,64]},
-   'AR5-2':{heading:[54,116,306,32],typed:[54,161,306,46]},
-   'AR6':{copy:[50,141,342,44]},
-   'AR7':{copy:[50,141,342,44]},
+   'AR3':{copy:[68,89,292,44]},
+   'AR3-1':{copy:[33,64,362,32]},
+   'AR4':{heading:[54,64,306,32],typed:[54,109,306,46]},
+   'AR5':{copy:[61,64,306,64]},
+   'AR5-1':{copy:[61,92,306,64]},
+   'AR5-2':{heading:[54,64,306,32],typed:[54,109,306,46]},
+   'AR6':{copy:[50,89,342,44]},
+   'AR7':{copy:[50,89,342,44]},
    'AR8':{},
-   'AR9':{copy:[61,430,306,64]},
-   'AR10':{copy:[0,0,428,926],not:[61,382,306,70],rest:[61,454,306,96]}
+   'AR9':{copy:[61,378,306,64]},
+   'AR10':{copy:[0,0,428,926],not:[61,330,306,70],rest:[61,402,306,96]}
  };
  function placeText(node,rect){
    if(!node||!rect)return;
@@ -360,8 +360,7 @@ function enter(frame){
    function readyForStigmas(){
      if(state.frame!=='AR4')return;
      const status=state.root.__dcdMatteStatus;
-     const fresh=!!state.matte?.visible&&!!state.faceBox&&
-       status?.lastFrameAt&&performance.now()-status.lastFrameAt<1300;
+     const fresh=!!state.faceBox&&performance.now()-state.faceBoxSeenAt<1000;
      if(fresh){
        typeStigmaHeading('THEY SAY',()=>{
          if(state.frame==='AR4')showStigmaSequence('first',()=>{if(state.frame==='AR4')enter('AR5');});
@@ -451,32 +450,16 @@ function observeFace(points,now){
  const face=faceDisplayRect(points);
  // The real, mirrored face must be centered within the existing AR3 guide.
  // Require stable alignment, not merely a face anywhere in the camera.
- const centered=face.x>.27&&face.x<.73&&face.y>.27&&face.y<.73;
- const appropriateSize=face.w>.16&&face.w<.92&&face.h>.17&&face.h<.88;
+ const centered=face.x>.18&&face.x<.82&&face.y>.19&&face.y<.81;
+ const appropriateSize=face.w>.12&&face.w<1.10&&face.h>.14&&face.h<.94;
  if(!centered||!appropriateSize){state.guideSince=0;return;}
  if(!state.guideSince)state.guideSince=now;
- // Only move on after the real cutout has produced fresh visible frames.
- if(now-state.guideSince>=650&&!state.portraitPending){
+ // The visible camera is not a segmented cutout. A stable live face is
+ // sufficient to advance; the independent matte supplies scalp data only.
+ if(now-state.guideSince>=350&&!state.portraitPending){
    state.portraitPending=true;
    ensurePortraitMatte();
-   let visibleSince=0;
-   const session=state.session;
-   function waitForCutout(){
-     if(!state.root||state.frame!=='AR3'||session!==state.session)return;
-     const status=state.root.__dcdMatteStatus;
-     const ready=!!state.matte?.visible&&status?.frames>=2&&
-       performance.now()-(status.lastFrameAt||0)<1300&&
-       state.root.classList.contains('ar-matting-active');
-     if(ready){
-       if(!visibleSince)visibleSince=performance.now();
-       if(performance.now()-visibleSince>=350&&state.faceBox){
-         enter('AR3-1');
-         return;
-       }
-     }else visibleSince=0;
-     delay(waitForCutout,160);
-   }
-   delay(waitForCutout,160);
+   enter('AR3-1');
  }
 }
 function observeHands(hands,now){
