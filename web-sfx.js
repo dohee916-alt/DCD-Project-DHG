@@ -59,7 +59,7 @@ function start(id,options={}){
  stop(id);
  const node=context.createBufferSource(),gain=context.createGain();
  node.buffer=buffer;
- if(id==='signature')node.playbackRate.value=.9;
+ if(id==='signature')node.playbackRate.value=.7;
  if(id==='signature'){
   const now=context.currentTime;
   gain.gain.setValueAtTime(0,now);
