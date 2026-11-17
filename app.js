@@ -443,23 +443,48 @@ function bindNewSignature(){
   const c=stage.querySelector('#new-signature');if(!c)return;
   const ctx=c.getContext('2d');ctx.fillStyle='#171717';
   let activePointer=null,strokeMoved=false,hasInk=!!s.signed;
-  let penPoint=null,penSpeed=0,penPressure=.5,penTime=0;
-  // Draw a slanted elliptical nib along a smoothed path. Width varies
-  // naturally with stroke direction, speed and real stylus pressure.
+  let penSamples=[],penBase=null,penSpeed=0,penPressure=.5,penTime=0;
+  // Preserve the fountain nib but smooth the centerline, not just the brush.
+  // Repaint the current stroke from its saved background so the final curve
+  // can be refined without ghost ink or changing previous strokes.
   function nib(p,speed,pressure){
     const factor=(.86+.28*pressure)/(1+Math.min(1.4,speed)*.15);
     ctx.beginPath();ctx.ellipse(p.x,p.y,2.65*factor,1.04*factor,-Math.PI/5,0,Math.PI*2);ctx.fill();
   }
   function inkTo(p,now,pressure){
-    if(!penPoint){penPoint=p;penTime=now;return;}
-    const dx=p.x-penPoint.x,dy=p.y-penPoint.y,dist=Math.hypot(dx,dy);
-    if(dist<.15)return;
-    const speed=dist/Math.max(4,now-penTime);
+    const prev=penSamples[penSamples.length-1];
+    if(prev&&Math.hypot(p.x-prev.x,p.y-prev.y)<1.2)return;
+    const speed=prev?Math.hypot(p.x-prev.x,p.y-prev.y)/Math.max(4,now-penTime):0;
     penSpeed=penSpeed*.64+speed*.36;
     penPressure=penPressure*.72+pressure*.28;
-    const steps=Math.max(1,Math.ceil(dist/.65));
-    for(let i=0;i<=steps;i++){const t=i/steps;nib({x:penPoint.x+dx*t,y:penPoint.y+dy*t},penSpeed,penPressure);}
-    penPoint=p;penTime=now;
+    penSamples.push({...p,speed:penSpeed,pressure:penPressure});penTime=now;
+  }
+  function paintStroke(){
+    if(!penBase||penSamples.length<2)return;
+    ctx.putImageData(penBase,0,0);
+    // Two symmetric binomial passes remove small hand tremors while
+    // retaining the stroke's measured beginning and end.
+    let points=penSamples.map(p=>({...p}));
+    for(let pass=0;pass<2;pass++){
+      const src=points;
+      points=src.map((p,i)=>{
+        if(i===0||i===src.length-1)return p;
+        const a=src[Math.max(0,i-2)],b=src[i-1],d=src[i+1],e=src[Math.min(src.length-1,i+2)];
+        return {...p,x:(a.x+4*b.x+6*p.x+4*d.x+e.x)/16,y:(a.y+4*b.y+6*p.y+4*d.y+e.y)/16};
+      });
+    }
+    // Catmull-Rom interpolation provides a continuous tangent across
+    // samples; fine nib spacing avoids polygonal joins.
+    for(let i=0;i<points.length-1;i++){
+      const a=points[Math.max(0,i-1)],b=points[i],d=points[i+1],e=points[Math.min(points.length-1,i+2)];
+      const steps=Math.max(2,Math.ceil(Math.hypot(d.x-b.x,d.y-b.y)/.55));
+      for(let j=0;j<=steps;j++){
+        const t=j/steps,t2=t*t,t3=t2*t;
+        const curve=k=>.5*((2*b[k])+(-a[k]+d[k])*t+(2*a[k]-5*b[k]+4*d[k]-e[k])*t2+(-a[k]+3*b[k]-3*d[k]+e[k])*t3);
+        const p={x:curve('x'),y:curve('y')};
+        nib(p,b.speed+(d.speed-b.speed)*t,b.pressure+(d.pressure-b.pressure)*t);
+      }
+    }
   }
   function point(e){
     // The mobile scene is rotated +90deg. A canvas bounding rectangle is an
@@ -479,13 +504,15 @@ function bindNewSignature(){
     e.stopPropagation();e.preventDefault();
     if(activePointer!==null)return;
     activePointer=e.pointerId;strokeMoved=false;c.setPointerCapture(e.pointerId);
-    penPoint=point(e);penTime=e.timeStamp;penSpeed=0;penPressure=e.pointerType==='pen'&&e.pressure>0?e.pressure:.5;
+    penBase=ctx.getImageData(0,0,c.width,c.height);penSamples=[];penTime=e.timeStamp;penSpeed=0;penPressure=e.pointerType==='pen'&&e.pressure>0?e.pressure:.5;inkTo(point(e),penTime,penPressure);
   };
   c.onpointermove=e=>{
     if(activePointer!==e.pointerId)return;
     e.stopPropagation();e.preventDefault();
     const samples=e.getCoalescedEvents?.()||[];
     for(const sample of (samples.length?samples:[e]))inkTo(point(sample),sample.timeStamp,sample.pointerType==='pen'&&sample.pressure>0?sample.pressure:.5);
+    if(penSamples.length<2)return;
+    paintStroke();
     if(!strokeMoved)window.DCD_WEB_SFX?.play('signature',{loop:true});
     strokeMoved=true;
     if(!hasInk){
@@ -498,7 +525,8 @@ function bindNewSignature(){
   const finish=e=>{
     if(activePointer!==e.pointerId)return;
     e.stopPropagation();e.preventDefault();
-    activePointer=null;penPoint=null;
+    if(strokeMoved&&e.type==='pointerup'){inkTo(point(e),e.timeStamp,e.pointerType==='pen'&&e.pressure>0?e.pressure:.5);paintStroke();}
+    activePointer=null;penSamples=[];penBase=null;
     window.DCD_WEB_SFX?.stop('signature');
     if(!strokeMoved)return;
     signatureInk=c.toDataURL('image/png');s.signed=true;save();
