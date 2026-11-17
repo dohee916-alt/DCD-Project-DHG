@@ -92,6 +92,7 @@ function scene(page){
   return;
  }
  const previous=activePage;activePage=page;
+ if(page==='11'&&enabled)preload('prescription-typing');
  if(workbenchPages.has(page)){
   if(!workbenchPages.has(previous))play('workbench-ambience',{loop:true});
  }else if(workbenchPages.has(previous))stop('workbench-ambience',.5);
