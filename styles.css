@@ -1953,15 +1953,19 @@ canvas.figure{object-fit:contain!important}
  overflow-y:hidden!important;
 }
 
-/* Figma 04_AR / AR5 / '누끼대신' (1095:153): exact 428x196 top
-   replacement gradient at x=0, y=54. Preserve the live front-camera
-   background and the facial landmark/hand-tracking interface. */
+/* Figma 04_AR / AR5 / '누끼대신' (1095:153).
+   Figma's mock phone header occupies y=0..54; the live AR does not have
+   that header. Extend the first opaque stop upward to y=0 while retaining
+   the ORIGINAL Figma gradient stops in stage coordinates:
+   54 + 196*.293269 = 111.4807px, 54 + 196*.605769 = 172.7307px,
+   and the exact original lower edge y=250px.
+   All AR text remains at its independently verified Figma x/y positions. */
 #stage .ar-immersive .ar-nukki-replacement{
- position:absolute;left:0;top:54px;width:428px;height:196px;
+ position:absolute;left:0;top:0;width:428px;height:250px;
  z-index:4;pointer-events:none;
  background:linear-gradient(180deg,
-  rgba(214,222,233,1) 29.3269%,
-  rgba(214,222,233,.782313) 60.5769%,
+  rgba(214,222,233,1) 44.5923%,
+  rgba(214,222,233,.782313) 69.0923%,
   rgba(216,223,233,0) 100%);
 }
 /* Temporarily remove every visual cutout output, not the input camera. */
