@@ -258,7 +258,7 @@ function introMarkup(p){
   }else if(s.phase==='guide'){
     h+=text('PULL THE STRINGS APART',26,810,376,96,'doto guide-blink guide-copy');
     // Figma 여기확인1: visible bounding boxes, with mirrored upper hand.
-    h+=img(A.gestureHand,18,387,142,161,'gesture gesture-upper');
+    h+=img(A.gestureHand,18,391,142,161,'gesture gesture-upper');
     h+=img(A.gestureHand,250,556,141,161,'gesture gesture-lower');
     h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';
   }
