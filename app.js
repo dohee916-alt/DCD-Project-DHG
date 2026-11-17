@@ -340,7 +340,7 @@ function consentMarkup(){
   else h+=glassButton('YES',608,241,112,'ar')+glassButton('NO',730,241,112,'decline',true);
   return h;
 }
-function newPackMarkup(){
+function newPackMarkup(page=s.page,includeDose=true){
   // Figma 03_MOBILE_WEB / New12–New16 (615:538 etc).
   // These are the actual Figma slots and material bounds, not sizes inferred
   // from the different AR pack. Keep the group origin at the clear foil's origin.
@@ -353,6 +353,10 @@ function newPackMarkup(){
   let inside=img(A.arPackBack,2.235,2.980,182.517,385.149,'new-pack-layer new-pack-vertical new-pack-foil');
   inside+=figureSlots.map((q,i)=>canvasFigure(order[i],...q,'new-pack-figure')).join('');
   inside+=img(A.arPackClear,0,0,185.497,391.108,'new-pack-layer new-pack-vertical new-pack-clear');
+  // The fixed dose is physically on the pack; keep it with the flight.
+  // Portrait source x=190,y=260,w=36,h=81 -> landscape x=260,y=202.
+  const dose=s.figures.reduce((a,f)=>a+f.orange,0).toFixed(1);
+  if(includeDose)inside+=text('SUM OF<br>APPLIED GLP-1<br>'+dose,52,page==='15'?182:181,81,36,'new-pack-dose');
   return group(208,21,185.497,391.108,'new-pack-assembly',inside);
 }
 function newTicker(x,reverse=false){
@@ -403,38 +407,35 @@ function prescriptionGradientLayers(){
 }
 function newPrescriptionMarkup(page=s.page){
   const side=page==='13',sign=page==='14'||page==='14done',consent=page==='15'||page==='16';
-  const dose=s.figures.reduce((a,f)=>a+f.orange,0).toFixed(1);
   let h=img(A.workbenchBackground,52,0,874,428,'bg');
-  h+=newPackMarkup();
-  h+=text(page==='15'||page==='16'?'>> PRESCRIBED':'>> PRESCRIPTION',93,21,25,291,'new-prescription-title');
-  h+=text('DCD<br>LAB',99,374,79,25,'new-brand-name');
-  h+=newTicker(475)+newTicker(791,true);
-  const doseY=page==='16'?41:page==='15'?44:sign?43:381;
-  const doseClass='new-dose-group'+(page==='13'?' side-dose':'');
-  h+=group(539,doseY,213,18,doseClass,text('SUM OF APPLIED GLP-1 : '+dose,0,0,213,18,'new-prescription-dose'));
+  h+=newPackMarkup(page);
+  h+=text(consent?'PRESCRIBED':'PRESCRIPTION',93,21,25,291,'new-prescription-title');
+  h+='<svg class="lay new-prescription-triangle" '+box(99,consent?165:189,20,17)+' viewBox="0 0 20 17" aria-hidden="true"><path d="M10 1 L17.77 12.75 L2.23 12.75 Z" fill="currentColor" stroke="currentColor" stroke-width=".6" stroke-linejoin="round"/></svg>';
+  h+=text('DCD<br>LAB',99,373,79,25,'new-brand-name');
+  h+=newTicker(475)+newTicker(821,true);
   if(page==='12'||side){
     const items=side?sides:effects,selected=side?s.side:s.expected,kind=side?'side':'expected';
-    let content=text(side?'POSSIBLE SIDE EFFECTS':'EXPECTED EFFECTS',524,43,291,24,'new-section-title');
-    content+=text(side?'Select the consequences you expect.':'Select the effects you expect.',524,62,291,24,'new-section-prompt');
-    content+='<div class="lay new-options" '+box(525,94,291,213)+'>'+items.map((item,i)=>'<label style="--line-index:'+i+'"><input type="checkbox" data-kind="'+kind+'" data-index="'+i+'" '+(selected.includes(i)?'checked':'')+'><img class="new-checked-asset" src="assets/figma-current/hd/checkbox-checked.svg" alt="" aria-hidden="true"><span>'+item+'</span></label>').join('')+'</div>';
+    let content=text(side?'POSSIBLE SIDE EFFECTS':'EXPECTED EFFECTS',side?530:531,44,291,24,'new-section-title');
+    content+=text(side?'Select the consequences you expect.':'Select the effects you expect.',531,63,291,24,'new-section-prompt');
+    content+='<div class="lay new-options" '+box(532,95,291,213)+'>'+items.map((item,i)=>'<label style="--line-index:'+i+'"><input type="checkbox" data-kind="'+kind+'" data-index="'+i+'" '+(selected.includes(i)?'checked':'')+'><img class="new-checked-asset" src="assets/figma-current/hd/checkbox-checked.svg" alt="" aria-hidden="true"><span>'+item+'</span></label>').join('')+'</div>';
     h+=group(0,0,926,428,'new-flow-content',content);
-    h+=newButton('NEXT','next',827,347,!selected.length);
+    h+=newButton('NEXT','next',745,340,!selected.length);
   }else if(sign){
     if(page==='14'&&!signatureInk){
       // Same exact edited New14 Figma base path for both guide and moving trace; handwriting remains unchanged.
       const figmaSignPath="M 10.77100658416748 70.29373168945312 C -2.443279266357422 63.686588764190674 -3.39418363571167 37.38294982910156 7.342423915863037 17.561521530151367 C 16.427245616912842 -1.4340152740478516 37.1995792388916 -4.036625385284424 45.4585075378418 5.048196315765381 C 57.0210075378418 19.088374614715576 33.49431502819061 54.60176753997803 31.842529296875 70.29373168945312 C 30.190743565559387 88.46337509155273 45.1282434463501 77.72676658630371 58.342529296875 57.905338287353516 C 68.2532434463501 43.03926658630371 79.0836009979248 32.476701736450195 87.342529296875 41.5615234375 C 94.842529296875 51.0615234375 76.01654624938965 72.7714147567749 84.27547454833984 76.90087890625 C 93.36029624938965 81.0303430557251 109.05226421356201 52.94998121261597 119.78887176513672 57.905338287353516 C 129.69958591461182 62.03480243682861 117.31118965148926 71.94552284479141 126.39601135253906 72.77141571044922 C 134.65493965148926 72.77141571044922 140.43619441986084 62.034807443618774 150.34690856933594 65.33837890625";
       const signView='0 0 185 124';
-      h+='<svg class="lay new-signature-sample" '+box(553,165,185,124)+' viewBox="'+signView+'" aria-hidden="true"><defs><linearGradient id="signature-base-color" x1="30" y1="40" x2="198" y2="113" gradientUnits="userSpaceOnUse"><stop stop-color="#FFE8E0"/><stop offset=".52" stop-color="#FFC4AB"/><stop offset="1" stop-color="#FFF0E8"/></linearGradient></defs><path d="'+figmaSignPath+'" transform="translate(15.657564163208008 21.438411712646484)" fill="none" stroke="url(#signature-base-color)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      h+='<svg class="lay new-signature-trace" '+box(553,165,185,124)+' viewBox="'+signView+'" aria-hidden="true"><defs><linearGradient id="signature-trace-color" x1="62" y1="102" x2="152" y2="83" gradientUnits="userSpaceOnUse"><stop stop-color="#FFBC97"/><stop offset=".22" stop-color="#FF9B65"/><stop offset=".65" stop-color="#FF813C"/><stop offset="1" stop-color="#D83A00"/></linearGradient></defs><path d="'+figmaSignPath+'" transform="translate(15.657564163208008 21.438411712646484)" fill="none" stroke="url(#signature-trace-color)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="100 100" stroke-dashoffset="100" pathLength="100"/></svg>';
+      h+='<svg class="lay new-signature-sample" '+box(579,124,185,124)+' viewBox="'+signView+'" aria-hidden="true"><defs><linearGradient id="signature-base-color" x1="30" y1="40" x2="198" y2="113" gradientUnits="userSpaceOnUse"><stop stop-color="#FFE8E0"/><stop offset=".52" stop-color="#FFC4AB"/><stop offset="1" stop-color="#FFF0E8"/></linearGradient></defs><path d="'+figmaSignPath+'" transform="translate(15.657564163208008 21.438411712646484)" fill="none" stroke="url(#signature-base-color)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      h+='<svg class="lay new-signature-trace" '+box(579,124,185,124)+' viewBox="'+signView+'" aria-hidden="true"><defs><linearGradient id="signature-trace-color" x1="62" y1="102" x2="152" y2="83" gradientUnits="userSpaceOnUse"><stop stop-color="#FFBC97"/><stop offset=".22" stop-color="#FF9B65"/><stop offset=".65" stop-color="#FF813C"/><stop offset="1" stop-color="#D83A00"/></linearGradient></defs><path d="'+figmaSignPath+'" transform="translate(15.657564163208008 21.438411712646484)" fill="none" stroke="url(#signature-trace-color)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="100 100" stroke-dashoffset="100" pathLength="100"/></svg>';
     }
-    if(signatureInk)h+='<img class="lay new-signature-ink" '+box(524,82,291,260)+' src="'+signatureInk+'" alt="">';
-    else h+='<canvas id="new-signature" class="lay new-signature-canvas" '+box(524,82,291,260)+' width="873" height="780" aria-label="Draw your signature"></canvas>';
-    if(page==='14')h+=text('SIGN HERE TO CONFIRM.',500,396,291,25,'doto guide-blink new-signature-guide');
-    h+=newButton('NEXT','next',827,354.5,page==='14',[67,70],true);
+    if(signatureInk)h+='<img class="lay new-signature-ink" '+box(531,82,291,260)+' src="'+signatureInk+'" alt="">';
+    else h+='<canvas id="new-signature" class="lay new-signature-canvas" '+box(531,82,291,260)+' width="873" height="780" aria-label="Draw your signature"></canvas>';
+    if(page==='14')h+=text('SIGN HERE TO CONFIRM.',516,262,291,25,'doto guide-blink new-signature-guide');
+    h+=newButton('NEXT','next',745,340,page==='14',[67,70],true);
   }else if(consent){
     h+=prescriptionGradientLayers().replace(img(A.workbenchBackground,52,0,874,428,'bg'),'');
-    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?513:514,262,264,64,'new-consent-copy');
-    if(page==='15')h+=newButton('YES','ar',522,343,false,[134,69])+newButton('NO','decline',633,343,false,[134,69]);
+    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?529:529,page==='15'?161:161,264,64,'new-consent-copy');
+    if(page==='15')h+=newButton('YES','ar',538,234,false,[134,69])+newButton('NO','decline',649,234,false,[134,69]);
     else h+=newButton('TEST IT','ar',579,343,false,[140,69]);
   }
   return h;
@@ -538,16 +539,17 @@ function bindNewSignature(){
 }
 function arPackMarkup(figmaChoicePreview=false){
   // Exact approved NewAR1 doll rectangles (636:367..370), frame local.
-  const slots=[[97.915,220.083,89.830,252.060],[240.590,220.083,89.830,252.060],[97.915,515.745,89.830,252.060],[240.094,515.745,89.830,252.060]],order=[0,2,3,1];
+  const dy=figmaChoicePreview?0:-10;
+  const slots=[[97.915,220.083+dy,89.830,252.060],[240.590,220.083+dy,89.830,252.060],[97.915,515.745+dy,89.830,252.060],[240.094,515.745+dy,89.830,252.060]],order=[0,2,3,1];
   let h='<div class="ar-pack-flip">';
-  h+=group(48,145,334,704,'ar-pack-face ar-pack-back',img(A.arPackBack,3.5,5.4,328.5,693.2,'ar-pack-image'));
+  h+=group(48,145+dy,334,704,'ar-pack-face ar-pack-back',img(A.arPackBack,3.5,5.4,328.5,693.2,'ar-pack-image'));
   // Figma left-bottom overlapped stack (origin -2567,3285); coordinates here
   // are the same layers translated into the 428x926 AR frame. Never crop.
-  let front=img(A.arOverlayFoilStates[0],50.5,150.363,328.482,693.166,'ar-intact-foil ar-original-foil');
+  let front=img(A.arOverlayFoilStates[0],figmaChoicePreview?50.5:51.55,150.363+dy,328.482,693.166,'ar-intact-foil ar-original-foil');
   front+='<canvas class="ar-foil-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-foil-morph" width="428" height="926" aria-hidden="true"></canvas>';
   front+=order.map((index,i)=>{const q=slots[i];return figmaChoicePreview?img('assets/figma-current/hd/ar5-1-doll-figma.png',q[0],q[1],q[2],q[3],'ar-pack-doll ar-choice-figma-doll'):canvasFigure(index,q[0],q[1],q[2],q[3],'ar-pack-doll');}).join('');
-  front+=img(A.arOverlayFrontStates[0],47.5,145,333.845,703.892,'ar-intact-clear ar-original-clear');
+  front+=img(A.arOverlayFrontStates[0],47.523,145+dy,333.845,703.892,'ar-intact-clear ar-original-clear');
   front+='<canvas class="ar-front-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-front-morph" width="428" height="926" aria-hidden="true"></canvas>';
   h+='<div class="ar-pack-face ar-pack-front">'+front+'</div>';
@@ -558,9 +560,9 @@ window.DCD_AR_PACK_PREVIEW=()=>arPackMarkup(true);
 window.DCD_RENDER_FIGURES=drawFigures;
 function arMarkup(){
   if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',68,89,292,44,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
-  let h='<div class="lay ar-orange-background ar-prescription-background" '+box(0,0,428,926)+' aria-hidden="true"><div class="ar-prescription-landscape">'+prescriptionGradientLayers()+'</div></div>'+text('>> NOW PRESCRIBE YOURSELF',45,93,362,25,'ar-headline');
+  let h='<div class="lay ar-orange-background ar-prescription-background" '+box(0,0,428,926)+' aria-hidden="true"><div class="ar-prescription-landscape">'+prescriptionGradientLayers()+'</div></div>'+text('NOW PRESCRIBE YOURSELF',33,129,362,25,'ar-headline');
   h+=arPackMarkup();
-  if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,24,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
+  if(s.page==='ar')h+=text('PRESS THE PACK!',29,819,370,24,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
   return h;
 }
 // The exact SIX layers overlapped at the left-bottom of the Figma AR canvas.
@@ -673,8 +675,8 @@ function arWarpedPair(pair,amount,output,opacity){
 // Keep the plastic sheet outside these four capsule domes pixel-identical.
 // Absolute ellipse x positions: -2541 and -2402; base x: -2573 => AR x: 79.5, 218.5.
 const arCapsuleOvals=[
-  [79.5,209,129,276],[218.5,209,129,276],
-  [79.5,506,129,276],[218.5,506,129,276]
+  [79.5,199,129,276],[218.5,199,129,276],
+  [79.5,496,129,276],[218.5,496,129,276]
 ];
 function arCapsuleMask(){
   const mask=new Uint8Array(428*926);
@@ -705,12 +707,12 @@ async function morphArBlister(){
     // Exact Figma absolute positions of 784:217/216/215, 784:218/219/220
     // translated from shared origin (-2567,3285) to (47.5,145).
     const foilRects=[
-      [50.5,150.363,328.482,693.166],
-      [47.5,165,327,660]
+      [51.55,140.363,328.482,693.166],
+      [47.523,155,327,660]
     ];
     const plasticRects=[
-      [47.5,145,333.845,703.892],
-      [52.5,-70,329,1133]
+      [47.523,135,333.845,703.892],
+      [52.523,-80,329,1133]
     ];
     const domeMask=arCapsuleMask();
     const layers=[
@@ -833,7 +835,7 @@ function runArDollDrop(){
   if(s.page!=='arOpen')return;
   const pack=stage.querySelector('.ar-pack-front');
   const nodes=[...(pack?.querySelectorAll('.ar-pack-doll')||[])];
-  const slots=[[97.915,220.083],[240.590,220.083],[97.915,515.745],[240.094,515.745]];
+  const slots=[[97.915,210.083],[240.590,210.083],[97.915,505.745],[240.094,505.745]];
   if(nodes.length!==4){arDropFinished=true;finishArIfReady();return;}
 
   // Use a dedicated isolated layer BEHIND the entire pack/foil composite.
@@ -1038,6 +1040,7 @@ async function beginAr(){
   // Position the SAME visible pack at its exact current screen pose before
   // animation starts. First paint is identical to the old pack (no entrance).
   flying.style.transform=flightFrames[0].transform;
+  flying.querySelector('.new-pack-dose')?.animate([{opacity:1},{opacity:1,offset:.35},{opacity:0}],{duration:1420,fill:'forwards'});
   const flight=flying.animate(flightFrames,{
     duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'
   });
@@ -1212,7 +1215,7 @@ async function animatePackIntoPrescription(){
   flight.className='pack-flight-overlay';
   const front=document.createElement('div');
   front.className='pack-flight-front';
-  front.innerHTML=newPackMarkup();
+  front.innerHTML=newPackMarkup('12');
   flight.appendChild(front);
   root.appendChild(next);
   root.appendChild(flight);
@@ -1557,10 +1560,8 @@ async function advanceNewPrescription(){
     ).finished);
   }
   if(from==='13'){
-    const dose=stage.querySelector('.new-dose-group');
     const timing={duration:950,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'};
     if(content)moves.push(content.animate([{translate:'0 0'},{translate:'0 -310px'}],timing).finished);
-    if(dose)moves.push(dose.animate([{translate:'0 0'},{translate:'0 -338px'}],timing).finished);
   }
   await Promise.allSettled(moves);
   if(s.page!==from)return;
