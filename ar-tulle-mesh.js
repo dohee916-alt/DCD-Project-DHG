@@ -658,7 +658,7 @@ function create(root){
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
       const y=-.98+.025*Math.sin(c*.65+r*.43+layer.index);
-      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=2&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.18});
+      nodes.push({x,y,z,ox:x,oy:y,oz:z,baseX:x,baseZ:z,pin: Math.abs(r-GRID_ROWS/2)<=3&&Math.abs(c-GRID_COLS/2)<=GRID_COLS*.22});
     }
     const add=(a,b,rest,stiffness)=>links.push({a,b,rest,stiffness});
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
@@ -729,7 +729,10 @@ function create(root){
              // not the scalp crown. Follow a skull dome above it instead.
              const fallbackY=foreheadFallbackY(faceCenter,px);
              const crownY=Number.isFinite(measuredY)?measuredY:fallbackY;
-             const py=clamp((crownY-12-faceCenter.y)/faceCenter.fw,-2.65,-.35);
+             // Follow the live hair curve while retaining the scalp's
+             // front-to-back roundness; a flat anchor patch creates a peak.
+             const domeDepth=(physicalY-anchorY)*.34;
+             const py=clamp((crownY-7-faceCenter.y)/faceCenter.fw+domeDepth,-2.65,-.35);
              p.x=p.ox=px;p.z=p.oz=pz;p.y=p.oy=py;continue;
            }
           const vx=(p.x-p.ox)*.94,vy=(p.y-p.oy)*.94,vz=(p.z-p.oz)*.94;
