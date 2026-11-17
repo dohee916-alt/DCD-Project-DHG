@@ -1526,7 +1526,8 @@ window.DCD_RESTART_WEB=()=>{
  window.DCD_CAMPAIGN_AUDIO?.stop();
  window.DCD_WEB_SFX?.stop('signature');
  s=fresh();sessionStorage.removeItem(key);
- setPage('01','guide');
+ openingSoundEnabled=false;
+ setPage('reel0','ready');
 };
 // Deterministic, unhurried Reel0 -> Reel1 movement; browser-native
 // smooth scrolling is often too abrupt and varies by device.
