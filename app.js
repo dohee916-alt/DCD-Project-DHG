@@ -552,6 +552,14 @@ function arPackMarkup(figmaChoicePreview=false){
   front+=img(A.arOverlayFrontStates[0],47.523,145+dy,333.845,703.892,'ar-intact-clear ar-original-clear');
   front+='<canvas class="ar-front-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-front-morph" width="428" height="926" aria-hidden="true"></canvas>';
+  // Same normalized label geometry as the WEB physical pack, including
+  // the final WEB15/16 one-pixel Y adjustment. The AR5-1 preview scales
+  // this complete assembly, so the label follows its existing transform.
+  const dose=s.figures.reduce((a,f)=>a+f.orange,0).toFixed(1);
+  const doseScale=333.845/185.497;
+  const doseX=47.523+52*doseScale;
+  const doseY=145+dy+182*(703.892/391.108);
+  front+='<div class="lay new-pack-dose ar-pack-dose" '+box(doseX,doseY,81,36,'transform:scale('+doseScale+');transform-origin:top left;')+'>SUM OF<br>APPLIED GLP-1<br>'+dose+'</div>';
   h+='<div class="ar-pack-face ar-pack-front">'+front+'</div>';
   return h+'</div>';
 }
@@ -1040,7 +1048,6 @@ async function beginAr(){
   // Position the SAME visible pack at its exact current screen pose before
   // animation starts. First paint is identical to the old pack (no entrance).
   flying.style.transform=flightFrames[0].transform;
-  flying.querySelector('.new-pack-dose')?.animate([{opacity:1},{opacity:1,offset:.35},{opacity:0}],{duration:1420,fill:'forwards'});
   const flight=flying.animate(flightFrames,{
     duration:1420,easing:'cubic-bezier(.28,.03,.25,1)',fill:'forwards'
   });
