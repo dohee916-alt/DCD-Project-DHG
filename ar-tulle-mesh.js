@@ -800,7 +800,36 @@ function create(root){
       const dy=nextB.y-prevT.y,dySide=nextR.y-prevL.y;
       const nX=clamp(-dySide/(Math.abs(dx)+.3),-.7,.7);
       const nY=clamp(-dy/(Math.abs(nextB.z-prevT.z)+.3),-.7,.7);
-      mesh[at]=screenX;mesh[at+1]=screenY;
+      // Restrict only lateral overshoot near the temple, never rescale
+      // the entire dome or clamp its vertical position to the crown curve.
+      // The lower sheet is free to hang; interior vertices stay unchanged.
+      const crownY=Number.isFinite(head.hairCrownY)?head.hairCrownY:head.y-head.fh*.88;
+      const foreheadY=head.y-head.fh*.48;
+      const templeStart=crownY+(foreheadY-crownY)*.45;
+      const templeEnd=head.y+head.fh*.12;
+      const influence=ease(clamp((screenY-templeStart)/Math.max(1,(foreheadY-templeStart)),0,1))
+        *(1-ease(clamp((screenY-foreheadY)/Math.max(1,templeEnd-foreheadY),0,1)));
+      let leftBound=head.x-head.fw*.68,rightBound=head.x+head.fw*.68;
+      const rows=head.hairOutline;
+      if(rows?.length>=2){
+        const sample=clamp(screenY,templeStart,foreheadY)/H;
+        const ordered=[...rows].sort((a,b)=>a.y-b.y);
+        let lo=ordered[0],hi=ordered[ordered.length-1];
+        for(let k=1;k<ordered.length;k++){
+          if(sample<=ordered[k].y){lo=ordered[k-1];hi=ordered[k];break;}
+        }
+        const ratio=clamp((sample-lo.y)/Math.max(.00001,hi.y-lo.y),0,1);
+        const l=mix(lo.left,hi.left,ratio)*W,rr=mix(lo.right,hi.right,ratio)*W;
+        // Ignore implausibly narrow crown samples; preserve full forehead.
+        if(rr-l>head.fw*.75&&rr-l<head.fw*1.55){
+          leftBound=l;rightBound=rr;
+        }
+      }
+      const margin=Math.max(3,head.fw*.025);
+      const limit=clamp(screenX,leftBound-margin,rightBound+margin);
+      // Smooth correction of exterior vertices only; no global X shrink.
+      const fittedX=mix(screenX,limit,influence*.96);
+      mesh[at]=fittedX;mesh[at+1]=screenY;
       mesh[at+2]=clamp(-.24+(z+windZ)*.18,-.76,.62);
       mesh[at+3]=u;mesh[at+4]=v;
       mesh[at+5]=clamp(.89+.16*Math.abs(nX)+.09*Math.cos(u*35+p.y*3),.68,1.18);
