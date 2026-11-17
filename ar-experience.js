@@ -174,18 +174,22 @@ function caption(value){const e=state.root?.querySelector('.ar-copy');if(e)e.tex
 function typeCaption(value,duration=1200,onComplete=null){
  const element=state.root?.querySelector('.ar-copy');if(!element)return;
  const letters=[...value];let i=0;const period=duration/Math.max(1,letters.length);
+ const frame=state.frame,session=state.session;
+ let finalNot=null,finalRest=null;
+ if(frame==='AR10'){
+   element.innerHTML='<span class="ar-final-not"></span><span class="ar-final-rest"></span>';
+   finalNot=element.querySelector('.ar-final-not');finalRest=element.querySelector('.ar-final-rest');
+   placeText(finalNot,AR_TEXT_RECTS.AR10.not);placeText(finalRest,AR_TEXT_RECTS.AR10.rest);
+ }
  function write(){
-  if(!state.root||!frameNames.includes(state.frame))return;
+  if(!state.root||state.frame!==frame||state.session!==session)return;
   const chars=letters.slice(0,++i).join('');
   if(state.frame==='AR10'){
    // Figma AR10 uses a separate 64px NOT and 26px supporting statement.
    const top=chars.slice(0,3);
    const lower=chars.length>4?chars.slice(4):'';
-   element.innerHTML='<span class="ar-final-not"></span><span class="ar-final-rest"></span>';
-   element.querySelector('.ar-final-not').textContent=top;
-   element.querySelector('.ar-final-rest').textContent=lower;
-   placeText(element.querySelector('.ar-final-not'),AR_TEXT_RECTS.AR10.not);
-   placeText(element.querySelector('.ar-final-rest'),AR_TEXT_RECTS.AR10.rest);
+   if(finalNot.textContent!==top)finalNot.textContent=top;
+   if(finalRest.textContent!==lower)finalRest.textContent=lower;
   }else element.textContent=chars;
   if(i<letters.length)delay(write,period);
    else onComplete?.();
