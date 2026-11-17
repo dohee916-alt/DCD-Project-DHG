@@ -12,7 +12,7 @@ const sounds={
  'final-message':{gain:.46}
 };
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
-const workbenchPages=new Set(['workbench','08a','08b','09','10','11']);
+const workbenchPages=new Set(['03','workbench','08a','08b','09','10','11']);
 let ctx=null,master=null,activePage='',enabled=false;
 const decoded=new Map(),pending=new Map(),voices=new Map(),serials=new Map();
 function unlock(){
