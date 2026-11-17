@@ -233,8 +233,7 @@ function reelStackMarkup(){
  (!openingSoundEnabled?'<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>':'')+
  '</section>'+
  '<section class="reel-screen reel-screen-one" aria-label="Reel 1">'+introMarkup('00')+'</section>'+
- '</div>'+
- '<img class="reels-fixed-status-bar" src="assets/figma-current/hd/reel-fixed-status-bar.png" alt="" aria-hidden="true">';
+ '</div>';
 }
 function introMarkup(p){
   if(p==='00')return blisterMotionLayer(A.blisterPingpong,'loop',A.blisterPingpongFirst)+
@@ -259,8 +258,8 @@ function introMarkup(p){
   }else if(s.phase==='guide'){
     h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
     // Figma 여기확인1: visible bounding boxes, with mirrored upper hand.
-    h+=img(A.gestureHand,18,395,142,161,'gesture gesture-upper');
-    h+=img(A.gestureHand,250,560,141,161,'gesture gesture-lower');
+    h+=img(A.gestureHand,18,379,142,161,'gesture gesture-upper');
+    h+=img(A.gestureHand,250,556,141,161,'gesture gesture-lower');
     h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';
   }
   return h;
