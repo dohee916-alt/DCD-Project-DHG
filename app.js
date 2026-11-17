@@ -410,16 +410,16 @@ function newPrescriptionMarkup(page=s.page){
   let h=img(A.workbenchBackground,52,0,874,428,'bg');
   h+=newPackMarkup(page);
   h+=text(consent?'PRESCRIBED':'PRESCRIPTION',93,21,25,291,'new-prescription-title');
-  h+='<svg class="lay new-prescription-triangle" '+box(99,consent?165:189,20,17)+' viewBox="0 0 20 17" aria-hidden="true"><path d="M10 1 L17.77 12.75 L2.23 12.75 Z" fill="currentColor" stroke="currentColor" stroke-width=".6" stroke-linejoin="round"/></svg>';
+  h+='<svg class="lay new-prescription-triangle" '+box(99,consent?168:192,20,17)+' viewBox="0 0 20 17" aria-hidden="true"><path d="M10 1 L17.77 12.75 L2.23 12.75 Z" fill="currentColor" stroke="currentColor" stroke-width=".6" stroke-linejoin="round"/></svg>';
   h+=text('DCD<br>LAB',99,373,79,25,'new-brand-name');
   h+=newTicker(475)+newTicker(821,true);
   if(page==='12'||side){
     const items=side?sides:effects,selected=side?s.side:s.expected,kind=side?'side':'expected';
-    let content=text(side?'POSSIBLE SIDE EFFECTS':'EXPECTED EFFECTS',side?530:531,44,291,24,'new-section-title');
+    let content=text(side?'POSSIBLE SIDE EFFECTS':'EXPECTED EFFECTS',side?530:531,44,291,side?25:24,'new-section-title');
     content+=text(side?'Select the consequences you expect.':'Select the effects you expect.',531,63,291,24,'new-section-prompt');
-    content+='<div class="lay new-options" '+box(532,95,291,213)+'>'+items.map((item,i)=>'<label style="--line-index:'+i+'"><input type="checkbox" data-kind="'+kind+'" data-index="'+i+'" '+(selected.includes(i)?'checked':'')+'><img class="new-checked-asset" src="assets/figma-current/hd/checkbox-checked.svg" alt="" aria-hidden="true"><span>'+item+'</span></label>').join('')+'</div>';
+    content+='<div class="lay new-options" '+box(532,95,309,213)+'>'+items.map((item,i)=>'<label style="--line-index:'+i+'"><input type="checkbox" data-kind="'+kind+'" data-index="'+i+'" '+(selected.includes(i)?'checked':'')+'><img class="new-checked-asset" src="assets/figma-current/hd/checkbox-checked.svg" alt="" aria-hidden="true"><span>'+item+'</span></label>').join('')+'</div>';
     h+=group(0,0,926,428,'new-flow-content',content);
-    h+=newButton('NEXT','next',745,340,!selected.length);
+    h+=newButton('NEXT','next',745.103,347.458,!selected.length);
   }else if(sign){
     if(page==='14'&&!signatureInk){
       // Same exact edited New14 Figma base path for both guide and moving trace; handwriting remains unchanged.
@@ -431,11 +431,11 @@ function newPrescriptionMarkup(page=s.page){
     if(signatureInk)h+='<img class="lay new-signature-ink" '+box(531,82,291,260)+' src="'+signatureInk+'" alt="">';
     else h+='<canvas id="new-signature" class="lay new-signature-canvas" '+box(531,82,291,260)+' width="873" height="780" aria-label="Draw your signature"></canvas>';
     if(page==='14')h+=text('SIGN HERE TO CONFIRM.',516,262,291,25,'doto guide-blink new-signature-guide');
-    h+=newButton('NEXT','next',745,340,page==='14',[67,70],true);
+    h+=newButton('NEXT','next',745.103,347.458,page==='14',[67,70],true);
   }else if(consent){
     h+=prescriptionGradientLayers().replace(img(A.workbenchBackground,52,0,874,428,'bg'),'');
-    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?529:529,page==='15'?161:161,264,64,'new-consent-copy');
-    if(page==='15')h+=newButton('YES','ar',538,234,false,[134,69])+newButton('NO','decline',649,234,false,[134,69]);
+    h+=text(page==='15'?'DO YOU AGREE TO<br>TEST IT ON YOU?':'Thank you<br>for Prescribing',page==='15'?529:514,page==='15'?161:262,264,64,'new-consent-copy');
+    if(page==='15')h+=newButton('YES','ar',538,241.458,false,[134,69])+newButton('NO','decline',649,241.458,false,[134,69]);
     else h+=newButton('TEST IT','ar',579,343,false,[140,69]);
   }
   return h;
@@ -568,7 +568,7 @@ window.DCD_AR_PACK_PREVIEW=()=>arPackMarkup(true);
 window.DCD_RENDER_FIGURES=drawFigures;
 function arMarkup(){
   if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',68,89,292,44,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
-  let h='<div class="lay ar-orange-background ar-prescription-background" '+box(0,0,428,926)+' aria-hidden="true"><div class="ar-fixed-bg">'+img(A.workbenchBackground,0,0,428,926,'bg')+'<div class="ar-fixed-base-tint"></div><div class="ar-fixed-gradient g1"></div><div class="ar-fixed-gradient g2"></div><div class="ar-fixed-gradient g3"></div><div class="ar-fixed-gradient g4"></div></div></div>'+text('NOW PRESCRIBE YOURSELF',33,129,362,25,'ar-headline');
+  let h='<div class="lay ar-orange-background ar-prescription-background" '+box(0,0,428,926)+' aria-hidden="true"><div class="ar-fixed-bg">'+img(A.workbenchBackground,-84,52,655,874,'bg ar-fixed-bg-image')+'<div class="ar-fixed-base-tint"></div><div class="ar-fixed-gradient g1"></div><div class="ar-fixed-gradient g2"></div><div class="ar-fixed-gradient g3"></div><div class="ar-fixed-gradient g4"></div></div></div>'+text('NOW PRESCRIBE YOURSELF',33,129,362,25,'ar-headline');
   h+=arPackMarkup();
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,819,370,24,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
   return h;
