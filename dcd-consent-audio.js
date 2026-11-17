@@ -23,7 +23,7 @@ async function yes(){
  const token=++revision;phase='yes';halt();
  try{await load();if(token!==revision||phase!=='yes')return;
   const playing=ctx.createBufferSource(),impactGain=ctx.createGain();
-  playing.buffer=buffer;impactGain.gain.value=.60;
+  playing.buffer=buffer;impactGain.gain.value=.30;
   playing.connect(impactGain);impactGain.connect(ctx.destination);
   node=playing;playing.start(0,IMPACT_START);
   playing.onended=()=>{if(node===playing){node=null;phase='done'}try{playing.disconnect();impactGain.disconnect()}catch{}}
