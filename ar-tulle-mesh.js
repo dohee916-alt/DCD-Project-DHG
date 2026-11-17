@@ -70,41 +70,52 @@ float smoothVeilSilhouette(vec2 uv){
   return sideMask*topMask*bottomMask;
 }
 void main(){
-  // Packed Poly Haven Crepe Satin: normal XY, roughness, specular.
-  // Charlie sheen + correlated GGX, adapted from Three.js r166 (MIT).
+  // Crepe Satin source: roughness ~0.49, metallic ~0.93, sheen roughness 0.5.
+  // Reflect a broad studio softbox plus two narrower strip lights in the
+  // deformed surface. Environment reflection is evaluated from normals,
+  // rather than baking a flat bright orange color into the cloth.
   vec4 cloth=texture2D(fabric,vUV);
   vec2 pixel=vec2(1.0/1010.0);
   vec3 N=normalize(vNormal);
   vec3 tx=normalize(vec3(max(.001,N.z),0.0,-N.x));
   vec3 ty=normalize(cross(N,tx));
   vec2 bump=cloth.rg*2.0-1.0;
-  vec3 sn=normalize(N+tx*bump.x+ty*bump.y);
+  vec3 sn=normalize(N+tx*bump.x*.48+ty*bump.y*.48);
   vec3 V=vec3(0.0,0.0,1.0);
-  vec3 L=normalize(vec3(-.64,.46,.72));
-  vec3 R=normalize(vec3(.78,.32,.48));
-  float nv=max(.025,dot(sn,V));
+  float nv=clamp(dot(sn,V),.025,1.0);
   float rough=clamp(cloth.b,.30,.70);
-  float a=rough*rough;
-  float a2=a*a;
+  float metal=.933;
+  vec3 L=normalize(vec3(-.64,.46,.72));
   vec3 H=normalize(L+V);
   float nl=max(.0,dot(sn,L));
   float nh=max(.0,dot(sn,H));
+  float a=rough*rough,a2=a*a;
   float den=nh*nh*(a2-1.0)+1.0;
   float ggx=a2/(3.14159265*den*den);
   float vis=.5/max(.001,nl*sqrt(a2+(1.0-a2)*nv*nv)+nv*sqrt(a2+(1.0-a2)*nl*nl));
-  float fres=.035+.965*pow(1.0-max(.0,dot(V,H)),5.0);
-  float spec=ggx*vis*fres*nl*cloth.a;
-  // Original glTF sheen roughness = 0.5, neutralized golden tint.
+  vec3 tint=vec3(.86,.72,.60);
+  vec3 f0=mix(vec3(.04*cloth.a),tint,metal);
+  vec3 F=f0+(vec3(1.0)-f0)*pow(1.0-clamp(dot(V,H),0.0,1.0),5.0);
+  vec3 spec=ggx*vis*F*nl;
+  // Broad and narrow reflection bands model a photographed studio setup.
+  // Narrow axis across the fabric and wide axis along its hanging folds.
+  vec3 refl=reflect(-V,sn);
+  float spread=.13+rough*.17;
+  float band1=exp(-pow(abs((refl.x+.52)/spread),2.0)-pow(abs((refl.y-.18)/.83),2.0));
+  float band2=exp(-pow(abs((refl.x-.43)/(spread*.72)),2.0)-pow(abs((refl.y+.02)/.72),2.0));
+  float topbox=exp(-pow(abs((refl.y-.58)/.29),2.0)-pow(abs(refl.x/.75),2.0));
+  float env=clamp(band1*.96+band2*.75+topbox*.38,0.0,1.0);
+  vec3 R=normalize(vec3(.78,.32,.48));
   float nr=max(.0,dot(sn,R));
   float nh2=max(.0,dot(sn,normalize(R+V)));
   float charlie=6.0*pow(max(.0078125,1.0-nh2*nh2),2.0)/6.2831853;
   float neubelt=clamp(1.0/max(.001,4.0*(nr+nv-nr*nv)),0.0,1.0);
   float sheen=charlie*neubelt*nr;
   float edge=pow(1.0-nv,2.0);
-  float reflection=clamp(spec*4.5+sheen*1.8+edge*.32,0.0,1.0);
-  vec3 whiteNet=mix(vec3(.70,.55,.43),vec3(1.0,.91,.81),clamp(.20+nl*.18+reflection*.85,0.0,1.0));
-  // Thin coverage allows the camera to remain visible except at light-catching folds.
-  float netAlpha=.24+.32*reflection;
+  float highlight=clamp(env*.92+max(max(spec.r,spec.g),spec.b)*.45+sheen*.8+edge*.18,0.0,1.0);
+  // A muted peach undertone, neutral ivory highlights and transparent valleys.
+  vec3 whiteNet=mix(vec3(.70,.57,.48),vec3(1.0,.98,.94),highlight);
+  float netAlpha=.19+.29*highlight+.045*edge;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
