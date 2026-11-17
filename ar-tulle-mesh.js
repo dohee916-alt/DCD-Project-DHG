@@ -780,9 +780,13 @@ function create(root){
       const edge=clamp((Math.abs(u-.5)-.11)/.39,0,1);
       const wave=Math.sin(t*1.55+u*7.2+v*4.4+layer.index*.72);
       const fold=Math.sin(t*.92-u*5.1+v*8.4+layer.index*1.09);
-      const windX=looseness*(.046*wave+.034*fold)*(0.32+.68*edge);
-      const windY=looseness*(.023*wave-.016*fold)*(.4+.6*front);
-      const windZ=looseness*(.045*wave+.025*fold)*(0.4+.6*front);
+      // Crown and upper scalp stay fixed to the measured head. Only the
+      // fabric hanging below the head is allowed to flutter freely.
+      const hanging=ease(clamp((p.y+head.radiusY/head.fw*.15)/
+        Math.max(.1,head.radiusY/head.fw*1.65),0,1));
+      const windX=hanging*looseness*(.046*wave+.034*fold)*(0.32+.68*edge);
+      const windY=hanging*looseness*(.023*wave-.016*fold)*(.4+.6*front);
+      const windZ=hanging*looseness*(.045*wave+.025*fold)*(0.4+.6*front);
       const screenX=head.x+scale*((x+windX)*head.co-(p.y+windY)*head.si);
       // Front panel drapes below the chin instead of stopping at face height.
       const frontHem=Math.pow(Math.max(0,(.5-r/GRID_ROWS)*2),1.6);
@@ -818,13 +822,18 @@ function create(root){
       const upperScale=Math.min(1,hairHalf/Math.max(1,head.fw*1.25));
       const headFitX=hairCenter+(screenX-head.x)*upperScale;
       const fittedX=screenX+(headFitX-screenX)*nearScalp*.92;
+      // The top of the veil must not extend above the LIVE matte outline.
+      // Limit only the upper mesh, leaving the hanging hem unrestricted.
+      const localCrown=measuredCrownY(fittedX);
+      const fittedY=Number.isFinite(localCrown)
+        ?Math.max(screenY,localCrown-7):Math.max(screenY,crownTop-7);
       const prevL=c>0?nodes[id-1]:p,nextR=c<GRID_COLS?nodes[id+1]:p;
       const prevT=r>0?nodes[id-(GRID_COLS+1)]:p,nextB=r<GRID_ROWS?nodes[id+(GRID_COLS+1)]:p;
       const dx=nextR.x-prevL.x,dz=nextR.z-prevL.z;
       const dy=nextB.y-prevT.y,dySide=nextR.y-prevL.y;
       const nX=clamp(-dySide/(Math.abs(dx)+.3),-.7,.7);
       const nY=clamp(-dy/(Math.abs(nextB.z-prevT.z)+.3),-.7,.7);
-      mesh[at]=fittedX;mesh[at+1]=screenY;
+      mesh[at]=fittedX;mesh[at+1]=fittedY;
       mesh[at+2]=clamp(-.24+(z+windZ)*.18,-.76,.62);
       mesh[at+3]=u;mesh[at+4]=v;
       mesh[at+5]=clamp(.89+.16*Math.abs(nX)+.09*Math.cos(u*35+p.y*3),.68,1.18);
