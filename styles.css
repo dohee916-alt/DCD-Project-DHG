@@ -1992,3 +1992,20 @@ canvas.figure{object-fit:contain!important}
  font:700 18px/23px "Turret Road",Arial,sans-serif!important;
 }
 
+
+/* Live AR: use segmentation for REAL-TIME scalp landmarks only.
+   Never composite the segmented portrait over a flat gray backing or
+   swap a pre-cut portrait into the live camera. Keep the full camera
+   visible through cloth scenes; Figma's separately approved final
+   color treatment on AR5-1, AR9 and AR10 is unchanged. */
+#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR3-1"],[data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-2"],[data-ar-frame="AR6"],[data-ar-frame="AR7"],[data-ar-frame="AR8"]){
+ background:transparent!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR3-1"],[data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-2"],[data-ar-frame="AR6"],[data-ar-frame="AR7"],[data-ar-frame="AR8"]) .ar-portrait-camera{
+ display:block!important;visibility:visible!important;opacity:1!important;
+ filter:none!important;-webkit-filter:none!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR3-1"],[data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-2"],[data-ar-frame="AR6"],[data-ar-frame="AR7"],[data-ar-frame="AR8"]) .ar-person-segment{
+ visibility:hidden!important;opacity:0!important;pointer-events:none!important;
+}
+/* The hidden matte canvas stays mounted and continues updating __dcdHairCrown. */
