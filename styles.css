@@ -1729,6 +1729,48 @@ canvas.figure{object-fit:contain!important}
  color:#000;text-align:center;white-space:pre-line;
  word-break:keep-all;overflow-wrap:normal;
 }
+/* AR4 / AR5-2 stigma whisper: one cycle per phrase, synchronized with
+   the existing typewriter and voice. The heading stays static after typing. */
+.ar-stigma-typed .ar-whisper-main,.ar-stigma-typed .ar-whisper-echo{
+ display:block;white-space:inherit;word-break:inherit;overflow-wrap:inherit;
+ letter-spacing:0;
+}
+.ar-stigma-typed .ar-whisper-main{
+ position:relative;
+ animation:dcdWhisperFocus 4s ease-in-out both,dcdWhisperTracking 4s ease-in-out both;
+}
+.ar-stigma-typed .ar-whisper-echo{
+ position:absolute;inset:0;pointer-events:none;opacity:0;
+ animation:dcdWhisperEcho 4s ease-out both,dcdWhisperTracking 4s ease-in-out both;
+}
+.ar-whisper-echo.left{--echo-x:-17px;--echo-y:-6px;--echo-strength:.24}
+.ar-whisper-echo.right{--echo-x:14px;--echo-y:5px;--echo-strength:.20;animation-delay:.17s,0s}
+.ar-whisper-echo.far{--echo-x:-27px;--echo-y:2px;--echo-strength:.12;animation-delay:.34s,0s}
+@keyframes dcdWhisperFocus{
+ 0%{opacity:.12;filter:blur(2.8px)}
+ 13%,37%{opacity:1;filter:blur(0)}
+ 46%{opacity:.8;filter:blur(.8px)}
+ 57%,83%,100%{opacity:1;filter:blur(0)}
+}
+@keyframes dcdWhisperEcho{
+ 0%,13%{opacity:0;transform:translate(0);filter:blur(0)}
+ 24%{opacity:var(--echo-strength)}
+ 49%{opacity:0;transform:translate(var(--echo-x),var(--echo-y));filter:blur(2.5px)}
+ 58%{opacity:0;transform:translate(0);filter:blur(0)}
+ 64%{opacity:calc(var(--echo-strength)*.7)}
+ 90%,100%{opacity:0;transform:translate(var(--echo-x),var(--echo-y));filter:blur(3px)}
+}
+@keyframes dcdWhisperTracking{
+ 0%,100%{letter-spacing:0}
+ 21%{letter-spacing:var(--whisper-tracking,1.8px)}
+ 43%{letter-spacing:.15px}
+ 65%{letter-spacing:calc(var(--whisper-tracking,1.8px)*.55)}
+ 90%{letter-spacing:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .ar-stigma-typed .ar-whisper-main{animation:none}
+ .ar-stigma-typed .ar-whisper-echo{display:none;animation:none}
+}
 /* Keep only the previously approved blinking behavior, not old positioning. */
 #stage .ar-immersive.ar-doto-blink .ar-copy{
  animation:arDotoGuideBlink 1s steps(1,end) infinite;
