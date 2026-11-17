@@ -11,7 +11,7 @@ const legacy=PATH+'dcd-approved-workbench-cues.mp3.b64';
 const clips={
  suction:{source:'hq',start:0,duration:1.33,gain:.85},
  injection:{source:'hq',start:1.48,duration:1.04,gain:.85},
- signature:{source:'hq',start:2.67,duration:1.36,gain:.53},
+ signature:{source:'hq',start:2.67,duration:1.36,gain:.42},
  pack:{source:'legacy',start:4.68,duration:.456,gain:.70},
  'machine-in':{source:'legacy',start:5.336,duration:1.45,gain:.72},
  'machine-out':{source:'legacy',start:5.336,duration:2.214,gain:.74}
