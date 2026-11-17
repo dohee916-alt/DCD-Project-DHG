@@ -102,9 +102,9 @@ void main(){
   float sheen=charlie*neubelt*nr;
   float edge=pow(1.0-nv,2.0);
   float reflection=clamp(spec*4.5+sheen*1.8+edge*.32,0.0,1.0);
-  vec3 whiteNet=mix(vec3(.62,.61,.60),vec3(.99,.98,.96),clamp(.20+nl*.18+reflection*.85,0.0,1.0));
+  vec3 whiteNet=mix(vec3(.70,.55,.43),vec3(1.0,.91,.81),clamp(.20+nl*.18+reflection*.85,0.0,1.0));
   // Thin coverage allows the camera to remain visible except at light-catching folds.
-  float netAlpha=.12+.32*reflection;
+  float netAlpha=.24+.32*reflection;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -367,11 +367,11 @@ function canvasCloth(root){
        ctx.closePath();ctx.clip();
       if(pass===0){
       const satin=ctx.createLinearGradient(l,t,r,t);
-      satin.addColorStop(0,'rgba(217,214,209,.12)');
-      satin.addColorStop(.24,'rgba(255,254,250,.26)');
-      satin.addColorStop(.45,'rgba(192,189,185,.09)');
-      satin.addColorStop(.74,'rgba(255,253,249,.20)');
-      satin.addColorStop(1,'rgba(204,202,200,.12)');
+      satin.addColorStop(0,'rgba(225,190,163,.24)');
+      satin.addColorStop(.24,'rgba(255,232,209,.38)');
+      satin.addColorStop(.45,'rgba(194,157,130,.21)');
+      satin.addColorStop(.74,'rgba(255,228,202,.32)');
+      satin.addColorStop(1,'rgba(215,177,149,.24)');
       ctx.fillStyle=satin;ctx.fillRect(l,t,cw,ch+fh*.06);
       // Soft fold shadow follows the tucked hem, without painting a hard line.
       ctx.globalAlpha=alpha*.26;
