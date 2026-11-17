@@ -19,6 +19,7 @@ function markup(){
  return '<div class="ar-immersive" data-ar-frame="AR3">'+
  '<video class="ar-camera-video ar-portrait-camera" autoplay muted playsinline aria-label="Front camera"></video>'+
  '<canvas class="ar-person-segment" width="428" height="926" aria-hidden="true"></canvas>'+
+  '<div class="ar-nukki-replacement" aria-hidden="true"></div>'+
 
  '<div class="ar-organza-stack" aria-hidden="true"></div>'+
  '<div class="ar-choice-gradient" aria-hidden="true"></div>'+FIGMA_AR_GROUP_SVG+
@@ -303,15 +304,12 @@ function enter(frame){
    caption('');
    state.variant='first';state.maskCount=0;whisperLevel(WHISPER_MAX,.3);state.sheets.forEach(e=>e.layer.remove());
    state.sheets=[];state.tulle?.clear();
-   // Allow face tracking and the cutout pipeline to initialize before the first arrival.
-   // Never advance five fabric layers on the old rapid fixed timer.
-   const prepare=performance.now();
+   // The replacement overlay keeps the camera untouched; facial landmarks
+   // are sufficient to begin the original stencil and typography sequence.
    function readyForStigmas(){
      if(state.frame!=='AR4')return;
-     const matteReady=!!state.matte?.visible;
-     const status=state.root.__dcdMatteStatus;
-     const fresh=status?.lastFrameAt&&performance.now()-status.lastFrameAt<1300;
-     if(matteReady&&state.faceBox&&fresh){
+     const fresh=!!state.faceBox&&performance.now()-state.faceBoxSeenAt<1300;
+     if(fresh){
        typeStigmaHeading('THEY SAY',()=>{
          if(state.frame==='AR4')showStigmaSequence('first',()=>{if(state.frame==='AR4')enter('AR5');});
        });
@@ -396,7 +394,7 @@ function observeFace(points,now){
  if(state.frame!=='AR3'||!points?.length)return;
  // Prepare the high-quality portrait worker on FIRST face detection rather
  // than waiting for the 650ms alignment dwell; keep raw video live meanwhile.
- if(!state.matte)ensurePortraitMatte();
+ // Disable live cutout temporarily; camera landmarks remain active.
  const face=faceDisplayRect(points);
  // The real, mirrored face must be centered within the existing AR3 guide.
  // Require stable alignment, not merely a face anywhere in the camera.
@@ -404,29 +402,16 @@ function observeFace(points,now){
  const appropriateSize=face.w>.16&&face.w<.92&&face.h>.17&&face.h<.88;
  if(!centered||!appropriateSize){state.guideSince=0;return;}
  if(!state.guideSince)state.guideSince=now;
- // Face alignment begins the portrait extraction, but the whisper scene
- // must NEVER precede a successfully rendered cutout.
+ // Keep the 650ms face alignment dwell, then the 350ms settling pause.
+ // The original segmentation worker is disabled for the Figma gradient test.
  if(now-state.guideSince>=650&&!state.portraitPending){
    state.portraitPending=true;
-   ensurePortraitMatte(); // defer cloth GPU and hand inference until AR4
-   let visibleSince=0;
    const session=state.session;
-   function waitForCutout(){
-     if(!state.root||state.frame!=='AR3'||session!==state.session)return;
-     const status=state.root.__dcdMatteStatus;
-     const ready=!!state.matte?.visible&&status?.frames>=2&&
-       performance.now()-(status.lastFrameAt||0)<1300&&
-       state.root.classList.contains('ar-matting-active');
-     if(ready){
-       if(!visibleSince)visibleSince=performance.now();
-       if(performance.now()-visibleSince>=350&&state.faceBox){
-         enter('AR3-1');
-         return;
-       }
-     }else visibleSince=0;
-     delay(waitForCutout,160);
-   }
-   delay(waitForCutout,160);
+   delay(()=>{
+     if(state.root&&state.frame==='AR3'&&session===state.session&&state.faceBox&&
+        performance.now()-state.faceBoxSeenAt<1300)enter('AR3-1');
+     else if(state.frame==='AR3')state.portraitPending=false;
+   },350);
  }
 }
 function observeHands(hands,now){
@@ -644,6 +629,7 @@ function start(video){
  initModels(state.session);
 }
 function ensurePortraitMatte(){
+ return; // Disabled for temporary '누끼대신' overlay.
  if(!state.playing||!state.root||state.matte)return;
  try{state.matte=window.DCD_AR_MATTE?.create(state.root,state.video,
    state.root.querySelector('.ar-person-segment'))||null;}
@@ -662,7 +648,7 @@ function startArVisuals(){
      state.handGuide?.setFrame(state.frame);
    }catch(error){console.warn('[DCD AR] Gesture guide init:',error);}
  }
- ensurePortraitMatte();
+ // Preserve live face/hand tracking; do not launch the cutout worker.
 }
 function stop(preservePrimedAudio=false){
  state.session++;
