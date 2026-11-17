@@ -1991,3 +1991,34 @@ canvas.figure{object-fit:contain!important}
  min-height:46px!important;margin:13px 0 0!important;
  font:700 18px/23px "Turret Road",Arial,sans-serif!important;
 }
+
+/* AR portrait: the exported Figma mock-up includes an 80px phone header.
+   Live AR is a borderless camera, so top-aligned captions must shift up by
+   80 native artwork pixels. The outer #stage handles scaling exactly once.
+   Mid-screen final messages retain their independent Figma positions. */
+#stage .ar-immersive[data-ar-frame="AR3-1"] .ar-copy{
+ top:36px!important;height:32px!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR6"],[data-ar-frame="AR7"]) .ar-copy{
+ top:61px!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR4"],[data-ar-frame="AR5-2"]) .ar-stigma-message{
+ top:36px!important;
+}
+#stage .ar-immersive[data-ar-frame="AR4"] .ar-copy{
+ top:64px!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5"] .ar-copy{
+ top:36px!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{
+ top:64px!important;
+}
+/* Last message AR10: remove the boxed gradient rectangle, not the
+   words, softened live portrait or the approved final CTA. */
+#stage .ar-immersive[data-ar-frame="AR10"] .ar-group3-figma,
+#stage .ar-immersive[data-ar-frame="AR10"] .ar5-figma-gradient,
+#stage .ar-immersive[data-ar-frame="AR10"] .ar5-figma-tint,
+#stage .ar-immersive[data-ar-frame="AR10"] .ar-choice-gradient{
+ display:none!important;
+}
