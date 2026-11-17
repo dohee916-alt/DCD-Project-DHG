@@ -38,7 +38,7 @@ function markup(){
 const WHISPER_B64='assets/audio/murmur-ben0815-clip.opus.b64';
 let whisperContext=null,whisperGain=null,whisperBuffer=null,whisperNode=null;
 let whisperLoading=null,whisperWanted=false;
-const WHISPER_MAX=.85,WHISPER_MIN=.012;
+const WHISPER_MAX=.44,WHISPER_MIN=.006;
 let whisperTarget=0;
 function whisperLevel(target,fade=.4){
  whisperTarget=Math.max(0,target);
@@ -49,7 +49,10 @@ function whisperLevel(target,fade=.4){
 }
 function whisperForLayers(lastHandPeel=false){
  const n=state.maskCount;
- whisperLevel(lastHandPeel&&n===0?0:n===0?WHISPER_MIN:WHISPER_MIN+(WHISPER_MAX-WHISPER_MIN)*n/5,.5);
+ // Step down after EACH sheet; a longer gain ramp makes it sound like the
+ // surrounding whispers recede as the veil comes off.
+ const ratio=Math.pow(Math.max(0,Math.min(5,n))/5,1.65);
+ whisperLevel(lastHandPeel&&n===0?0:WHISPER_MIN+(WHISPER_MAX-WHISPER_MIN)*ratio,.95);
 }
 function primeWhisper(){
  // This is called synchronously from the user's pack-click gesture.
