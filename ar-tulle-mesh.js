@@ -100,7 +100,7 @@ void main(){
   // Broad and narrow reflection bands model a photographed studio setup.
   // Narrow axis across the fabric and wide axis along its hanging folds.
   vec3 refl=reflect(-V,sn);
-  float spread=.13+rough*.17;
+  float spread=.15+rough*.17;
   float band1=exp(-pow(abs((refl.x+.52)/spread),2.0)-pow(abs((refl.y-.18)/.83),2.0));
   float band2=exp(-pow(abs((refl.x-.43)/(spread*.72)),2.0)-pow(abs((refl.y+.02)/.72),2.0));
   float topbox=exp(-pow(abs((refl.y-.58)/.29),2.0)-pow(abs(refl.x/.75),2.0));
@@ -112,7 +112,7 @@ void main(){
   float neubelt=clamp(1.0/max(.001,4.0*(nr+nv-nr*nv)),0.0,1.0);
   float sheen=charlie*neubelt*nr;
   float edge=pow(1.0-nv,2.0);
-  float highlight=clamp(env*.92+max(max(spec.r,spec.g),spec.b)*.45+sheen*.8+edge*.18,0.0,1.0);
+  float highlight=clamp(env*.74+max(max(spec.r,spec.g),spec.b)*.39+sheen*.8+edge*.18,0.0,1.0);
   // A muted peach undertone, neutral ivory highlights and transparent valleys.
   vec3 whiteNet=mix(vec3(.70,.57,.48),vec3(1.0,.98,.94),highlight);
   float netAlpha=.19+.29*highlight+.045*edge;
