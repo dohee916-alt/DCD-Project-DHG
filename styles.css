@@ -1807,3 +1807,17 @@ canvas.figure{object-fit:contain!important}
 /* Fixed native bounds: checkbox rows begin at y=101, label x=551. */
 .page-13 .new-options{color:#2b333d}
 #stage.page-ar .ar-press-copy{font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;}
+
+/* Reel progress: remove baked static artwork only at the Figma bar strip. */
+#stage .reel-progress-art{
+ -webkit-mask-image:linear-gradient(to bottom,#000 0px,#000 841px,transparent 841px,transparent 845px,#000 845px);
+ mask-image:linear-gradient(to bottom,#000 0px,#000 841px,transparent 841px,transparent 845px,#000 845px);
+}
+#stage .reel-progress-track{
+ position:absolute;left:0;top:842px;width:428px;height:2.28px;
+ z-index:9;pointer-events:none;overflow:hidden;background:rgba(255,255,255,.35);
+}
+#stage .reel-progress-active{
+ position:absolute;inset:0;background:rgba(255,255,255,.35);
+ transform:scaleX(0);transform-origin:left center;will-change:transform;
+}
