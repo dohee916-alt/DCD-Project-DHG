@@ -16,7 +16,7 @@ FX.burst.volume=.8;FX.whoosh.volume=.7;
 Object.values(FX).forEach(audio=>{audio.preload='auto';});
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
 let allowed=false,musicEnabled=false,scene='00',duckTimer=0,ctx=null,bus=null,source=null,decoded=null;
-let loading=null,stopping=false;
+let loading=null,stopping=false,musicStartedAt=0;
 const VOLUME=.48;
 function attempt(audio){
  if(!allowed)return;
@@ -79,7 +79,8 @@ function startMusic(){
  bus.gain.cancelScheduledValues(ctx.currentTime);
  bus.gain.setValueAtTime(0,ctx.currentTime);
  bus.gain.linearRampToValueAtTime(VOLUME,ctx.currentTime+.22);
- next.start();source=next;
+ musicStartedAt=ctx.currentTime;
+ next.start(musicStartedAt);source=next;
  next.onended=()=>{if(source===next){source=null;stopping=false;}try{next.disconnect();}catch{}};
  if(!musicFallback.paused)musicFallback.pause();
 }
@@ -148,7 +149,17 @@ function whoosh(){
 function stop(){
  stopMusic(.15);Object.values(FX).forEach(a=>a.pause());
 }
-window.DCD_CAMPAIGN_AUDIO={gesture,enableMusic,setScene,burst,whoosh,stop,fx:FX,musicReady:()=>!!decoded||musicFallback.readyState>=HTMLMediaElement.HAVE_CURRENT_DATA};
+function musicProgress(){
+ if(scene!=='00')return 0;
+ if(source&&ctx&&decoded&&decoded.duration>0&&!stopping){
+  const elapsed=Math.max(0,ctx.currentTime-musicStartedAt);
+  return (elapsed%decoded.duration)/decoded.duration;
+ }
+ if(!musicFallback.paused&&Number.isFinite(musicFallback.duration)&&musicFallback.duration>0)
+  return musicFallback.currentTime/musicFallback.duration;
+ return 0;
+}
+window.DCD_CAMPAIGN_AUDIO={musicProgress,gesture,enableMusic,setScene,burst,whoosh,stop,fx:FX,musicReady:()=>!!decoded||musicFallback.readyState>=HTMLMediaElement.HAVE_CURRENT_DATA};
 setScene('00');
 // Prefetch bytes on page load; decoded output starts only after the
 // first deliberate user interaction (Safari audio permission).
