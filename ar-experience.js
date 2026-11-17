@@ -244,37 +244,30 @@ function addFabric(){
  window.DCD_SCENE_AUDIO?.play?.('mask-arrive');
  fabric();
 }
-function typeStigmaHeading(text,onComplete){
- const heading=state.root?.querySelector('.ar-stigma-heading');
- if(!heading)return;
- heading.textContent='';
+function typeStigmaTimed(node,text,ms,onComplete){
+ if(!node)return;
+ node.textContent='';
  const letters=[...text],session=state.session,frame=state.frame;
- let index=0;
+ const started=performance.now();
  function next(){
    if(!state.root||state.session!==session||state.frame!==frame)return;
-   heading.textContent=letters.slice(0,++index).join('');
-   if(index<letters.length)delay(next,70);
+   const count=Math.min(letters.length,1+Math.floor((performance.now()-started)/ms));
+   node.textContent=letters.slice(0,count).join('');
+   if(count<letters.length)delay(next,ms);
    else onComplete?.();
  }
- delay(next,250);
+ next();
+}
+function typeStigmaHeading(text,onComplete){
+ typeStigmaTimed(state.root?.querySelector('.ar-stigma-heading'),text,42,onComplete);
 }
 function typeStigma(text,onComplete){
  const typed=state.root?.querySelector('.ar-stigma-typed');
  if(!typed)return;
- typed.textContent='';
- // Only the GLP-1 question needs a wider, centered text box.
  const wide=text==='WHY DON’T YOU JUST TAKE GLP-1?';
  const rect=AR_TEXT_RECTS[state.frame]?.typed;
  if(rect)placeText(typed,wide?[24,rect[1],380,rect[3]]:rect);
- const letters=[...text],session=state.session,frame=state.frame;
- let index=0;
- function next(){
-   if(!state.root||state.session!==session||state.frame!==frame)return;
-   typed.textContent=letters.slice(0,++index).join('');
-   if(index<letters.length)delay(next,43);
-   else onComplete?.();
- }
- delay(next,300);
+ typeStigmaTimed(typed,text,24,onComplete);
 }
 function showStigmaSequence(variant,done){
  const words=ORGANZA_TEXT[variant];
@@ -634,21 +627,15 @@ function createFaceWarp(root){
    vec2 vertical=vec2(-horizontal.y,horizontal.x);
    float y=dot(p-mid,vertical)/max(contour.x,0.001);
    float x=dot(p-mid,horizontal);
-   // A single continuous field follows the full cheek-to-chin contour.
-   // Interpolate the measured half widths with a smooth vertical envelope,
-   // rather than adding four local pulls that dent the jaw between handles.
-   float v=clamp(y,0.0,1.0);
-   float halfWidth=mix(contour.y,contour.z,smoothstep(0.0,0.70,v));
-   halfWidth=mix(halfWidth,contour.w,smoothstep(0.70,1.04,v));
-   halfWidth=max(halfWidth,contour.y*.28);
-   float u=abs(x)/halfWidth;
-   float inner=smoothstep(0.20,0.88,u);
-   float outer=1.0-smoothstep(1.02,1.75,u);
-   float strength=smoothstep(-0.35,0.25,y)*(1.0-smoothstep(0.85,1.20,y));
-   // Positive inverse displacement samples farther outward, so the
-   // displayed contour contracts. Negative displacement expands it.
-   float sx=sign(x)*halfWidth*0.065*amount*inner*outer*strength;
-   vec2 eyes=eye(p,leftEye,radii.x,amount*.045)+eye(p,rightEye,radii.y,amount*.045);
+   // Uniform, low-amplitude horizontal scaling across the original lower
+   // face. A broad smooth envelope preserves the subject's original outline;
+   // no target V shape, contour-width interpolation, or local jaw handles.
+   float u=x/max(contour.y,0.001);
+   float envelope=1.0-smoothstep(1.0,1.9,abs(u));
+   float verticalEnvelope=smoothstep(-0.95,-0.20,y)*(1.0-smoothstep(1.05,1.75,y));
+   float centerProtect=smoothstep(0.20,0.65,abs(u));
+   float sx=x*0.038*amount*envelope*verticalEnvelope*centerProtect;
+   vec2 eyes=eye(p,leftEye,radii.x,amount*.012)+eye(p,rightEye,radii.y,amount*.012);
    vec2 q=(p+horizontal*sx+eyes)/aspect;
    gl_FragColor=texture2D(image,clamp(q,vec2(0.0),vec2(1.0)));
  }`;
