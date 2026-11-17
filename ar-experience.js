@@ -41,18 +41,28 @@ let whisperLoading=null,whisperWanted=false;
 const WHISPER_MAX=.44,WHISPER_MIN=.006;
 let whisperTarget=0;
 function whisperLevel(target,fade=.4){
- whisperTarget=Math.max(0,target);
+ whisperTarget=Math.max(0,Math.min(WHISPER_MAX,target));
  if(!whisperGain||!whisperContext)return;
  const now=whisperContext.currentTime;
- whisperGain.gain.cancelScheduledValues(now);
- whisperGain.gain.setTargetAtTime(whisperTarget,now,Math.max(.035,fade/3));
+ const automation=whisperGain.gain;
+ // A deterministic ramp reaches the target within the peel interval.
+ // setTargetAtTime approached its value asymptotically, leaving audible
+ // crowd sound between peels until the last hard stop.
+ automation.cancelScheduledValues(now);
+ automation.setValueAtTime(automation.value,now);
+ automation.linearRampToValueAtTime(whisperTarget,now+Math.max(.08,fade));
 }
 function whisperForLayers(lastHandPeel=false){
- const n=state.maskCount;
- // Step down after EACH sheet; a longer gain ramp makes it sound like the
- // surrounding whispers recede as the veil comes off.
- const ratio=Math.pow(Math.max(0,Math.min(5,n))/5,1.65);
- whisperLevel(lastHandPeel&&n===0?0:WHISPER_MIN+(WHISPER_MAX-WHISPER_MIN)*ratio,.95);
+ const n=Math.max(0,Math.min(5,state.maskCount));
+ // Deliberately audible attenuation on every single layer removal.
+ // The volume steps are 100%, 53%, 27%, 12%, 4%, then 0%.
+ const layerLevels=[0,.018,.053,.118,.234,WHISPER_MAX];
+ const level=lastHandPeel&&n===0?0:layerLevels[n];
+ whisperLevel(level,n===0?.65:.48);
+ if(state.root){
+  state.root.dataset.whisperLayers=String(n);
+  state.root.dataset.whisperVolume=level.toFixed(3);
+ }
 }
 function primeWhisper(){
  // This is called synchronously from the user's pack-click gesture.
