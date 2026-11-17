@@ -955,6 +955,18 @@ function create(root){
           const shiftY=-55*fly;
           const center=faceCenter;
           const clothWidth=center.cw,clothHeight=center.ch;
+          // Capture the last rendered geometry and move one complete sheet.
+          // Its back and front panels cannot depart at different times.
+          if(layer.removing&&layer.peelSnapshot){
+            vertices.set(layer.peelSnapshot);
+            const travel=ease(leave);
+            const dx=travel*(layer.peelWidth*.35+W*.75);
+            const dy=-travel*(layer.peelHeight*.23+H*.20);
+            for(let at=0;at<vertices.length;at+=stride){
+              vertices[at]+=dx/W*2;
+              vertices[at+1]-=dy/H*2;
+            }
+          }else{
           if(pass===0)drapedCloth(layer,now);
           for(let at=0;at<mesh.length;at+=stride){
             const u=mesh[at+3],v=mesh[at+4];
@@ -967,9 +979,9 @@ function create(root){
             const y=startY+(mesh[at+1]-startY)*landing;
             const flutter=(1-landing)*Math.sin(u*17+now*.008+layer.index)*5;
             const distance=clamp((1-u)*.48+v*.52,0,1);
-            const released=layer.removing?clamp((leave*1.55-distance)/.40,0,1):0;
+            const released=0;
             const lift=ease(released),curl=Math.sin(lift*Math.PI*.82);
-            const depart=ease(clamp((leave-.65)/.35,0,1));
+            const depart=0;
             vertices[at]=(x+flutter+shiftX*(1-landing)+
               lift*clothWidth*.35+depart*W*.75)/W*2-1;
             vertices[at+1]=1-(y+shiftY*(1-landing)-
@@ -993,6 +1005,12 @@ function create(root){
             if(blend===1){smooth[vtx]=x;smooth[vtx+1]=y;}
             else{smooth[vtx]+=blend*(x-smooth[vtx]);smooth[vtx+1]+=blend*(y-smooth[vtx+1]);}
             vertices[vtx]=smooth[vtx];vertices[vtx+1]=smooth[vtx+1];
+          }
+          if(!layer.lastDisplayed)layer.lastDisplayed=new Float32Array(vertices.length);
+          layer.lastDisplayed.set(vertices);
+          layer.peelWidth=clothWidth;
+          layer.peelHeight=clothHeight;
+          if(layer.removing)layer.peelSnapshot=layer.lastDisplayed.slice();
           }
           gl.bindBuffer(gl.ARRAY_BUFFER,vb);
           gl.bufferSubData(gl.ARRAY_BUFFER,0,vertices);
@@ -1052,7 +1070,7 @@ function create(root){
     layers.push(layer);return layer;
   }
   function remove(layer){
-    if(layer&&!layer.removing){layer.removing=true;layer.exit=performance.now();}
+    if(layer&&!layer.removing){layer.peelSnapshot=layer.lastDisplayed?.slice()||null;layer.removing=true;layer.exit=performance.now();}
   }
   function clear(){layers.length=0;}
   function destroy(){
