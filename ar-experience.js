@@ -603,58 +603,80 @@ function createFaceWarp(root){
  root.appendChild(canvas);
  const gl=canvas.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false});
  if(!gl){canvas.remove();return null;}
- const vs='attribute vec2 p; varying vec2 uv; void main(){uv=(p+1.0)*0.5;gl_Position=vec4(p,0.0,1.0);}';
+ // Schaefer, McPhail & Warren, SIGGRAPH 2006:
+ // https://doi.org/10.1145/1179352.1141920
+ // Inverse similarity MLS on a dense GPU mesh. All contour constraints
+ // are solved together; no independently gated jaw/cheek pixel bands.
+ const controlCount=42;
+ const vs=`
+ precision highp float;
+ attribute vec2 p;
+ varying vec2 vSource;
+ uniform vec2 crop,aspect;
+ uniform float amount;
+ uniform vec2 controls[42],moves[42];
+ vec2 similarityMLS(vec2 v,float strength){
+   if(strength<=.0001)return v;
+   float total=0.0;
+   vec2 pc=vec2(0.0),qc=vec2(0.0);
+   for(int i=0;i<42;i++){
+     vec2 src=controls[i],dst=src+moves[i]*strength;
+     vec2 d=v-dst;
+     float r2=dot(d,d);
+     if(r2<1e-12)return src;
+     float w=1.0/max(r2,1e-10);
+     total+=w;pc+=dst*w;qc+=src*w;
+   }
+   pc/=total;qc/=total;
+   float a=0.0,b=0.0,mu=0.0;
+   for(int i=0;i<42;i++){
+     vec2 src=controls[i],dst=src+moves[i]*strength;
+     vec2 d=v-dst;
+     float w=1.0/max(dot(d,d),1e-10);
+     vec2 h=dst-pc,k=src-qc;
+     a+=w*dot(h,k);b+=w*(h.x*k.y-h.y*k.x);
+     mu+=w*dot(h,h);
+   }
+   vec2 d=v-pc;
+   return qc+vec2(a*d.x-b*d.y,b*d.x+a*d.y)/max(mu,1e-9);
+ }
+ void main(){
+   vec2 uv=(p+1.0)*.5;
+   vec2 st=vec2(1.0-uv.x,1.0-uv.y)*crop+(1.0-crop)*.5;
+   vSource=similarityMLS(st*aspect,max(amount,0.0));
+   gl_Position=vec4(p,0.0,1.0);
+ }`;
  const fs=`
  precision highp float;
- varying vec2 uv;
+ varying vec2 vSource;
  uniform sampler2D image;
- uniform vec2 crop,aspect;
+ uniform vec2 aspect;
  uniform vec2 leftEye,rightEye,axis,mid;
- uniform vec4 radii;
- uniform vec4 contour;
+ uniform vec4 radii,contour;
  uniform float amount;
  float weight(vec2 p,vec2 c,float r){
-   float q=clamp(length(p-c)/max(r,0.0001),0.0,1.0);
+   float q=clamp(length(p-c)/max(r,.0001),0.0,1.0);
    float w=1.0-q*q;return w*w;
  }
  vec2 eye(vec2 p,vec2 c,float r,float strength){
    return (p-c)*(-strength*weight(p,c,r));
  }
  void main(){
-   vec2 st=vec2(1.0-uv.x,1.0-uv.y)*crop+(1.0-crop)*0.5;
-   vec2 p=st*aspect;
-   vec2 horizontal=normalize(axis);
-   vec2 vertical=vec2(-horizontal.y,horizontal.x);
-   float y=dot(p-mid,vertical)/max(contour.x,0.001);
-   float x=dot(p-mid,horizontal);
-   // Smooth landmark-relative correction with separate cheek and jaw bands.
-   float u=x/max(contour.y,0.001);
+   vec2 p=vSource;
+   // Preserve the existing opposite-branch fuller-face effect exactly.
+   vec2 horizontal=normalize(axis),vertical=vec2(-horizontal.y,horizontal.x);
+   float y=dot(p-mid,vertical)/max(contour.x,.001);
+   float x=dot(p-mid,horizontal),u=x/max(contour.y,.001);
    float envelope=1.0-smoothstep(1.0,1.9,abs(u));
-   float verticalEnvelope=smoothstep(-0.95,-0.20,y)*(1.0-smoothstep(1.05,1.75,y));
-   float centerProtect=smoothstep(0.20,0.65,abs(u));
-   // Preserve cheek width in the slimming branch, concentrating the
-   // correction on the lower jaw instead of squeezing the whole face.
-   // Inverse sampling: positive horizontal offset narrows the contour.
-   float slim=max(amount,0.0);
-   float full=min(amount,0.0);
-   float jawBand=smoothstep(.18,.66,y)*(1.0-smoothstep(1.02,1.42,y));
-   float jawWidth=mix(contour.z,contour.w,smoothstep(.40,.94,y));
-   float jawU=abs(x)/max(jawWidth,.001);
-   float jawEnvelope=(1.0-smoothstep(1.0,1.85,jawU))*smoothstep(.32,.78,jawU);
-   float sx=x*(.038*full*envelope*verticalEnvelope*centerProtect
-      +.027*slim*envelope*verticalEnvelope*centerProtect
-      +.066*slim*jawBand*jawEnvelope);
-   // Shorten the bottom very slightly instead of elongating the face.
-   // The jaw tapers toward the existing chin without a stretched oval.
-   float chinBand=smoothstep(.66,.96,y)*(1.0-smoothstep(1.06,1.45,y));
-   float chinCenter=1.0-smoothstep(.22,1.15,abs(x)/max(contour.w,.001));
-   float sy=contour.x*.022*slim*chinBand*chinCenter;
+   float verticalEnvelope=smoothstep(-.95,-.20,y)*(1.0-smoothstep(1.05,1.75,y));
+   float centerProtect=smoothstep(.20,.65,abs(u));
+   float sx=x*.038*min(amount,0.0)*envelope*verticalEnvelope*centerProtect;
    vec2 eyes=eye(p,leftEye,radii.x,amount*.012)+eye(p,rightEye,radii.y,amount*.012);
-   vec2 q=(p+horizontal*sx+vertical*sy+eyes)/aspect;
+   vec2 q=(p+horizontal*sx+eyes)/aspect;
    gl_FragColor=texture2D(image,clamp(q,vec2(0.0),vec2(1.0)));
  }`;
  function shader(kind,source){const sh=gl.createShader(kind);gl.shaderSource(sh,source);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(sh));return sh;}
- let program,buffer,texture;
+ let program,buffer,indexBuffer,texture,indexCount=0;
  try{
    const v=shader(gl.VERTEX_SHADER,vs),f=shader(gl.FRAGMENT_SHADER,fs);
    program=gl.createProgram();gl.attachShader(program,v);gl.attachShader(program,f);gl.linkProgram(program);
@@ -662,7 +684,19 @@ function createFaceWarp(root){
    if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));
    gl.useProgram(program);
    buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
-   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+   // A fixed screen lattice evaluates the continuous deformation at vertices,
+   // not 42 controls for every phone-screen pixel.
+   const nx=48,ny=80,grid=[],tri=[];
+   for(let row=0;row<=ny;row++)for(let col=0;col<=nx;col++)
+     grid.push(col/nx*2-1,row/ny*2-1);
+   for(let row=0;row<ny;row++)for(let col=0;col<nx;col++){
+     const a=row*(nx+1)+col,b=a+1,c=a+nx+1,d=c+1;
+     tri.push(a,b,c,b,d,c);
+   }
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(grid),gl.STATIC_DRAW);
+   indexBuffer=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,indexBuffer);
+   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(tri),gl.STATIC_DRAW);
+   indexCount=tri.length;
    const p=gl.getAttribLocation(program,'p');gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,2,gl.FLOAT,false,0,0);
    texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
@@ -672,6 +706,8 @@ function createFaceWarp(root){
  }catch(error){console.warn('[DCD face warp]',error);canvas.remove();return null;}
  const uniforms={};
  for(const key of ['image','crop','aspect','leftEye','rightEye','axis','mid','radii','contour','amount'])uniforms[key]=gl.getUniformLocation(program,key);
+ uniforms.controls=gl.getUniformLocation(program,'controls[0]');
+ uniforms.moves=gl.getUniformLocation(program,'moves[0]');
  let measured=null,smooth=null,lastSeen=0,lastDraw=0,lastTime=-1,amount=0,dead=false,tw=0,th=0;
  const mix=(a,b,t)=>a+(b-a)*t;
  function update(points,w,h,now){
@@ -692,7 +728,32 @@ function createFaceWarp(root){
    const projectedWidth=(a,b)=>Math.abs((b[0]-a[0])*axis[0]+(b[1]-a[1])*axis[1])*.5;
    const jaw=projectedWidth(avg([172,136]),avg([397,365]));
    const lower=projectedWidth(avg([149,176]),avg([378,400]));
-   measured={leftEye,rightEye,axis,mid,
+   // Anatomically ordered bilateral contour samples. Width changes
+   // gradually from temple through cheek and jaw; no abrupt bands.
+   const controls=[],moves=[];
+   const add=(p,dx=0,dy=0)=>{controls.push(...p);moves.push(dx,dy);};
+   const step=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
+   const rimA=[127,234,93,132,58,172,136,150,149,176,148];
+   const rimB=[356,454,323,361,288,397,365,379,378,400,377];
+   for(const i of [...rimA,...rimB]){
+     const p=pt(i),d=[p[0]-mid[0],p[1]-mid[1]];
+     const x=d[0]*axis[0]+d[1]*axis[1];
+     const y=(d[0]*vertical[0]+d[1]*vertical[1])/height;
+     // ~2.7% cheek narrowing, gradual increase to ~6% at the jaw.
+     // The chin tip preserves the original vertical facial proportion.
+     const taper=(.027+.037*step(.08,.82,y))*step(-1.15,-.48,y);
+     add(p,-axis[0]*x*taper,-axis[1]*x*taper);
+   }
+   add(chin,-vertical[0]*height*.008,-vertical[1]*height*.008);
+   // Stable features: keep eyes, nose, mouth and central forehead fixed.
+   for(const i of [168,1,33,263,61,291,17])add(pt(i));
+   // Fixed surrounding anchors keep background and hair from being pulled.
+   for(let k=0;k<12;k++){
+     const t=k*Math.PI/6,x=Math.cos(t)*fw*.88,y=Math.sin(t)*Math.max(height*1.62,fw*.83);
+     add([mid[0]+axis[0]*x+vertical[0]*y,mid[1]+axis[1]*x+vertical[1]*y]);
+   }
+   if(controls.length!==controlCount*2)return;
+   measured={leftEye,rightEye,axis,mid,controls,moves,
       contour:[height,fw*.5,Math.max(fw*.30,jaw),Math.max(fw*.17,lower)],
       radii:[Math.min(fw*.25,dist(pt(33),pt(133))*1.10),Math.min(fw*.25,dist(pt(362),pt(263))*1.10),0,0]};
    if(!smooth)smooth=Object.fromEntries(Object.entries(measured).map(([k,v])=>[k,v.slice()]));
@@ -732,12 +793,15 @@ function createFaceWarp(root){
      gl.uniform2f(uniforms.aspect,vw/vh,1);
      for(const k of ['leftEye','rightEye','axis','mid'])gl.uniform2fv(uniforms[k],smooth[k]);
      gl.uniform4fv(uniforms.radii,smooth.radii);gl.uniform4fv(uniforms.contour,smooth.contour);gl.uniform1f(uniforms.amount,amount);
-     gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+     gl.uniform2fv(uniforms.controls,smooth.controls);
+     gl.uniform2fv(uniforms.moves,smooth.moves);
+     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,indexBuffer);
+     gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
      canvas.style.visibility='visible';
    }catch(error){dead=true;canvas.style.visibility='hidden';console.warn('[DCD face warp]',error);}
  }
  function hide(){canvas.style.visibility='hidden';lastDraw=0;}
- function destroy(){dead=true;gl.deleteTexture(texture);gl.deleteBuffer(buffer);gl.deleteProgram(program);canvas.remove();}
+ function destroy(){dead=true;gl.deleteTexture(texture);gl.deleteBuffer(buffer);gl.deleteBuffer(indexBuffer);gl.deleteProgram(program);canvas.remove();}
  return {update,render,hide,destroy};
 }
 function faceWarpTarget(){
