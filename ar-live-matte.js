@@ -119,9 +119,27 @@ function create(root,video,canvas,onFrame){
  const alphaCtx=alphaCanvas.getContext('2d',{alpha:true});
  let hasAlpha=false,latestMaskAt=0,paintFrame=0,lastPaint=0,maskAnchor=null;
  let alphaPlacement=null,lastMaskDx=0,lastMaskDy=0;
+ // Ending uses a stable live alpha: only accept a fresh mask after checking its coverage.
+ let finalCoverage=null;
+ const ending=()=>['AR9','AR10'].includes(root.dataset.arFrame);
+ const candidate=document.createElement('canvas');candidate.width=48;candidate.height=80;
+ const candidateCtx=candidate.getContext('2d',{willReadFrequently:true});
+ function usableEndingMask(image){
+   if(!ending()||!candidateCtx)return true;
+   candidateCtx.clearRect(0,0,48,80);candidateCtx.drawImage(image,0,0,48,80);
+   const pixels=candidateCtx.getImageData(0,0,48,80).data;let total=0;
+   for(let i=3;i<pixels.length;i+=4)total+=pixels[i]/255;
+   const coverage=total/(48*80);
+   if(coverage<.015||coverage>.97)return false;
+   if(finalCoverage!==null&&(coverage<finalCoverage*.60||coverage>finalCoverage*1.65))return false;
+   finalCoverage=coverage;return true;
+ }
  function paintLive(now){
    if(!live)return;
    paintFrame=requestAnimationFrame(paintLive);
+   paintLiveOnce(now);
+ }
+ function paintLiveOnce(now=performance.now()){
    const portraitVisible=['AR5-1','AR9','AR10'].includes(root.dataset.arFrame);
    // In camera/veil scenes the matte is hidden and only supplies scalp data.
    // Do not composite the full HD video thirty times a second behind it.
@@ -152,8 +170,8 @@ function create(root,video,canvas,onFrame){
          alphaPlacement.width,alphaPlacement.height);
      }
      subjectCtx.globalCompositeOperation='source-over';
-     ctx.clearRect(0,0,w,h);
-     ctx.save();ctx.translate(w,0);ctx.scale(-1,1);
+     // Replace the displayed canvas in one draw, without an intermediate blank.
+     ctx.save();ctx.globalCompositeOperation='copy';ctx.translate(w,0);ctx.scale(-1,1);
      ctx.drawImage(subject,0,0);ctx.restore();
    }catch(error){if(!root.dataset.arMattePaintError)console.warn('[DCD AR] Live video paint:',error);root.dataset.arMattePaintError='1';}
  }
@@ -247,7 +265,8 @@ function create(root,video,canvas,onFrame){
   const f=fallback;
   if(!f||video.readyState<2||!video.videoWidth)return;
   const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
-  if(now-f.lastSegment>=80){
+  if(ending()&&hasAlpha&&visible)return; // keep live video through the last valid alpha during engine handover
+  if(now-f.lastSegment>=(ending()?175:80)){
    f.source.width=vw;f.source.height=vh;
    f.sourceCtx.drawImage(video,0,0,vw,vh);
    f.lastSegment=now;
@@ -280,8 +299,7 @@ function create(root,video,canvas,onFrame){
   f.fg.globalCompositeOperation='destination-in';
   f.fg.drawImage(f.mask,x,y,dw,dh);
   f.fg.restore();
-  ctx.clearRect(0,0,w,h);
-  ctx.drawImage(f.foreground,0,0);
+  ctx.save();ctx.globalCompositeOperation='copy';ctx.drawImage(f.foreground,0,0);ctx.restore();
   visible=true;lastCapture=now;
   root.__dcdMatteStatus||={engine:'mediapipe-main',frames:0};
   root.__dcdMatteStatus.frames++;root.__dcdMatteStatus.lastFrameAt=now;
@@ -357,6 +375,7 @@ function create(root,video,canvas,onFrame){
     // Retain the ENTIRE camera-space alpha, including the left/right overscan.
     // The portrait viewport crops ONLY the final tracked composite, never
     // this reusable mask. Otherwise shifting the head exposes a hard edge.
+    if(!usableEndingMask(data.cutout))return;
     if(alphaCanvas.width!==width||alphaCanvas.height!==height){
       alphaCanvas.width=width;alphaCanvas.height=height;
     }
@@ -366,7 +385,10 @@ function create(root,video,canvas,onFrame){
     hasAlpha=true;latestMaskAt=performance.now();
     maskAnchor=request?.faceRegion||root.__dcdFaceRegion||null;
     lastMaskDx=0;lastMaskDy=0;
-    lastCapture=performance.now();visible=true;
+    lastCapture=performance.now();
+    // Paint the first real frame before flipping the visibility class.
+    if(!visible){visible=true;lastPaint=-Infinity;paintLiveOnce();}
+    visible=true;
     if(root.__dcdMatteStatus){root.__dcdMatteStatus.frames++;root.__dcdMatteStatus.lastFrameAt=lastCapture;}
     measureVisibleHairCrown(lastCapture);
     root.classList.add('ar-matting-active');
