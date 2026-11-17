@@ -16,6 +16,18 @@ const workbenchPages=new Set(['03','workbench','08a','08b','09','10','11']);
 let ctx=null,master=null,activePage='',enabled=false;
 const decoded=new Map(),pending=new Map(),voices=new Map(),serials=new Map();
 const loopLoads=new Set();
+const instantSounds=new Set(['prescription-check','prescription-next']);
+const onsetOffsets=new Map();
+let primed=false;
+function onset(buffer){
+ const n=Math.min(buffer.length,Math.floor(buffer.sampleRate*.9)),step=Math.max(1,Math.floor(buffer.sampleRate*.002));
+ const channels=Array.from({length:buffer.numberOfChannels},(_,i)=>buffer.getChannelData(i));
+ let peak=0;for(let i=0;i<n;i++)for(const c of channels)peak=Math.max(peak,Math.abs(c[i]));
+ if(peak<.0001)return 0;
+ const threshold=Math.max(.001,peak*.035);
+ for(let i=0;i<n;i+=step){let max=0;for(let j=i;j<Math.min(n,i+step);j++)for(const c of channels)max=Math.max(max,Math.abs(c[j]));if(max>=threshold)return Math.max(0,i/buffer.sampleRate-.006);}
+ return 0;
+}
 function unlock(){
  if(!AudioCtx)return;
  enabled=true;
@@ -24,6 +36,7 @@ function unlock(){
   master=ctx.createGain();master.gain.value=.9;master.connect(ctx.destination);
  }
  ctx.resume()?.then(()=>{
+  if(!primed){primed=true;for(const name of instantSounds)preload(name);}
   // The rotate/workbench scene may already have begun before the first
   // pointer gesture. Start that pending ambience right after unlocking.
   if(workbenchPages.has(activePage)&&!voices.has('workbench-ambience')&&!loopLoads.has('workbench-ambience'))
@@ -43,7 +56,7 @@ async function buffer(name){
    const decoder=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
    return decoder.default(data.slice(0));
   }
- }).then(b=>{decoded.set(name,b);pending.delete(name);return b})
+ }).then(b=>{decoded.set(name,b);if(instantSounds.has(name))onsetOffsets.set(name,onset(b));pending.delete(name);return b})
    .catch(e=>{pending.delete(name);console.warn('[DCD scene audio] '+name,e);throw e});
  pending.set(name,promise);return promise;
 }
@@ -75,7 +88,9 @@ async function play(name,options={}){
  serials.set(name,latest);
  try{
   if(!enabled)return;
-  const b=await buffer(name);
+  // Decoded clicks start synchronously in the original input handler.
+  const cached=decoded.get(name);
+  const b=cached||await buffer(name);
   if(serials.get(name)!==latest||!ctx||ctx.state!=='running')return;
   const node=ctx.createBufferSource(),gain=ctx.createGain();
   node.buffer=b;node.loop=!!options.loop;
@@ -84,7 +99,7 @@ async function play(name,options={}){
   const voice={node,gain};
   voices.set(name,voice);
   node.onended=()=>{if(voices.get(name)===voice)voices.delete(name);try{node.disconnect();gain.disconnect()}catch{}};
-  node.start(0);
+  node.start(0,instantSounds.has(name)?(onsetOffsets.get(name)||0):0);
  }catch(e){console.warn('[DCD scene audio] play:',name,e)}
  finally{if(options.loop)loopLoads.delete(name)}
 }
@@ -96,7 +111,10 @@ function scene(page){
   return;
  }
  const previous=activePage;activePage=page;
- if(page==='11'&&enabled)preload('prescription-typing');
+ if(['09','10','11','12','13','14','14done'].includes(page)&&enabled){
+  if(page==='11')preload('prescription-typing');
+  for(const name of instantSounds)preload(name);
+ }
  if(workbenchPages.has(page)){
   if(!workbenchPages.has(previous))play('workbench-ambience',{loop:true});
  }else if(workbenchPages.has(previous))stop('workbench-ambience',.5);
