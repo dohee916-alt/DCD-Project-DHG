@@ -315,12 +315,12 @@ function canvasCloth(root){
     const fw=Math.max(65,Math.hypot(right.x-left.x,right.y-left.y));
     const fh=Math.max(90,Math.hypot(head.x-jaw.x,head.y-jaw.y));
     // Fallback also uses a larger head-covering sheet.
-    const cw=fw*2.18;
-    const ch=fh*2.15;
+    const cw=fw*1.82;
+    const ch=fh*1.92;
     const cx=(left.x+right.x)/2;
     const measured=root.parentElement?.__dcdHairCrown;
     const crownY=measured&&performance.now()-measured.at<2200
-      ?measured.y*H:head.y-fh*.28;
+      ?measured.y*H:head.y-fh*.37;
     const cy=crownY+ch*.44;
     const angle=uprightFaceAngle(eyeL,eyeR);
     // Render the translucent yarn in one pass, then all embroidered words
@@ -653,7 +653,7 @@ function create(root){
   // ellipsoid collider. A single crown contact prevents the fabric sliding
   // off while the rest of the material falls and folds freely.
   function makeDrape(layer){
-    const N=GRID_COLS+1,side=3.34,step=side/GRID_COLS;
+    const N=GRID_COLS+1,side=2.62,step=side/GRID_COLS;
     const nodes=[],links=[];
     for(let r=0;r<=GRID_ROWS;r++)for(let c=0;c<=GRID_COLS;c++){
       const x=(c/GRID_COLS-.5)*side,z=(r/GRID_ROWS-.5)*side;
@@ -691,7 +691,7 @@ function create(root){
     function foreheadFallbackY(head,localX){
       const foreheadY=head.y-head.fh*.48;
       const lateral=Math.min(1,Math.abs(localX)/Math.max(.6,head.radiusX/head.fw));
-      return foreheadY-head.fh*(.43-.13*lateral*lateral);
+      return foreheadY-head.fh*(.36-.11*lateral*lateral);
     }
     function measuredCrownY(x){
       if(!hairLine)return null;
@@ -791,7 +791,7 @@ function create(root){
       const sideFall=ease(clamp((Math.abs(u-.5)-.15)/.35,0,1));
       const screenY=head.y+scale*((x+windX)*head.si+
         (p.y+windY)*head.co-(z+windZ)*head.pitch*.32)
-        +head.fh*.32*frontHem+head.fh*.76*sideFall;
+        +head.fh*.23*frontHem+head.fh*.52*sideFall;
       const prevL=c>0?nodes[id-1]:p,nextR=c<GRID_COLS?nodes[id+1]:p;
       const prevT=r>0?nodes[id-(GRID_COLS+1)]:p,nextB=r<GRID_ROWS?nodes[id+(GRID_COLS+1)]:p;
       const dx=nextR.x-prevL.x,dz=nextR.z-prevL.z;
