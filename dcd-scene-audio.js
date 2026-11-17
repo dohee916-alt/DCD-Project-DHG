@@ -35,7 +35,8 @@ async function buffer(name){
  const promise=fetch(PATH+name+'.opus').then(async r=>{
   if(!r.ok)throw Error(name+' HTTP '+r.status);
   const data=await r.arrayBuffer();
-  unlock();
+  // Avoid recursively restarting the ambience when its asset finishes loading.
+  await ctx.resume();
   try{return await ctx.decodeAudioData(data.slice(0))}
   catch(nativeError){
    const decoder=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
