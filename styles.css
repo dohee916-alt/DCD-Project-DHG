@@ -1952,3 +1952,21 @@ canvas.figure{object-fit:contain!important}
  scroll-behavior:auto!important;
  overflow-y:hidden!important;
 }
+
+/* Figma 04_AR / AR5 / '누끼대신' (1095:153): exact 428x196 top
+   replacement gradient at x=0, y=54. Preserve the live front-camera
+   background and the facial landmark/hand-tracking interface. */
+#stage .ar-immersive .ar-nukki-replacement{
+ position:absolute;left:0;top:54px;width:428px;height:196px;
+ z-index:4;pointer-events:none;
+ background:linear-gradient(180deg,
+  rgba(214,222,233,1) 29.3269%,
+  rgba(214,222,233,.782313) 60.5769%,
+  rgba(216,223,233,0) 100%);
+}
+/* Temporarily remove every visual cutout output, not the input camera. */
+#stage .ar-immersive .ar-person-segment,
+#stage .ar-immersive .ar-matting-video,
+#stage .ar-immersive .ar-medium-live-video{
+ display:none!important;visibility:hidden!important;opacity:0!important;
+}
