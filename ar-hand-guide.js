@@ -211,7 +211,7 @@ function create(root){
   // Fixed model correction + deliberate turn from palm to hand back.
   // No approach/return segment: recede, fade, and restart from the front.
   pivot.rotation.set(0,Math.PI*rotate,-.12*(1-rotate));
-  pivot.position.set(-10,18+27*recede,0);
+  pivot.position.set(-10,10+27*recede,0);
   const distanceScale=1-.57*recede;
   pivot.scale.setScalar(poseScale*distanceScale);
   el.style.display=visibility>.002?'block':'none';
