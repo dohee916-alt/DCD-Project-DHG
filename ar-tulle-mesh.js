@@ -902,7 +902,7 @@ function create(root){
           const approach=layer.removing?1:arrival(progress);
           const fly=1-approach;
           const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
-          const opacity=layer.removing?1-ease(clamp((leave-.82)/.18,0,1)):clamp(seconds/.10,0,1);
+          const opacity=layer.removing?1-ease(clamp(leave,0,1)):clamp(seconds/.10,0,1);
           if(opacity<=0)continue;
           const shiftX=(layer.index%2?-1:1)*24*fly;
           const shiftY=-55*fly;
