@@ -745,8 +745,8 @@ function track(frame,width,height,now=performance.now()){
      // recognition and progression. Face observation happens first.
      observeFace(points,now);
      if(points?.length){
-       if(!state.faceWarp&&state.frame!=='AR3'){
-         try{state.faceWarp=createFaceWarp(state.root);}catch(error){console.warn('[DCD face warp]',error);}
+       if(!state.faceWarp&&!state.faceWarpUnavailable&&state.frame!=='AR3'){
+         try{state.faceWarp=createFaceWarp(state.root);state.faceWarpUnavailable=!state.faceWarp;}catch(error){state.faceWarpUnavailable=true;console.warn('[DCD face warp]',error);}
        }
        state.faceWarp?.update(points,width,height,now);
        const rawX=[points[234].x,points[454].x];
@@ -860,7 +860,7 @@ function stop(preservePrimedAudio=false){
  state.face?.close();state.face=null;
  state.hand?.close();state.hand=null;
  state.tulle?.destroy();state.tulle=null;state.sheets=[];
- state.faceWarp?.destroy();state.faceWarp=null;
+ state.faceWarp?.destroy();state.faceWarp=null;state.faceWarpUnavailable=false;
  state.handGuide?.destroy();state.handGuide=null;
  state.root=null;state.stage=null;state.video=null;
 }
