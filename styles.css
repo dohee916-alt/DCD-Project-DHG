@@ -1632,40 +1632,40 @@ canvas.figure{object-fit:contain!important}
    Every frame has its OWN declaration — no later shared frame offsets.
    Do not add alternative .ar-copy/.ar-stigma typography blocks. */
 #stage .ar-immersive .ar-copy{
- position:absolute;right:auto;margin:0;padding:0;box-sizing:border-box;
+ box-sizing:border-box;
  z-index:9;pointer-events:none;white-space:pre-line;text-align:center;
- letter-spacing:0;transform:none;translate:none;
+ letter-spacing:0;
 }
 #stage .ar-immersive[data-ar-frame="AR3"] .ar-copy{
- left:68px;top:141px;width:292px;height:44px;
+ 
  font:900 16px/32px Doto,Arial,sans-serif;color:#2e2924;
  font-variation-settings:"ROND" 0,"wght" 900;
 }
 #stage .ar-immersive[data-ar-frame="AR3-1"] .ar-copy{
- left:33px;top:116px;width:362px;height:32px;
+ 
  font:700 25px/32px "Source Sans 3",Arial,sans-serif;color:#000;
 }
 #stage .ar-immersive[data-ar-frame="AR4"] .ar-copy{
  display:none;
 }
 #stage .ar-immersive[data-ar-frame="AR5"] .ar-copy{
- left:61px;top:116px;width:306px;height:64px;
+ 
  font:700 25px/32px "Source Sans 3",Arial,sans-serif;color:#111;
 }
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{
- left:61px;top:144px;width:306px;height:64px;
+ 
  font:700 25px/32px "Source Sans 3",Arial,sans-serif;color:#f9f6f2;
 }
 #stage .ar-immersive[data-ar-frame="AR5-2"] .ar-copy{
  display:none;
 }
 #stage .ar-immersive[data-ar-frame="AR6"] .ar-copy{
- left:50px;top:141px;width:342px;height:44px;
+ 
  font:900 16px/32px Doto,Arial,sans-serif;color:#2e2924;
  font-variation-settings:"ROND" 0,"wght" 900;
 }
 #stage .ar-immersive[data-ar-frame="AR7"] .ar-copy{
- left:50px;top:141px;width:342px;height:44px;
+ 
  font:900 16px/32px Doto,Arial,sans-serif;color:#2e2924;
  font-variation-settings:"ROND" 0,"wght" 900;
 }
@@ -1673,58 +1673,58 @@ canvas.figure{object-fit:contain!important}
  display:none;
 }
 #stage .ar-immersive[data-ar-frame="AR9"] .ar-copy{
- left:61px;top:430px;width:306px;height:64px;
+ 
  font:700 25px/32px "Source Sans 3",Arial,sans-serif;color:#f9f6f2;
 }
 #stage .ar-immersive[data-ar-frame="AR10"] .ar-copy{
- left:0;top:0;width:428px;height:926px;
+ 
  font:700 25px/32px "Source Sans 3",Arial,sans-serif;
  color:#f9f6f2;white-space:normal;
 }
 #stage .ar-immersive[data-ar-frame="AR10"] .ar-final-not{
- display:block;position:absolute;left:61px;top:382px;
- width:306px;height:70px;margin:0;padding:0;
+ display:block;
+ 
  font:700 64px/70px "Source Sans 3",Arial,sans-serif;
  letter-spacing:0;text-align:center;
 }
 #stage .ar-immersive[data-ar-frame="AR10"] .ar-final-rest{
- display:block;position:absolute;left:61px;top:454px;
- width:306px;height:96px;margin:0;padding:0;
+ display:block;
+ 
  font:700 25px/32px "Source Sans 3",Arial,sans-serif;
  letter-spacing:0;text-align:center;white-space:pre-line;
 }
 /* Two stanza states have separate Figma geometry declarations. */
 #stage .ar-immersive .ar-stigma-message{
- display:none;position:absolute;z-index:12;
- margin:0;padding:0;box-sizing:border-box;pointer-events:none;
- text-align:center;transform:none;letter-spacing:0;color:#000;
+ display:none;z-index:12;
+ box-sizing:border-box;pointer-events:none;
+ text-align:center;letter-spacing:0;color:#000;
 }
 #stage .ar-immersive[data-ar-frame="AR4"] .ar-stigma-message{
- display:block;left:54px;top:116px;width:306px;height:auto;
+ display:block;
 }
 #stage .ar-immersive[data-ar-frame="AR5-2"] .ar-stigma-message{
- display:block;left:54px;top:116px;width:306px;height:auto;
+ display:block;
 }
 #stage .ar-immersive[data-ar-frame="AR4"] .ar-stigma-heading{
- display:block;margin:0;padding:0;width:306px;height:32px;
+ display:block;
  font:700 25px/32px "Source Sans 3",Arial,sans-serif;
  color:#000;text-align:center;
 }
 #stage .ar-immersive[data-ar-frame="AR5-2"] .ar-stigma-heading{
- display:block;margin:0;padding:0;width:306px;height:32px;
+ display:block;
  font:700 25px/32px "Source Sans 3",Arial,sans-serif;
  color:#000;text-align:center;
 }
 #stage .ar-immersive[data-ar-frame="AR4"] .ar-stigma-typed{
- display:block;position:relative;left:-47px;top:0;
- width:400px;max-width:400px;min-height:46px;margin:13px 0 0;padding:0;
+ display:block;
+ 
  font:700 18px/23px "Turret Road",Arial,sans-serif;
  color:#000;text-align:center;white-space:pre-line;
  word-break:keep-all;overflow-wrap:normal;
 }
 #stage .ar-immersive[data-ar-frame="AR5-2"] .ar-stigma-typed{
- display:block;position:relative;left:-47px;top:0;
- width:400px;max-width:400px;min-height:46px;margin:13px 0 0;padding:0;
+ display:block;
+ 
  font:700 18px/23px "Turret Road",Arial,sans-serif;
  color:#000;text-align:center;white-space:pre-line;
  word-break:keep-all;overflow-wrap:normal;
