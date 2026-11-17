@@ -627,16 +627,30 @@ function createFaceWarp(root){
    vec2 vertical=vec2(-horizontal.y,horizontal.x);
    float y=dot(p-mid,vertical)/max(contour.x,0.001);
    float x=dot(p-mid,horizontal);
-   // Uniform, low-amplitude horizontal scaling across the original lower
-   // face. A broad smooth envelope preserves the subject's original outline;
-   // no target V shape, contour-width interpolation, or local jaw handles.
+   // Smooth landmark-relative correction with separate cheek and jaw bands.
    float u=x/max(contour.y,0.001);
    float envelope=1.0-smoothstep(1.0,1.9,abs(u));
    float verticalEnvelope=smoothstep(-0.95,-0.20,y)*(1.0-smoothstep(1.05,1.75,y));
    float centerProtect=smoothstep(0.20,0.65,abs(u));
-   float sx=x*0.038*amount*envelope*verticalEnvelope*centerProtect;
+   // Preserve cheek width in the slimming branch, concentrating the
+   // correction on the lower jaw instead of squeezing the whole face.
+   // Inverse sampling: positive horizontal offset narrows the contour.
+   float slim=max(amount,0.0);
+   float full=min(amount,0.0);
+   float jawBand=smoothstep(.18,.66,y)*(1.0-smoothstep(1.02,1.42,y));
+   float jawWidth=mix(contour.z,contour.w,smoothstep(.40,.94,y));
+   float jawU=abs(x)/max(jawWidth,.001);
+   float jawEnvelope=(1.0-smoothstep(1.0,1.85,jawU))*smoothstep(.32,.78,jawU);
+   float sx=x*(.038*full*envelope*verticalEnvelope*centerProtect
+      +.012*slim*envelope*verticalEnvelope*centerProtect
+      +.082*slim*jawBand*jawEnvelope);
+   // Shorten the bottom very slightly instead of elongating the face.
+   // The jaw tapers toward the existing chin without a stretched oval.
+   float chinBand=smoothstep(.66,.96,y)*(1.0-smoothstep(1.06,1.45,y));
+   float chinCenter=1.0-smoothstep(.22,1.15,abs(x)/max(contour.w,.001));
+   float sy=contour.x*.022*slim*chinBand*chinCenter;
    vec2 eyes=eye(p,leftEye,radii.x,amount*.012)+eye(p,rightEye,radii.y,amount*.012);
-   vec2 q=(p+horizontal*sx+eyes)/aspect;
+   vec2 q=(p+horizontal*sx+vertical*sy+eyes)/aspect;
    gl_FragColor=texture2D(image,clamp(q,vec2(0.0),vec2(1.0)));
  }`;
  function shader(kind,source){const sh=gl.createShader(kind);gl.shaderSource(sh,source);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(sh));return sh;}
