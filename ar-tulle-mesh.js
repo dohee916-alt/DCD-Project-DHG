@@ -402,7 +402,7 @@ function create(root){
   if(!root)return null;
   const canvas=document.createElement('canvas');
   canvas.className='ar-tulle-webgl';
-  const pixelRatio=Math.min(2,window.devicePixelRatio||1);
+  const pixelRatio=Math.min(1.5,window.devicePixelRatio||1);
   canvas.width=Math.round(W*pixelRatio);canvas.height=Math.round(H*pixelRatio);root.prepend(canvas);
   let gl,program;
   try{
@@ -473,6 +473,7 @@ function create(root){
   let occProgram=null,occBuffer=null,occIndex=null,occIndices=0;
   let occPosition=-1;
   let live=true,frameId=0,lastRendered=0,renderErrorReported=false;
+  let activeRenderer=null;
   let setupStatus='pending',lastDiagnostic='',lastDiagnosticAt=0,lastFaceSeenAt=0;
   function reportState(state,now=performance.now()){
     root.dataset.tulleState=state;
@@ -738,9 +739,12 @@ function create(root){
     // bounded non-accumulating air movement; crown orientation stays fixed.
     // Do not freeze the sheet after 3.1s: gravity continues to settle the
     // side panels naturally, with damping limiting excessive motion.
-    if(contactAge>0&&!layer.removing){
-      const slices=Math.max(1,Math.ceil(frameStep));
-      const stepRatio=frameStep/slices;
+    if(contactAge>0&&!layer.removing&&(!sim.lastSolve||now-sim.lastSolve>=(now-layer.start>3200?90:35))){
+      const settled=now-layer.start>3200;
+      const solverStep=Math.min(2.1,sim.lastSolve?(now-sim.lastSolve)/1000*60:frameStep);
+      sim.lastSolve=now;
+      const slices=settled?1:Math.max(1,Math.ceil(solverStep));
+      const stepRatio=settled?1:solverStep/slices;
       for(let sub=0;sub<slices;sub++){
         for(const p of sim.nodes){
           if(p.pin){
@@ -762,7 +766,7 @@ function create(root){
           p.ox=p.x;p.oy=p.y;p.oz=p.z;
           p.x+=vx;p.y+=vy+.012*stepRatio*stepRatio;p.z+=vz;
         }
-        for(let iteration=0;iteration<3;iteration++){
+        for(let iteration=0;iteration<(settled?2:3);iteration++){
           for(const e of sim.links){
             const a=sim.nodes[e.a],b=sim.nodes[e.b];
             const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
@@ -788,6 +792,8 @@ function create(root){
     }
     const {nodes,profile}=sim;
     const head=faceCenter,scale=head.fw,cosYaw=Math.cos(head.yaw),sinYaw=Math.sin(head.yaw);
+    // Build the ordered hair rows once per sheet, not once per vertex.
+    const orderedHair=head.hairOutline?.length>=2?[...head.hairOutline].sort((a,b)=>a.y-b.y):null;
     // On arrival the flat cloth is in front of/above the head, then the
     // settled fabric attaches to the tracked head frame.
     for(let id=0;id<nodes.length;id++){
@@ -835,10 +841,9 @@ function create(root){
       const influence=ease(clamp((screenY-templeStart)/Math.max(1,(foreheadY-templeStart)),0,1))
         *(1-ease(clamp((screenY-foreheadY)/Math.max(1,templeEnd-foreheadY),0,1)));
       let leftBound=head.x-head.fw*.68,rightBound=head.x+head.fw*.68;
-      const rows=head.hairOutline;
-      if(rows?.length>=2){
+      if(orderedHair){
         const sample=clamp(screenY,templeStart,foreheadY)/H;
-        const ordered=[...rows].sort((a,b)=>a.y-b.y);
+        const ordered=orderedHair;
         let lo=ordered[0],hi=ordered[ordered.length-1];
         for(let k=1;k<ordered.length;k++){
           if(sample<=ordered[k].y){lo=ordered[k-1];hi=ordered[k];break;}
@@ -871,6 +876,9 @@ function create(root){
   }
   function render(now){
     if(!live)return;
+    // AR5-1 and the ending hide the cloth entirely. Avoid GPU/physics work.
+    const frame=root.closest('.ar-immersive')?.dataset.arFrame;
+    if(['AR5-1','AR9','AR10'].includes(frame))return;
     gl.viewport(0,0,canvas.width,canvas.height);
     gl.depthMask(true);gl.clearDepth(1);gl.clearColor(0,0,0,0);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -881,6 +889,7 @@ function create(root){
     if(!ready||gl.isContextLost()){
       reportState(gl.isContextLost()?'context-lost':(!faceCenter?'no-face':(!textures.first?'no-texture':'not-ready')),now);
       root.classList.remove('ar-tulle-ready');
+      if(activeRenderer!=='fallback'){canvas.style.visibility='hidden';activeRenderer='fallback';}
       canvasBackup.draw(layers,now);
       return;
     }
@@ -995,12 +1004,16 @@ function create(root){
       const err=gl.getError();
       if(err!==gl.NO_ERROR)throw new Error('WebGL cloth/face draw error '+err);
       root.classList.add('ar-tulle-ready');
-      canvasBackup.draw([],now);
+      if(activeRenderer!=='gpu'){
+        canvasBackup.draw([],now);canvas.style.visibility='visible';activeRenderer='gpu';
+      }
       reportState('rendering',now);
       renderErrorReported=false;
     }catch(error){
       gl.colorMask(true,true,true,true);gl.depthMask(true);
       root.classList.remove('ar-tulle-ready');
+      // Show only one renderer at any time, including during a failed GPU draw.
+      canvas.style.visibility='hidden';activeRenderer='fallback';
       canvasBackup.draw(layers,now);
       reportState('draw-error',now);
       if(!renderErrorReported){
