@@ -1747,7 +1747,7 @@ canvas.figure{object-fit:contain!important}
 .ar-fixed-gradient.g3{left:-34px;top:-12px;width:510px;height:942px;background:linear-gradient(266.4413399504181deg,#fff 22.18%,transparent 45.617%,#9e4f00 101.71%)}
 .ar-fixed-gradient.g4{left:-48px;top:-4px;width:510px;height:942px;background:linear-gradient(206.26252277234065deg,rgba(255,255,255,.8) 13.526%,transparent 37.155%,#9e2a00 93.712%);mix-blend-mode:lighten}
 .ar-fixed-bg{position:absolute;inset:0;isolation:isolate;overflow:hidden}
-.ar-fixed-base-tint{position:absolute;left:-15px;top:43px;width:459px;height:883px;background:#d83a00;mix-blend-mode:color;pointer-events:none}
+.ar-fixed-base-tint{position:absolute;inset:0;background:#d83a00;mix-blend-mode:color;pointer-events:none}
 
 /* Fixed native bounds: checkbox rows begin at y=101, label x=551. */
 .page-13 .new-options{color:#2b333d}
