@@ -1,6 +1,6 @@
-/* DCD consent: original 0-7s, hold 6.5-7s until YES, then impact. */
+/* DCD consent: original 0-7s, hold 6.5-7s until YES, then stop without impact. */
 (()=>{'use strict';
-const FILE='assets/audio/dcd-consent-original.mp3',HOLD_START=6.5,HOLD_END=7,IMPACT_START=11.85;
+const FILE='assets/audio/dcd-consent-original.mp3',HOLD_START=6.5,HOLD_END=7;
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
 let ctx=null,loading=null,buffer=null,node=null,phase='idle',revision=0;
 function halt(){if(!node)return;try{node.stop()}catch{}try{node.disconnect()}catch{}node=null}
@@ -19,16 +19,7 @@ async function start(){
   node=source();node.loop=true;node.loopStart=HOLD_START;node.loopEnd=HOLD_END;node.start(0,0)
  }catch(e){console.error('[DCD consent] intro',e)}
 }
-async function yes(){
- const token=++revision;phase='yes';halt();
- try{await load();if(token!==revision||phase!=='yes')return;
-  const playing=ctx.createBufferSource(),impactGain=ctx.createGain();
-  playing.buffer=buffer;impactGain.gain.value=.30;
-  playing.connect(impactGain);impactGain.connect(ctx.destination);
-  node=playing;playing.start(0,IMPACT_START);
-  playing.onended=()=>{if(node===playing){node=null;phase='done'}try{playing.disconnect();impactGain.disconnect()}catch{}}
- }catch(e){console.error('[DCD consent] impact',e)}
-}
+function yes(){revision++;phase='yes';halt();}
 function no(){revision++;phase='no';halt()}
 function preload(){return load().catch(e=>console.warn('[DCD consent] preload',e))}
 window.DCD_CONSENT_AUDIO={start,yes,no,stop:no,preload,status:()=>phase};
