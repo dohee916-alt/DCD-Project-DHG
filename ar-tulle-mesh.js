@@ -70,34 +70,41 @@ float smoothVeilSilhouette(vec2 uv){
   return sideMask*topMask*bottomMask;
 }
 void main(){
+  // Packed Poly Haven Crepe Satin: normal XY, roughness, specular.
+  // Charlie sheen + correlated GGX, adapted from Three.js r166 (MIT).
   vec4 cloth=texture2D(fabric,vUV);
   vec2 pixel=vec2(1.0/1010.0);
-  float fiber=cloth.a;
-  float left=texture2D(fabric,vUV-vec2(pixel.x,0.0)).a;
-  float right=texture2D(fabric,vUV+vec2(pixel.x,0.0)).a;
-  float up=texture2D(fabric,vUV+vec2(0.0,pixel.y)).a;
-  float down=texture2D(fabric,vUV-vec2(0.0,pixel.y)).a;
-  // The source is a sparse 64x64 photographed weave (66% holes).
-  // The former 0.06..0.67 threshold and 0.006 alpha erased its fine strands
-  // when sampled through mipmaps at phone resolution.
-  float strand=smoothstep(0.008,0.33,fiber);
-  float detail=clamp(abs(left-right)+abs(up-down),0.0,1.0);
   vec3 N=normalize(vNormal);
-  vec3 L=normalize(vec3(-.55,.65,1.0));
-  float faceDiffuse=max(0.0,dot(N,L));
-  float grazing=pow(1.0-clamp(N.z,0.0,1.0),3.0);
-  float fiberLight=clamp(.38+.68*faceDiffuse+.18*(left-right+up-down),.38,1.24);
-  // Slight pearlescent warm/cool scatter, not an opaque grid.
-  float sheen=clamp(.42+.58*pow(1.0-abs(dot(normalize(N),normalize(L))),2.0)+.42*pow(max(0.0,dot(N,L)),7.0),0.0,1.0);
-  vec3 whiteNet=mix(vec3(.975,.938,.913),vec3(1.0,.963,.922),sheen)*fiberLight;
-  // Give the photographic thread visible scattering while leaving the
-  // spaces between woven fibers transparent. A faint organza body connects
-  // the fabric even when individual thread pixels shrink at camera scale.
-  // Fine, thin organza filament with a faint continuous translucent body.
-  // Avoid the coarse opaque mesh effect from the earlier yarn intensity.
-  // Physical alpha compositing accumulates each sheet. A continuous
-  // 12% body makes 1/3/5 layers distinguishable, even between fibers.
-  float netAlpha=.25+.19*strand+.025*detail+.055*grazing;
+  vec3 tx=normalize(vec3(max(.001,N.z),0.0,-N.x));
+  vec3 ty=normalize(cross(N,tx));
+  vec2 bump=cloth.rg*2.0-1.0;
+  vec3 sn=normalize(N+tx*bump.x+ty*bump.y);
+  vec3 V=vec3(0.0,0.0,1.0);
+  vec3 L=normalize(vec3(-.64,.46,.72));
+  vec3 R=normalize(vec3(.78,.32,.48));
+  float nv=max(.025,dot(sn,V));
+  float rough=clamp(cloth.b,.30,.70);
+  float a=rough*rough;
+  float a2=a*a;
+  vec3 H=normalize(L+V);
+  float nl=max(.0,dot(sn,L));
+  float nh=max(.0,dot(sn,H));
+  float den=nh*nh*(a2-1.0)+1.0;
+  float ggx=a2/(3.14159265*den*den);
+  float vis=.5/max(.001,nl*sqrt(a2+(1.0-a2)*nv*nv)+nv*sqrt(a2+(1.0-a2)*nl*nl));
+  float fres=.035+.965*pow(1.0-max(.0,dot(V,H)),5.0);
+  float spec=ggx*vis*fres*nl*cloth.a;
+  // Original glTF sheen roughness = 0.5, neutralized golden tint.
+  float nr=max(.0,dot(sn,R));
+  float nh2=max(.0,dot(sn,normalize(R+V)));
+  float charlie=6.0*pow(max(.0078125,1.0-nh2*nh2),2.0)/6.2831853;
+  float neubelt=clamp(1.0/max(.001,4.0*(nr+nv-nr*nv)),0.0,1.0);
+  float sheen=charlie*neubelt*nr;
+  float edge=pow(1.0-nv,2.0);
+  float reflection=clamp(spec*4.5+sheen*1.8+edge*.32,0.0,1.0);
+  vec3 whiteNet=mix(vec3(.62,.61,.60),vec3(.99,.98,.96),clamp(.20+nl*.18+reflection*.85,0.0,1.0));
+  // Thin coverage allows the camera to remain visible except at light-catching folds.
+  float netAlpha=.12+.32*reflection;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -154,36 +161,37 @@ function getHeight(){
   if(data.length!==4096)throw new Error('Invalid tulle height map: '+data.length);
   return data;
 }
+// 16x16 original-pixel crop from the uploaded CC0 1k normal/ARM/spec maps.
+// Packed as normal R,G, roughness G, specular gray. No synthetic mesh pattern.
+const SATIN_SAMPLE='d3Z904WGdst8gHbSfoJ1w4GAedd9fHnYg4KE0H5/f895en3XgoN45oKAf9F8e37TgIRyzn2Bd9d9eo68hoN7zXt6iNl8fXzqgoaGwXyActx6eYLJhYR82oCChuJ/gYa+goF70Hh3duCFhIO/fn176XZ6etuDh37ShYKO1nh2kNB4doq/hIF1zn+AgOiAgYHEgoFy035+htGDhXrLgYOA4Hx7gNGDgnLRgYCD2oCBiL9+gnjUfoB05oJ9gsCCgIDahIKFznd0euCCgXvEf4B+5IWEf8B+fnbVe3106YGDhcWAfnvTfXt75oGCg8V/gIrNgYJ00X5+btSBfIXNeniEyIB+icB7eobRgIF85Ht8c9mCgYrQf36O1nt8g9mCgn/dhH9/u3t5gdWCg4PTfn+Gzn58htmGgYDegH6B2nt7ecKGhILGfX6Bznh5etqFhnXVgIGBxn6AjL2AgX/Lf3595YN+jMOCgH3TfX575IGCh8KDfnzef3qD0oeFgruCgoDWgoSB4H6Chrp8f3/WfH2E5omLgLqAgnjpfH580oSDfNCFgIDSgX+FwoCEdNiAhIXtgIB/x399hdSBgXzYgYGKsoKGg8x/hYTReXqLx3t8dOOFh3vsgYN2u39/f85+fHblfnuFw359g7l/g3TugoZ04IKDgdyAgoa9fH5/x4eGhNB8fX7jfICDzYKBhtV/fn7Sf35zzX18hdOEgnvUfXt61oOCfs98fYPEenl12oCBfN1+f3HGfX6E0oCBhdR9fILfentv2oSFeNWAf3XaenmByoSDedJ7envZgoB+y4GBhNeAgYLdf4CDvIKBcdF4d3fmg4SAznyAdNh5eobOhoV/04KDdM57fH3lgYKFvYKDf9p2d3nuh4iJu4CChuN/gYvGgYV+4IOEg89+fYjAgYB40Xp+g+d9gX2/goN62n+Bf+2BgHXXgoN9xX6Cgd1/g468fH1334CBfOaEhYXCgIF733x9gemBgozEgYB923t6gN56fn3Men6H24SDgcmCgnrefHl4zYKBeON6gHvUf4WGynp5htJ9e3nfhIKBzYGAgtJ6eXjHg4J/6oOBd8h+fYDLg4R52np7gth/enzThYB+3oF8fdJ7eHrghIh23HyAgtx+fITBgn153IB+g9d5eHvFgn9zz317dtqHhYTPgoJ+zHt8euKCg4K/gn160H94e8h7eYXDgX552H1+eueFhobEhoSG4Hl3d9OChIrAf4F0zn18fsuEgm/Ufn191X5/jc6BhXzlfX+E4X14f8eDfnTPgH99039+gcmCf3nWfXt94oSCjMKAgHTafYF92ICEib1/fnnSgH545oSDg7N9fnfMfn9514GDf9KEgoTOgoCAtA==';
+function satinPackedTile(){
+ const tile=document.createElement('canvas');tile.width=tile.height=16;
+ const ctx=tile.getContext('2d'),data=ctx.createImageData(16,16);
+ const raw=atob(SATIN_SAMPLE);
+ if(raw.length!==1024)throw Error('Invalid satin sample');
+ for(let i=0;i<raw.length;i++)data.data[i]=raw.charCodeAt(i);
+ ctx.putImageData(data,0,0);return tile;
+}
 function paintedFabric(height,index){
-  const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
-  const ctx=c.getContext('2d');
-  // Retain the existing archived 64x64 photographed fiber heightmap.
-  const tile=document.createElement('canvas');tile.width=tile.height=64;
-  const tctx=tile.getContext('2d'),pixels=tctx.createImageData(64,64);
-  for(let i=0;i<4096;i++){
-    const fiber=height?.[i]??0,k=i*4;
-    pixels.data[k]=251;pixels.data[k+1]=249;pixels.data[k+2]=245;
-    pixels.data[k+3]=Math.round(Math.max(0,Math.min(255,fiber*255/143)));
-  }
-  tctx.putImageData(pixels,0,0);
-  // Render the real photographed yarn more finely rather than relying on
-  // DOMMatrix pattern transforms (unsupported in some mobile WebViews).
-  const fineTile=document.createElement('canvas');
-  const pitch=[24,22,26,23,25][index%5];
-  fineTile.width=fineTile.height=pitch;
-  const ft=fineTile.getContext('2d');
-  ft.imageSmoothingEnabled=true;ft.imageSmoothingQuality='high';
-  ft.drawImage(tile,0,0,pitch,pitch);
-  const weave=ctx.createPattern(fineTile,'repeat');
-  ctx.imageSmoothingEnabled=true;
-  ctx.save();
-  // Each sheet has a distinct weave pitch, phase and slight grain angle.
-  ctx.translate(c.width/2,c.height/2);
-  ctx.rotate([0,.063,-.085,.115,-.045][index%5]);
-  ctx.translate(-c.width/2+(index*11)%pitch,-c.height/2+(index*17)%pitch);
-  ctx.fillStyle=weave;ctx.fillRect(-160,-160,c.width+320,c.height+320);
-  ctx.restore();
-  return c;
+ const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
+ const ctx=c.getContext('2d'),tile=satinPackedTile();
+ ctx.fillStyle=ctx.createPattern(tile,'repeat');ctx.fillRect(0,0,c.width,c.height);
+ return c;
+}
+// Load the same original Poly Haven 1K maps, with bundled crop as offline fallback.
+async function fullSatinAtlas(){
+ const base='https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/crepe_satin/crepe_satin_';
+ function load(name){return new Promise((resolve,reject)=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>resolve(im);im.onerror=reject;im.src=base+name+'_1k.jpg';});}
+ const images=await Promise.all(['nor_gl','arm','spec_ior'].map(load));
+ const c=document.createElement('canvas');c.width=c.height=TEXTURE_SIZE;
+ const ctx=c.getContext('2d',{willReadFrequently:true});
+ const channels=images.map(im=>{ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(im,0,0,c.width,c.height);return ctx.getImageData(0,0,c.width,c.height).data;});
+ const packed=ctx.createImageData(c.width,c.height);
+ for(let i=0;i<packed.data.length;i+=4){
+  packed.data[i]=channels[0][i];packed.data[i+1]=channels[0][i+1];
+  packed.data[i+2]=channels[1][i+1];packed.data[i+3]=channels[2][i];
+ }
+ ctx.putImageData(packed,0,0);return c;
 }
 // Keep embroidered phrases in stable cloth regions. Facial features are
 // still tracked by the full mesh, but the text must NOT cross eyelids or
@@ -300,24 +308,6 @@ function canvasCloth(root){
   canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none';
   root.appendChild(canvas);
   const ctx=canvas.getContext('2d',{alpha:true});
-  const tile=document.createElement('canvas');tile.width=tile.height=64;
-  const t=tile.getContext('2d',{alpha:true}),im=t.createImageData(64,64);
-  const height=getHeight();
-  for(let i=0;i<4096;i++){
-    const v=height[i],k=i*4;
-    im.data[k]=252;im.data[k+1]=241;im.data[k+2]=229;
-    im.data[k+3]=v?Math.round(80+175*Math.sqrt(v/143)):0;
-  }
-  t.putImageData(im,0,0);
-  const finer=document.createElement('canvas');finer.width=finer.height=24;
-  const fineCtx=finer.getContext('2d');
-  fineCtx.imageSmoothingEnabled=true;fineCtx.imageSmoothingQuality='high';
-  fineCtx.drawImage(tile,0,0,24,24);
-  const patterns=[24,22,26,23,25].map(pitch=>{
-    const c=document.createElement('canvas');c.width=c.height=pitch;
-    const g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(tile,0,0,pitch,pitch);
-    return ctx.createPattern(c,'repeat');
-  });
   let positions=null,lastSeen=0,live=true;
   function update(points,width,height){
     if(!points?.length||points.length<468||!width||!height){
@@ -376,13 +366,13 @@ function canvasCloth(root){
        ctx.bezierCurveTo(-cw*.43,-ch*.47,-cw*.23,-ch*.58,0,-ch*.5);
        ctx.closePath();ctx.clip();
       if(pass===0){
-      ctx.fillStyle='rgba(250,239,229,.21)';
-      ctx.fillRect(l,t,cw,ch+fh*.06);
-      ctx.save();
-      ctx.rotate([0,.063,-.085,.115,-.045][layer.index%5]);
-      ctx.translate((layer.index*11)%24,(layer.index*17)%24);
-      ctx.fillStyle=patterns[layer.index%5];ctx.globalAlpha=alpha*.49;
-      ctx.fillRect(l-80,t-80,cw+160,ch+fh*.06+160);ctx.restore();
+      const satin=ctx.createLinearGradient(l,t,r,t);
+      satin.addColorStop(0,'rgba(217,214,209,.12)');
+      satin.addColorStop(.24,'rgba(255,254,250,.26)');
+      satin.addColorStop(.45,'rgba(192,189,185,.09)');
+      satin.addColorStop(.74,'rgba(255,253,249,.20)');
+      satin.addColorStop(1,'rgba(204,202,200,.12)');
+      ctx.fillStyle=satin;ctx.fillRect(l,t,cw,ch+fh*.06);
       // Soft fold shadow follows the tucked hem, without painting a hard line.
       ctx.globalAlpha=alpha*.26;
       const fold=ctx.createLinearGradient(0,b-ch*.23,0,b);
@@ -595,6 +585,19 @@ function create(root){
         }));
       }
       root.dataset.tulleTexture='ready';
+      root.dataset.satinSource='bundled-original-crop';
+      fullSatinAtlas().then(atlas=>{
+        if(!live||gl.isContextLost())return;
+        gl.activeTexture(gl.TEXTURE0);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+        for(const tex of fiberTextures){
+          gl.bindTexture(gl.TEXTURE_2D,tex);
+          gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,atlas);
+          gl.generateMipmap(gl.TEXTURE_2D);
+        }
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+        root.dataset.satinSource='polyhaven-original-1k';
+      }).catch(()=>{if(live)root.dataset.satinSource='bundled-original-crop';});
     }catch(error){root.dataset.tulleTexture='error';console.error('[DCD] Cloth texture preparation:',error);}
   })();
   function update(points,width,height){
@@ -954,6 +957,22 @@ function create(root){
       }
       mesh[i*stride]=x-side*correctionX;
       mesh[i*stride+1]=y+correctionY;
+    }
+    // Recompute lighting normals from the final deformed surface, including
+    // crown correction, yaw, pitch and wind. Screen XY in pixels; convert
+    // the stored depth back into approximate head-relative pixel units.
+    const zScale=scale/.18;
+    for(let id=0;id<nodes.length;id++){
+      const row=Math.floor(id/N),col=id%N;
+      const l=(col? id-1:id)*stride,r=(col<GRID_COLS?id+1:id)*stride;
+      const t=(row?id-N:id)*stride,b=(row<GRID_ROWS?id+N:id)*stride;
+      const ux=mesh[r]-mesh[l],uy=mesh[l+1]-mesh[r+1],uz=(mesh[l+2]-mesh[r+2])*zScale;
+      const vx=mesh[b]-mesh[t],vy=mesh[t+1]-mesh[b+1],vz=(mesh[t+2]-mesh[b+2])*zScale;
+      let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+      const len=Math.hypot(nx,ny,nz);
+      if(len<.00001)continue;
+      const sign=nz<0?-1:1,at=id*stride;
+      mesh[at+8]=nx*sign/len;mesh[at+9]=ny*sign/len;mesh[at+10]=nz*sign/len;
     }
   }
   function arrival(t){
