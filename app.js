@@ -269,7 +269,7 @@ function resultMarkup(){
   return blisterMotionLayer(A.blisterOneShotLast,'last')+
     '<div class="poster-gradient poster-gradient-a"></div><div class="poster-gradient poster-gradient-b"></div><div class="poster-gradient poster-gradient-c"></div><div class="poster-gradient poster-gradient-d"></div>'+
     figmaGlassText('easiest',64.5,90.5,299,17,root+'poster-tagline-base.svg',root+'poster-tagline.svg')+
-    text('CLICK THE PACK TO START',26,808,376,96,'doto guide-blink poster-click-guide')+
+    text('CLICK THE PACK TO START',26,819,376,96,'doto guide-blink poster-click-guide')+
     '<button class="full-hit" data-action="start" aria-label="Start"></button>';
 }
 function workbenchMarkup(showTutorial=true){let f=s.figures[s.active],h=img(A.workbenchBackground,52,0,874,428,'bg')+img(A.workbenchTray,308,39,237,355,'tray');let packInside=img(A.workbenchPack,0,0,337,224,'pack pack-image pack-clear-back workbench-native-export');for(let i=0;i<4;i++)if(s.figures[i].packed){let q=packSlots[i];packInside+=horizontalFigure(i,q[0]-packRect[0],q[1]-packRect[1],q[2],q[3],'packed-figure');}h+=group(...packRect,'pack-assembly workbench-pack',packInside);h+=img(A.purpleBottle,90,45,107,82,'bottle')+img(A.orangeBottle,88,141,110,85,'bottle');if(!s.used.purple&&s.loaded!=='purple')h+=text('GAIN<br>WEIGHT',197,79,100,44,'bottle-label bottle-label-purple');if(!s.used.orange&&s.loaded!=='orange')h+=text('LOOSE<br>WEIGHT',197,162,100,44,'bottle-label bottle-label-orange');
