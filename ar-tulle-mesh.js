@@ -611,8 +611,10 @@ function create(root){
         :(prev?.hairCrownY!=null?prev.hairCrownY+(fy-prev.y):null),
       hairOutline:measured&&performance.now()-measured.at<2300?measured.outline||null:null,
       crownCurve:(()=>{
-        const raw=measured&&performance.now()-measured.at<1400?measured.curve||null:null;
-        const prior=prev?.crownCurve;
+        const fresh=!!measured&&performance.now()-measured.at<1500;
+        const raw=fresh?measured.curve||null:null;
+        // Do not follow a frozen cutout outline when the camera moves.
+        const prior=fresh?prev?.crownCurve:null;
         const shifted=prior?.map(point=>({
           x:point.x+(fx-prev.x)/W,
           y:point.y+(fy-prev.y)/H
