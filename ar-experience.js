@@ -279,13 +279,11 @@ function showStigmaSequence(variant,done){
    if(index>=words.length){delay(done,2000);return;}
    window.DCD_STIGMA_VOICES?.play?.(variant,index);
    typeStigma(words[index],()=>{
-     // The viewer reads the completed phrase before seeing its physical consequence.
-     delay(()=>{
-       if(!state.root||state.variant!==variant)return;
-       addFabric();
-       // Clear the line only after the sheet has visibly approached and settled.
-       delay(()=>{index++;next();},3300);
-     },2200);
+     // Launch the sheet and its arrival sound immediately on the final typed character.
+     if(!state.root||state.variant!==variant)return;
+     addFabric();
+     // Preserve the existing interval after launch for the sheet to settle.
+     delay(()=>{index++;next();},3300);
    });
  }
  next();
