@@ -425,7 +425,7 @@ function newPrescriptionMarkup(page=s.page){
       const figmaSignPath="M 10.77100658416748 70.29373168945312 C -2.443279266357422 63.686588764190674 -3.39418363571167 37.38294982910156 7.342423915863037 17.561521530151367 C 16.427245616912842 -1.4340152740478516 37.1995792388916 -4.036625385284424 45.4585075378418 5.048196315765381 C 57.0210075378418 19.088374614715576 33.49431502819061 54.60176753997803 31.842529296875 70.29373168945312 C 30.190743565559387 88.46337509155273 45.1282434463501 77.72676658630371 58.342529296875 57.905338287353516 C 68.2532434463501 43.03926658630371 79.0836009979248 32.476701736450195 87.342529296875 41.5615234375 C 94.842529296875 51.0615234375 76.01654624938965 72.7714147567749 84.27547454833984 76.90087890625 C 93.36029624938965 81.0303430557251 109.05226421356201 52.94998121261597 119.78887176513672 57.905338287353516 C 129.69958591461182 62.03480243682861 117.31118965148926 71.94552284479141 126.39601135253906 72.77141571044922 C 134.65493965148926 72.77141571044922 140.43619441986084 62.034807443618774 150.34690856933594 65.33837890625";
       const signView='0 0 185 124';
       h+='<svg class="lay new-signature-sample" '+box(553,165,185,124)+' viewBox="'+signView+'" aria-hidden="true"><defs><linearGradient id="signature-base-color" x1="30" y1="40" x2="198" y2="113" gradientUnits="userSpaceOnUse"><stop stop-color="#FFE8E0"/><stop offset=".52" stop-color="#FFC4AB"/><stop offset="1" stop-color="#FFF0E8"/></linearGradient></defs><path d="'+figmaSignPath+'" transform="translate(15.657564163208008 21.438411712646484)" fill="none" stroke="url(#signature-base-color)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      h+='<svg class="lay new-signature-trace" '+box(553,165,185,124)+' viewBox="'+signView+'" aria-hidden="true"><defs><linearGradient id="signature-trace-color" x1="62" y1="102" x2="152" y2="83" gradientUnits="userSpaceOnUse"><stop stop-color="#FFBC97"/><stop offset=".22" stop-color="#FF9B65"/><stop offset=".65" stop-color="#FF813C"/><stop offset="1" stop-color="#D83A00"/></linearGradient></defs><path d="'+figmaSignPath+'" transform="translate(15.657564163208008 21.438411712646484)" fill="none" stroke="url(#signature-trace-color)" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="100 100" stroke-dashoffset="100" pathLength="100"/></svg>';
+      h+='<svg class="lay new-signature-trace" '+box(553,165,185,124)+' viewBox="'+signView+'" aria-hidden="true"><defs><linearGradient id="signature-trace-color" x1="62" y1="102" x2="152" y2="83" gradientUnits="userSpaceOnUse"><stop stop-color="#FFBC97"/><stop offset=".22" stop-color="#FF9B65"/><stop offset=".65" stop-color="#FF813C"/><stop offset="1" stop-color="#D83A00"/></linearGradient></defs><path d="'+figmaSignPath+'" transform="translate(15.657564163208008 21.438411712646484)" fill="none" stroke="url(#signature-trace-color)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="100 100" stroke-dashoffset="100" pathLength="100"/></svg>';
     }
     if(signatureInk)h+='<img class="lay new-signature-ink" '+box(524,82,291,260)+' src="'+signatureInk+'" alt="">';
     else h+='<canvas id="new-signature" class="lay new-signature-canvas" '+box(524,82,291,260)+' width="873" height="780" aria-label="Draw your signature"></canvas>';
@@ -441,8 +441,26 @@ function newPrescriptionMarkup(page=s.page){
 }
 function bindNewSignature(){
   const c=stage.querySelector('#new-signature');if(!c)return;
-  const ctx=c.getContext('2d');ctx.strokeStyle='#171717';ctx.lineWidth=4;ctx.lineCap='round';ctx.lineJoin='round';
+  const ctx=c.getContext('2d');ctx.fillStyle='#171717';
   let activePointer=null,strokeMoved=false,hasInk=!!s.signed;
+  let penPoint=null,penSpeed=0,penPressure=.5,penTime=0;
+  // Draw a slanted elliptical nib along a smoothed path. Width varies
+  // naturally with stroke direction, speed and real stylus pressure.
+  function nib(p,speed,pressure){
+    const factor=(.86+.28*pressure)/(1+Math.min(1.4,speed)*.15);
+    ctx.beginPath();ctx.ellipse(p.x,p.y,2.65*factor,1.04*factor,-Math.PI/5,0,Math.PI*2);ctx.fill();
+  }
+  function inkTo(p,now,pressure){
+    if(!penPoint){penPoint=p;penTime=now;return;}
+    const dx=p.x-penPoint.x,dy=p.y-penPoint.y,dist=Math.hypot(dx,dy);
+    if(dist<.15)return;
+    const speed=dist/Math.max(4,now-penTime);
+    penSpeed=penSpeed*.64+speed*.36;
+    penPressure=penPressure*.72+pressure*.28;
+    const steps=Math.max(1,Math.ceil(dist/.65));
+    for(let i=0;i<=steps;i++){const t=i/steps;nib({x:penPoint.x+dx*t,y:penPoint.y+dy*t},penSpeed,penPressure);}
+    penPoint=p;penTime=now;
+  }
   function point(e){
     // The mobile scene is rotated +90deg. A canvas bounding rectangle is an
     // axis-aligned box, so using its left/top offsets shifts ink away from
@@ -461,12 +479,13 @@ function bindNewSignature(){
     e.stopPropagation();e.preventDefault();
     if(activePointer!==null)return;
     activePointer=e.pointerId;strokeMoved=false;c.setPointerCapture(e.pointerId);
-    const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);
+    penPoint=point(e);penTime=e.timeStamp;penSpeed=0;penPressure=e.pointerType==='pen'&&e.pressure>0?e.pressure:.5;
   };
   c.onpointermove=e=>{
     if(activePointer!==e.pointerId)return;
     e.stopPropagation();e.preventDefault();
-    const p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();
+    const samples=e.getCoalescedEvents?.()||[];
+    for(const sample of (samples.length?samples:[e]))inkTo(point(sample),sample.timeStamp,sample.pointerType==='pen'&&sample.pressure>0?sample.pressure:.5);
     if(!strokeMoved)window.DCD_WEB_SFX?.play('signature',{loop:true});
     strokeMoved=true;
     if(!hasInk){
@@ -479,7 +498,7 @@ function bindNewSignature(){
   const finish=e=>{
     if(activePointer!==e.pointerId)return;
     e.stopPropagation();e.preventDefault();
-    activePointer=null;
+    activePointer=null;penPoint=null;
     window.DCD_WEB_SFX?.stop('signature');
     if(!strokeMoved)return;
     signatureInk=c.toDataURL('image/png');s.signed=true;save();
