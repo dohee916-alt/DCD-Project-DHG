@@ -89,7 +89,7 @@ void main(){
   float fiberLight=clamp(.38+.68*faceDiffuse+.18*(left-right+up-down),.38,1.24);
   // Slight pearlescent warm/cool scatter, not an opaque grid.
   float sheen=clamp(.42+.58*pow(1.0-abs(dot(normalize(N),normalize(L))),2.0)+.42*pow(max(0.0,dot(N,L)),7.0),0.0,1.0);
-  vec3 whiteNet=mix(vec3(.957,.966,.982),vec3(1.0,.982,.955),sheen)*fiberLight;
+  vec3 whiteNet=mix(vec3(.975,.938,.913),vec3(1.0,.963,.922),sheen)*fiberLight;
   // Give the photographic thread visible scattering while leaving the
   // spaces between woven fibers transparent. A faint organza body connects
   // the fabric even when individual thread pixels shrink at camera scale.
@@ -97,7 +97,7 @@ void main(){
   // Avoid the coarse opaque mesh effect from the earlier yarn intensity.
   // Physical alpha compositing accumulates each sheet. A continuous
   // 12% body makes 1/3/5 layers distinguishable, even between fibers.
-  float netAlpha=.18+.18*strand+.025*detail+.055*grazing;
+  float netAlpha=.25+.19*strand+.025*detail+.055*grazing;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -169,14 +169,19 @@ function paintedFabric(height,index){
   // Render the real photographed yarn more finely rather than relying on
   // DOMMatrix pattern transforms (unsupported in some mobile WebViews).
   const fineTile=document.createElement('canvas');
-  fineTile.width=fineTile.height=24;
+  const pitch=[24,22,26,23,25][index%5];
+  fineTile.width=fineTile.height=pitch;
   const ft=fineTile.getContext('2d');
   ft.imageSmoothingEnabled=true;ft.imageSmoothingQuality='high';
-  ft.drawImage(tile,0,0,24,24);
+  ft.drawImage(tile,0,0,pitch,pitch);
   const weave=ctx.createPattern(fineTile,'repeat');
   ctx.imageSmoothingEnabled=true;
-  ctx.save();ctx.translate((index*11)%24,(index*17)%24);
-  ctx.fillStyle=weave;ctx.fillRect(-24,-24,c.width+48,c.height+48);
+  ctx.save();
+  // Each sheet has a distinct weave pitch, phase and slight grain angle.
+  ctx.translate(c.width/2,c.height/2);
+  ctx.rotate([0,.063,-.085,.115,-.045][index%5]);
+  ctx.translate(-c.width/2+(index*11)%pitch,-c.height/2+(index*17)%pitch);
+  ctx.fillStyle=weave;ctx.fillRect(-160,-160,c.width+320,c.height+320);
   ctx.restore();
   return c;
 }
@@ -300,7 +305,7 @@ function canvasCloth(root){
   const height=getHeight();
   for(let i=0;i<4096;i++){
     const v=height[i],k=i*4;
-    im.data[k]=252;im.data[k+1]=249;im.data[k+2]=243;
+    im.data[k]=252;im.data[k+1]=241;im.data[k+2]=229;
     im.data[k+3]=v?Math.round(80+175*Math.sqrt(v/143)):0;
   }
   t.putImageData(im,0,0);
@@ -308,7 +313,11 @@ function canvasCloth(root){
   const fineCtx=finer.getContext('2d');
   fineCtx.imageSmoothingEnabled=true;fineCtx.imageSmoothingQuality='high';
   fineCtx.drawImage(tile,0,0,24,24);
-  const pattern=ctx.createPattern(finer,'repeat');
+  const patterns=[24,22,26,23,25].map(pitch=>{
+    const c=document.createElement('canvas');c.width=c.height=pitch;
+    const g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(tile,0,0,pitch,pitch);
+    return ctx.createPattern(c,'repeat');
+  });
   let positions=null,lastSeen=0,live=true;
   function update(points,width,height){
     if(!points?.length||points.length<468||!width||!height){
@@ -366,10 +375,13 @@ function canvasCloth(root){
        ctx.bezierCurveTo(-cw*.43,-ch*.47,-cw*.23,-ch*.58,0,-ch*.5);
        ctx.closePath();ctx.clip();
       if(pass===0){
-      ctx.fillStyle='rgba(250,248,243,.12)';
+      ctx.fillStyle='rgba(250,239,229,.21)';
       ctx.fillRect(l,t,cw,ch+fh*.06);
-      ctx.fillStyle=pattern;ctx.globalAlpha=alpha*.43;
-      ctx.fillRect(l,t,cw,ch+fh*.06);
+      ctx.save();
+      ctx.rotate([0,.063,-.085,.115,-.045][layer.index%5]);
+      ctx.translate((layer.index*11)%24,(layer.index*17)%24);
+      ctx.fillStyle=patterns[layer.index%5];ctx.globalAlpha=alpha*.49;
+      ctx.fillRect(l-80,t-80,cw+160,ch+fh*.06+160);ctx.restore();
       // Soft fold shadow follows the tucked hem, without painting a hard line.
       ctx.globalAlpha=alpha*.26;
       const fold=ctx.createLinearGradient(0,b-ch*.23,0,b);
