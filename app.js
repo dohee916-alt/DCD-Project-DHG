@@ -95,8 +95,8 @@ function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){
   return '<canvas class="lay figure '+cls+'" data-figure="'+i+'" data-view="'+view+'" '+box(x,y,w,h,'transform:rotate('+rot+'deg);')+' width="346" height="873" aria-label="Doll '+(i+1)+' '+view+'"></canvas>';
 }
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
-function handGuide(){return img(A.syringeGuideCore,163,240,164,185,'syringe-guide syringe-guide-core');}
-function injectionHandGuide(){return img(A.syringeGuideCore,163,238,164,185,'syringe-guide syringe-injection-guide');}
+function handGuide(){return img(A.syringeGuideCore,176.36,243,141.635,160,'syringe-guide syringe-guide-core');}
+function injectionHandGuide(){return img(A.syringeGuideCore,176.61,243,140.75,159,'syringe-guide syringe-injection-guide');}
 const PACK_HAND_CYCLE_MS=1550,PACK_HAND_TOTAL_MS=PACK_HAND_CYCLE_MS*3;
 function packHandGuide(){
   if(!s.packGuideHandFinished&&!s.packGuideHandStartedAt){
@@ -106,7 +106,7 @@ function packHandGuide(){
     s.packGuideHandFinished=true;save();
   }
   // Guide copy must remain after the hand animation has finished.
-  return (s.packGuideHandFinished?'':img(A.syringeGuideCore,302,153,164,185,'pack-guide-hand'))+
+  return (s.packGuideHandFinished?'':img(A.gestureHand,392,157,141,159,'pack-guide-hand'))+
     text('DRAG HERE WHEN FINISHED',615,323,292,44,'doto guide-blink pack-guide-copy');
 }
 function horizontalFigure(i,x,y,w,h,cls='',view='back'){
@@ -258,9 +258,9 @@ function introMarkup(p){
     if(!openingSoundEnabled)h+='<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound on the opening advertisement"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>';
   }else if(s.phase==='guide'){
     h+=text('PULL THE STRINGS APART',26,808,376,96,'doto guide-blink guide-copy');
-    // WEB01 approved guide; left hand Y=415, all other guides unchanged.
-    h+=img(A.gestureHand,152,412,164,185,'gesture gesture-upper');
-    h+=img(A.gestureHand,252,564,164,185,'gesture gesture-lower');
+    // Figma 여기확인1: visible bounding boxes, with mirrored upper hand.
+    h+=img(A.gestureHand,18,395,142,161,'gesture gesture-upper');
+    h+=img(A.gestureHand,250,560,141,161,'gesture gesture-lower');
     h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';
   }
   return h;
