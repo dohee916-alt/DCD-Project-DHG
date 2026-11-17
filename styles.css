@@ -1255,15 +1255,15 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-organza-stack{
   display:none!important;
 }
-#stage .ar-immersive:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-person-segment{
   display:block!important;z-index:2!important;
   filter:blur(30px)!important;-webkit-filter:blur(30px)!important;
   opacity:1!important;mix-blend-mode:normal!important;
 }
-#stage .ar-immersive:not(.ar-matting-active):is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
+#stage .ar-immersive:not(.ar-matting-active)[data-ar-frame="AR5-1"] .ar-person-segment{
   opacity:0!important;
 }
-#stage .ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-portrait-camera{
+#stage .ar-immersive.ar-matting-active[data-ar-frame="AR5-1"] .ar-portrait-camera{
   opacity:0!important;visibility:visible!important;
 }
 
@@ -1286,7 +1286,7 @@ canvas.figure{object-fit:contain!important}
   -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 4%,#000 94%,transparent 100%)!important;
   mask-image:linear-gradient(180deg,transparent 0%,#000 4%,#000 94%,transparent 100%)!important;
 }
-#stage .ar-immersive.ar-matting-active:is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-person-segment{
+#stage .ar-immersive.ar-matting-active[data-ar-frame="AR5-1"] .ar-person-segment{
   display:block!important;
   visibility:visible!important;
   opacity:.82!important;
@@ -1297,7 +1297,7 @@ canvas.figure{object-fit:contain!important}
 }
 /* Keep the user's moving portrait visible while the matting model warms up,
    then automatically switch to the actual transparent-person result. */
-#stage .ar-immersive:not(.ar-matting-active):is([data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-portrait-camera{
+#stage .ar-immersive:not(.ar-matting-active)[data-ar-frame="AR5-1"] .ar-portrait-camera{
   display:block!important;
   opacity:.35!important;
   visibility:visible!important;
@@ -1339,15 +1339,11 @@ canvas.figure{object-fit:contain!important}
    the 428x926 stage edge *after* blur(24/27px). Feather ONLY the
    moving portrait near that edge; Figma Group 3 gradients, text and
    pack retain their exact position, blend modes and opacity. */
-#stage .ar-immersive.ar-matting-active:is(
-  [data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]
-) .ar-person-segment{
+#stage .ar-immersive.ar-matting-active[data-ar-frame="AR5-1"] .ar-person-segment{
   -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 68%,rgba(0,0,0,.94) 77%,rgba(0,0,0,.67) 85%,rgba(0,0,0,.28) 93%,transparent 100%)!important;
   mask-image:linear-gradient(to bottom,#000 0%,#000 68%,rgba(0,0,0,.94) 77%,rgba(0,0,0,.67) 85%,rgba(0,0,0,.28) 93%,transparent 100%)!important;
 }
-#stage .ar-immersive:not(.ar-matting-active):is(
-  [data-ar-frame="AR5-1"],[data-ar-frame="AR9"],[data-ar-frame="AR10"]
-) .ar-portrait-camera{
+#stage .ar-immersive:not(.ar-matting-active)[data-ar-frame="AR5-1"] .ar-portrait-camera{
   -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 68%,rgba(0,0,0,.94) 77%,rgba(0,0,0,.67) 85%,rgba(0,0,0,.28) 93%,transparent 100%)!important;
   mask-image:linear-gradient(to bottom,#000 0%,#000 68%,rgba(0,0,0,.94) 77%,rgba(0,0,0,.67) 85%,rgba(0,0,0,.28) 93%,transparent 100%)!important;
 }/* AR4–AR7 top guidance: orange on the blue field, never black. */
@@ -1610,6 +1606,22 @@ canvas.figure{object-fit:contain!important}
 }
 #stage .ar-immersive:is([data-ar-frame="AR3"],[data-ar-frame="AR3-1"],[data-ar-frame="AR4"],[data-ar-frame="AR5"],[data-ar-frame="AR5-2"],[data-ar-frame="AR6"],[data-ar-frame="AR7"],[data-ar-frame="AR8"]) .ar-person-segment{
  visibility:hidden!important;opacity:0!important;pointer-events:none!important;
+}
+/* Ending uses the full live camera, never the isolated person on a
+   replacement background. Keep the authored ending gradient and blur. */
+#stage .ar-immersive.ar-final-mode{
+ background:transparent!important;
+}
+#stage .ar-immersive.ar-final-mode .ar-person-segment{
+ display:none!important;opacity:0!important;visibility:hidden!important;
+}
+#stage .ar-immersive.ar-final-mode .ar-portrait-camera{
+ display:block!important;visibility:visible!important;opacity:1!important;
+ z-index:2!important;
+ filter:blur(24px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
+ -webkit-filter:blur(24px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
+ mask-image:none!important;-webkit-mask-image:none!important;
+ mix-blend-mode:normal!important;
 }
 /* The hidden matte canvas stays mounted and continues updating __dcdHairCrown. */
 
