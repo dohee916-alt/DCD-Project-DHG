@@ -404,7 +404,7 @@ canvas.figure{object-fit:contain!important}
 .ar-open-middle .ar-open-rotator img{left:-243px;top:-321px;width:1145px;height:648px;max-width:none;transform:none}
 .ar-open-final .ar-open-rotator img{left:0;top:-330px;width:1133px;height:659px;max-width:none;transform:none}
 .ar-falling-dolls,.ar-falling-dolls.released{z-index:2}
-.ar-headline{left:45px!important;top:41px!important;width:362px!important;height:25px!important}
+.ar-headline{left:45px!important;top:93px!important;width:362px!important;height:25px!important}
 .new-section-title{font:400 12px/15px Arial,sans-serif!important;color:#2b333d!important}
 .page-13.phase-typing .new-flow-content{animation:none!important;translate:0 0!important}
 @keyframes prescriptionContentRise{from{translate:0 310px}to{translate:0 0}}
@@ -1736,3 +1736,6 @@ canvas.figure{object-fit:contain!important}
 @media (prefers-reduced-motion:reduce){
  #stage .ar-immersive.ar-doto-blink .ar-copy{animation:none;opacity:1}
 }
+
+/* NewAR1: restore original Figma 428x926 artboard placement. */
+#stage.page-ar .ar-press-copy{left:29px!important;top:829px!important;width:370px!important;height:24px!important;z-index:14!important;}
