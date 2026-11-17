@@ -1740,3 +1740,28 @@ canvas.figure{object-fit:contain!important}
 /* Figma Doto guide line heights, 2026-11-17. Prompt 28px, Action 24px, Detail 12px. Keep each native text box and the existing type size/weight. */
 #stage :is(.rotate-guide,.ar-face-copy){line-height:28px!important;}
 #stage :is(.pack-guide-copy,.workbench-guide,.bottle-label,.signature-guide,.new-signature-guide,.new-section-prompt,.paper-prompt){line-height:12px!important;}
+
+/* WEB12–15 and initial AR fixed Figma variants, 2026-11-17.
+   Landscape coordinates are converted from portrait node bounds (x=y,
+   y=428-x-width); do not add the scene's 52px origin a second time. */
+.new-prescription-title{font:700 25px/32px 'Source Sans 3',Arial,sans-serif;opacity:.90;color:#2b333d}
+.page-15 .new-prescription-title,.page-16 .new-prescription-title{color:#2e2924}
+.new-prescription-triangle{z-index:5;color:#2b333d;opacity:.90;pointer-events:none}
+.page-15 .new-prescription-triangle,.page-16 .new-prescription-triangle{color:#2e2924}
+.new-pack-dose{z-index:3;color:#2b333d;font:900 8px/9px Doto,Arial,sans-serif;font-variation-settings:"ROND" 0,"wght" 900;text-align:center;mix-blend-mode:color-dodge;pointer-events:none;white-space:nowrap}
+.new-brand-name{font:700 15px/18px 'Source Sans 3',Arial,sans-serif}
+.new-ticker-track span{font:700 12px/18px 'Source Sans 3',Arial,sans-serif;text-align:start}
+.page-14 .new-ticker-track span,.page-14done .new-ticker-track span{line-height:15px}
+.new-options label{gap:7px}
+.new-consent-copy{font-size:25px;line-height:32px}
+.ar-headline{left:33px!important;top:129px!important;width:362px!important;height:25px!important;font:900 16px/24px Doto,Arial,sans-serif!important;font-variation-settings:"ROND" 0,"wght" 900;color:#d83a00!important;text-align:center;animation:none!important}
+.ar-pack-hit{left:48px;top:135px;width:334px;height:704px}
+.dcd-ar-handoff-stage .ar-press-copy{visibility:hidden}
+.ar-fixed-gradient{position:absolute;pointer-events:none;mix-blend-mode:multiply}
+.ar-fixed-gradient.g1{left:-48px;top:-4px;width:510px;height:942px;background:linear-gradient(206.26252277234065deg,#fff 13.526%,transparent 37.155%,#c25100 93.712%)}
+.ar-fixed-gradient.g2{left:-41px;top:-6px;width:510px;height:942px;background:linear-gradient(264.6865816573264deg,#fff 21.631%,transparent 42.094%,#cf4900 91.073%)}
+.ar-fixed-gradient.g3{left:-34px;top:-12px;width:510px;height:942px;background:linear-gradient(266.4413399504181deg,#fff 22.18%,transparent 45.617%,#9e4f00 101.71%)}
+.ar-fixed-gradient.g4{left:-48px;top:-4px;width:510px;height:942px;background:linear-gradient(206.26252277234065deg,rgba(255,255,255,.8) 13.526%,transparent 37.155%,#9e2a00 93.712%);mix-blend-mode:lighten}
+.ar-fixed-bg{position:absolute;inset:0;isolation:isolate;overflow:hidden}
+.ar-fixed-bg>.bg{left:0!important;top:0!important;width:100%!important;height:100%!important}
+.ar-fixed-base-tint{position:absolute;left:-15px;top:43px;width:459px;height:883px;background:#d83a00;mix-blend-mode:color;pointer-events:none}
