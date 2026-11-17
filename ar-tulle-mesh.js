@@ -356,10 +356,11 @@ function canvasCloth(root){
       const shiftX=profile.approach*fly,shiftY=-55*fly;
       const layerWidth=cw*profile.width+2*scalpClearance(fw),layerHeight=ch*profile.length;
       const exit=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
-      const alpha=layer.removing?1-ease(exit):clamp(age/.14,0,1);
+      const alpha=layer.removing?1-ease(clamp((exit-.32)/.68,0,1)):clamp(age/.14,0,1);
       if(alpha<=0)continue;
       ctx.save();ctx.globalAlpha=alpha;
-      ctx.translate(cx+shiftX+exit*45+profile.shift*fw,cy+shiftY-exit*155);
+      const peelTravel=1-Math.pow(1-exit,2);
+      ctx.translate(cx+shiftX+peelTravel*(cw*.35+W*.75)+profile.shift*fw,cy+shiftY-peelTravel*(ch*.23+H*.20));
       ctx.rotate(angle);
       // Keep crown contact fixed while varying the lower panel's dimensions.
       ctx.translate(0,-ch*.44);ctx.scale(layerWidth/cw,layerHeight/ch);ctx.translate(0,ch*.44);
@@ -420,7 +421,7 @@ function create(root){
   canvas.width=Math.round(W*pixelRatio);canvas.height=Math.round(H*pixelRatio);root.prepend(canvas);
   let gl,program;
   try{
-    gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,premultipliedAlpha:true});
+    gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,stencil:true,premultipliedAlpha:true});
     if(!gl)throw Error('WebGL not supported');
     program=gl.createProgram();
     gl.attachShader(program,shader(gl,gl.VERTEX_SHADER,VERT));
@@ -949,7 +950,7 @@ function create(root){
           const approach=layer.removing?1:arrival(progress);
           const fly=1-approach;
           const leave=layer.removing?clamp((now-layer.exit)/1150,0,1):0;
-          const opacity=layer.removing?1-ease(clamp(leave,0,1)):clamp(seconds/.10,0,1);
+          const opacity=layer.removing?1-ease(clamp((leave-.32)/.68,0,1)):clamp(seconds/.10,0,1);
           if(opacity<=0)continue;
           const shiftX=clothProfile(layer).approach*fly;
           const shiftY=-55*fly;
@@ -959,7 +960,7 @@ function create(root){
           // Its back and front panels cannot depart at different times.
           if(layer.removing&&layer.peelSnapshot){
             vertices.set(layer.peelSnapshot);
-            const travel=ease(leave);
+            const travel=1-Math.pow(1-leave,2);
             const dx=travel*(layer.peelWidth*.35+W*.75);
             const dy=-travel*(layer.peelHeight*.23+H*.20);
             for(let at=0;at<vertices.length;at+=stride){
@@ -1033,7 +1034,15 @@ function create(root){
           // Five stacked textile layers must stay translucent; embroidery
           // remains opaque enough to be read even across the older layers.
           gl.uniform1f(opacityUniform,opacity*(pass===0?.96:1));
+          // Each departing sheet contributes at most one fragment per pixel.
+          // Coincident triangles in folded cloth must never accumulate alpha.
+          const singlePeel=layer.removing&&gl.getParameter(gl.STENCIL_BITS)>0;
+          if(singlePeel){
+            gl.enable(gl.STENCIL_TEST);gl.stencilMask(0xff);gl.clearStencil(0);gl.clear(gl.STENCIL_BUFFER_BIT);
+            gl.stencilFunc(gl.EQUAL,0,0xff);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);
+          }
           gl.drawElements(gl.TRIANGLES,indexCount,gl.UNSIGNED_SHORT,0);
+          if(singlePeel)gl.disable(gl.STENCIL_TEST);
         }
       }
       const err=gl.getError();
@@ -1045,7 +1054,7 @@ function create(root){
       reportState('rendering',now);
       renderErrorReported=false;
     }catch(error){
-      gl.colorMask(true,true,true,true);gl.depthMask(true);
+      gl.colorMask(true,true,true,true);gl.depthMask(true);gl.disable(gl.STENCIL_TEST);
       root.classList.remove('ar-tulle-ready');
       // Show only one renderer at any time, including during a failed GPU draw.
       canvas.style.visibility='hidden';activeRenderer='fallback';
