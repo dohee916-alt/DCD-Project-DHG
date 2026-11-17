@@ -41,6 +41,15 @@ function stop(id){
  pending.delete(id);
  const voice=voices.get(id);if(!voice)return;
  voices.delete(id);
+ // The pen leaving the paper should not abruptly cut the scratch texture.
+ if(id==='signature'&&context&&context.state==='running'){
+  const now=context.currentTime;
+  voice.gain.gain.cancelScheduledValues(now);
+  voice.gain.gain.setValueAtTime(voice.gain.gain.value,now);
+  voice.gain.gain.linearRampToValueAtTime(0,now+.19);
+  try{voice.node.stop(now+.20);}catch{}
+  return;
+ }
  try{voice.node.stop();}catch{}
  voice.node.disconnect();voice.gain.disconnect();
 }
@@ -50,7 +59,11 @@ function start(id,options={}){
  stop(id);
  const node=context.createBufferSource(),gain=context.createGain();
  node.buffer=buffer;
- gain.gain.value=clip.gain;
+ if(id==='signature'){
+  const now=context.currentTime;
+  gain.gain.setValueAtTime(0,now);
+  gain.gain.linearRampToValueAtTime(clip.gain,now+.14);
+ }else gain.gain.value=clip.gain;
  node.connect(gain);gain.connect(bus);
  if(options.loop){
   node.loop=true;node.loopStart=clip.start;node.loopEnd=clip.start+clip.duration;
