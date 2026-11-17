@@ -642,8 +642,8 @@ function createFaceWarp(root){
    float jawU=abs(x)/max(jawWidth,.001);
    float jawEnvelope=(1.0-smoothstep(1.0,1.85,jawU))*smoothstep(.32,.78,jawU);
    float sx=x*(.038*full*envelope*verticalEnvelope*centerProtect
-      +.012*slim*envelope*verticalEnvelope*centerProtect
-      +.082*slim*jawBand*jawEnvelope);
+      +.027*slim*envelope*verticalEnvelope*centerProtect
+      +.066*slim*jawBand*jawEnvelope);
    // Shorten the bottom very slightly instead of elongating the face.
    // The jaw tapers toward the existing chin without a stretched oval.
    float chinBand=smoothstep(.66,.96,y)*(1.0-smoothstep(1.06,1.45,y));
