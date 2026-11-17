@@ -61,10 +61,10 @@ function create(root){
    renderer.toneMapping=THREE.NoToneMapping;
    el.replaceChildren(renderer.domElement);
    renderer.domElement.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none';
-   scene.add(new THREE.HemisphereLight(0xffeee6,0xe7a18d,1.05));
-   const key=new THREE.DirectionalLight(0xffffff,.78);
+   scene.add(new THREE.HemisphereLight(0xffeee6,0xf2c4b1,1.35));
+   const key=new THREE.DirectionalLight(0xffffff,.58);
    key.position.set(-6,10,16);scene.add(key);
-   const fill=new THREE.DirectionalLight(0xffc8ad,.32);
+   const fill=new THREE.DirectionalLight(0xffdfce,.42);
    fill.position.set(7,2,-5);scene.add(fill);
    // Exact pre-regression *closed* gesture from the old working
    // 2026-11-09 Pose_OK implementation (a314b99e28a1).
@@ -125,18 +125,14 @@ function create(root){
    model.traverse(mesh=>{
     if(!mesh.isMesh)return;
     mesh.frustumCulled=false;
-    // Smooth the actual rig's vertex normals without changing its shape,
-    // skin attributes, bone weights or animation.
-    if(mesh.geometry?.attributes?.normal){
-     mesh.geometry=mesh.geometry.clone();
-     mesh.geometry.computeVertexNormals();
-     owned.push(mesh.geometry);
-    }
+    // Preserve authored glTF normals, including matching normals at UV seams.
+    // Render a depth-writing opaque surface so overlapping triangles never
+    // accumulate alpha. Overall guide opacity is applied once by the DOM.
     const material=new THREE.MeshPhysicalMaterial({
-     color:0xffffff,roughness:1,metalness:0,clearcoat:0,
-     clearcoatRoughness:1,flatShading:false,
-     transparent:true,opacity:.90,side:THREE.FrontSide,
-     depthTest:true,depthWrite:false
+     color:0xffffff,roughness:.52,metalness:0,clearcoat:.08,
+     clearcoatRoughness:.65,flatShading:false,
+     transparent:false,opacity:1,premultipliedAlpha:true,side:THREE.FrontSide,
+     depthTest:true,depthWrite:true
     });
     material.onBeforeCompile=shader=>{
      shader.uniforms.dcdPeach={value:peach};
@@ -156,10 +152,11 @@ function create(root){
        'float wristAlpha=smoothstep(-0.10,8.6,vDcdLocalY);',
        'float blush=smoothstep(0.0,24.0,vDcdLocalY);',
        'diffuseColor.rgb=mix(dcdPeach,dcdIvory,blush);',
-       'diffuseColor.a*=wristAlpha;'
-      ].join('\n'));
+       '// Fade is composited after depth resolution, not per triangle.'
+      ].join('\n'))
+      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n gl_FragColor.a=wristAlpha;');
     };
-    material.customProgramCacheKey=()=> 'dcd-web-guide-matched-orange-soft-hand-v4';
+    material.customProgramCacheKey=()=> 'dcd-authored-normals-depth-composite-v5';
     owned.push(material);
     mesh.material=material;
    });
@@ -218,7 +215,7 @@ function create(root){
   const distanceScale=1-.57*recede;
   pivot.scale.setScalar(poseScale*distanceScale);
   el.style.display=visibility>.002?'block':'none';
-  el.style.opacity=String(visibility);
+  el.style.opacity=String(visibility*.90);
   renderer.render(scene,camera);
  }
  init();
