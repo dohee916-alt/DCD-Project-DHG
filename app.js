@@ -511,10 +511,10 @@ function arPackMarkup(figmaChoicePreview=false){
 window.DCD_AR_PACK_PREVIEW=()=>arPackMarkup(true);
 window.DCD_RENDER_FIGURES=drawFigures;
 function arMarkup(){
-  if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',68,141,292,44,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
-  let h='<div class="lay ar-orange-background ar-prescription-background" '+box(0,0,428,926)+' aria-hidden="true"><div class="ar-prescription-landscape">'+prescriptionGradientLayers()+'</div></div>'+text('>> NOW PRESCRIBE YOURSELF',45,93,362,25,'ar-headline');
+  if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',68,89,292,44,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
+  let h='<div class="lay ar-orange-background ar-prescription-background" '+box(0,0,428,926)+' aria-hidden="true"><div class="ar-prescription-landscape">'+prescriptionGradientLayers()+'</div></div>'+text('>> NOW PRESCRIBE YOURSELF',45,41,362,25,'ar-headline');
   h+=arPackMarkup();
-  if(s.page==='ar')h+=text('PRESS THE PACK!',29,829,370,24,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
+  if(s.page==='ar')h+=text('PRESS THE PACK!',29,777,370,24,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
   return h;
 }
 // The exact SIX layers overlapped at the left-bottom of the Figma AR canvas.
