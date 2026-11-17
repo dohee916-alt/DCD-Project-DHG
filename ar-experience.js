@@ -596,6 +596,146 @@ async function initModels(session){
 function handsDue(now){
  return state.hand&&(state.frame==='AR6'||state.frame==='AR7')&&now-state.lastHand>=70;
 }
+
+/* Local inverse image warping, following the radial bulge/pinch and
+   smooth landmark handles used in GPU image-processing pipelines.
+   Only the displayed camera is warped. Tracking and segmentation still
+   receive the original video. No second model, change to facial geometry
+   used by the fabric, or persistent camera images. */
+function createFaceWarp(root){
+ const canvas=document.createElement('canvas');
+ canvas.className='ar-face-warp';
+ canvas.setAttribute('aria-hidden','true');
+ canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;visibility:hidden';
+ root.appendChild(canvas);
+ const gl=canvas.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false});
+ if(!gl){canvas.remove();return null;}
+ const vs='attribute vec2 p; varying vec2 uv; void main(){uv=(p+1.0)*0.5;gl_Position=vec4(p,0.0,1.0);}';
+ const fs=`
+ precision highp float;
+ varying vec2 uv;
+ uniform sampler2D image;
+ uniform vec2 crop,aspect;
+ uniform vec2 leftEye,rightEye,leftCheek,rightCheek,leftJaw,rightJaw,axis,mid;
+ uniform vec4 radii;
+ uniform float amount;
+ float weight(vec2 p,vec2 c,float r){
+   float q=clamp(length(p-c)/max(r,0.0001),0.0,1.0);
+   float w=1.0-q*q;return w*w;
+ }
+ vec2 eye(vec2 p,vec2 c,float r,float strength){
+   return (p-c)*(-strength*weight(p,c,r));
+ }
+ vec2 handle(vec2 p,vec2 c,vec2 shift,float r){
+   return shift*weight(p,c,r);
+ }
+ void main(){
+   // Work in isotropic source-height units, then sample unmirrored video.
+   vec2 st=vec2(1.0-uv.x,1.0-uv.y)*crop+(1.0-crop)*0.5;
+   vec2 p=st*aspect;
+   vec2 d=eye(p,leftEye,radii.x,amount*.095)+eye(p,rightEye,radii.y,amount*.095);
+   d+=handle(p,leftCheek,-axis*radii.z*.095*amount,radii.z);
+   d+=handle(p,rightCheek,axis*radii.z*.095*amount,radii.z);
+   d+=handle(p,leftJaw,-axis*radii.w*.14*amount,radii.w);
+   d+=handle(p,rightJaw,axis*radii.w*.14*amount,radii.w);
+   // Never displace the center line: nose and mouth retain their form.
+   float centerDistance=abs(dot(p-mid,axis));
+   float preserve=smoothstep(0.0,radii.z*.40,centerDistance);
+   vec2 eyes=eye(p,leftEye,radii.x,amount*.095)+eye(p,rightEye,radii.y,amount*.095);
+   vec2 q=(p+eyes+(d-eyes)*preserve)/aspect;
+   gl_FragColor=texture2D(image,clamp(q,vec2(0.0),vec2(1.0)));
+ }`;
+ function shader(kind,source){const sh=gl.createShader(kind);gl.shaderSource(sh,source);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(sh));return sh;}
+ let program,buffer,texture;
+ try{
+   const v=shader(gl.VERTEX_SHADER,vs),f=shader(gl.FRAGMENT_SHADER,fs);
+   program=gl.createProgram();gl.attachShader(program,v);gl.attachShader(program,f);gl.linkProgram(program);
+   gl.deleteShader(v);gl.deleteShader(f);
+   if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));
+   gl.useProgram(program);
+   buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+   const p=gl.getAttribLocation(program,'p');gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,2,gl.FLOAT,false,0,0);
+   texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+ }catch(error){console.warn('[DCD face warp]',error);canvas.remove();return null;}
+ const uniforms={};
+ for(const key of ['image','crop','aspect','leftEye','rightEye','leftCheek','rightCheek','leftJaw','rightJaw','axis','mid','radii','amount'])uniforms[key]=gl.getUniformLocation(program,key);
+ let measured=null,smooth=null,lastSeen=0,lastDraw=0,lastTime=-1,amount=0,dead=false,tw=0,th=0;
+ const mix=(a,b,t)=>a+(b-a)*t;
+ function update(points,w,h,now){
+   if(!points?.length||!w||!h)return;
+   const ratio=w/h;
+   const pt=i=>[points[i].x*ratio,points[i].y];
+   const avg=ids=>ids.reduce((a,i)=>{const p=pt(i);return [a[0]+p[0]/ids.length,a[1]+p[1]/ids.length]},[0,0]);
+   const leftEye=avg([33,133,159,145]),rightEye=avg([362,263,386,374]);
+   const cheekA=avg([234,93,132]),cheekB=avg([454,323,361]);
+   const jawA=avg([172,136,150]),jawB=avg([397,365,379]);
+   const dist=(a,b)=>Math.hypot(b[0]-a[0],b[1]-a[1]);
+   const fw=dist(cheekA,cheekB);
+   if(fw<.036)return;
+   const axis=[(cheekB[0]-cheekA[0])/fw,(cheekB[1]-cheekA[1])/fw];
+   const mid=avg([1,152,10]);
+   measured={leftEye,rightEye,leftCheek:cheekA,rightCheek:cheekB,leftJaw:jawA,rightJaw:jawB,axis,mid,
+      radii:[Math.min(fw*.28,dist(pt(33),pt(133))*1.15),Math.min(fw*.28,dist(pt(362),pt(263))*1.15),fw*.34,fw*.30]};
+   if(!smooth)smooth=Object.fromEntries(Object.entries(measured).map(([k,v])=>[k,v.slice()]));
+   lastSeen=now;
+ }
+ function render(video,now,target){
+   if(dead||gl.isContextLost()){canvas.style.visibility='hidden';return;}
+   if(!video||video.readyState<2||!video.videoWidth)return;
+   const dt=lastDraw?Math.min(100,now-lastDraw):33;
+   if(dt<33&&lastDraw)return;
+   lastDraw=now;
+   const valid=measured&&now-lastSeen<450;
+   const desired=valid?target:0;
+   amount=mix(amount,desired,1-Math.exp(-dt/235));
+   if(!smooth||Math.abs(amount)<.008&&desired===0){canvas.style.visibility='hidden';return;}
+   // Stronger response to moving landmarks, softer response at rest.
+   for(const k of Object.keys(measured)){
+     const q=measured[k],p=smooth[k];
+     const delta=Math.hypot(...q.map((v,i)=>v-p[i]));
+     const a=1-Math.exp(-dt/(delta>.028?38:75));
+     for(let i=0;i<p.length;i++)p[i]=mix(p[i],q[i],a);
+   }
+   const vw=video.videoWidth,vh=video.videoHeight;
+   const scale=Math.max(428/vw,926/vh);
+   const ratio=Math.min(1.5,window.devicePixelRatio||1);
+   const cw=Math.round(428*ratio),ch=Math.round(926*ratio);
+   if(canvas.width!==cw||canvas.height!==ch){canvas.width=cw;canvas.height=ch;}
+   try{
+     gl.viewport(0,0,cw,ch);gl.useProgram(program);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);
+     if(lastTime!==video.currentTime||tw!==vw||th!==vh){
+       if(tw!==vw||th!==vh){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,video);tw=vw;th=vh;}
+       else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,video);
+       lastTime=video.currentTime;
+     }
+     gl.uniform1i(uniforms.image,0);
+     gl.uniform2f(uniforms.crop,428/(vw*scale),926/(vh*scale));
+     gl.uniform2f(uniforms.aspect,vw/vh,1);
+     for(const k of ['leftEye','rightEye','leftCheek','rightCheek','leftJaw','rightJaw','axis','mid'])gl.uniform2fv(uniforms[k],smooth[k]);
+     gl.uniform4fv(uniforms.radii,smooth.radii);gl.uniform1f(uniforms.amount,amount);
+     gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+     canvas.style.visibility='visible';
+   }catch(error){dead=true;canvas.style.visibility='hidden';console.warn('[DCD face warp]',error);}
+ }
+ function hide(){canvas.style.visibility='hidden';lastDraw=0;}
+ function destroy(){dead=true;gl.deleteTexture(texture);gl.deleteBuffer(buffer);gl.deleteProgram(program);canvas.remove();}
+ return {update,render,hide,destroy};
+}
+function faceWarpTarget(){
+ if(['AR3-1','AR4','AR5'].includes(state.frame))return 1;
+ if(state.frame==='AR5-2')return -1;
+ if(['AR6','AR7'].includes(state.frame)){
+   const sign=state.variant==='replacement'?-1:1;
+   return sign*Math.min(1,state.maskCount/5);
+ }
+ return 0;
+}
+
 function track(frame,width,height,now=performance.now()){
  try{
    if(state.face&&now-state.lastFace>=100){
@@ -605,6 +745,10 @@ function track(frame,width,height,now=performance.now()){
      // recognition and progression. Face observation happens first.
      observeFace(points,now);
      if(points?.length){
+       if(!state.faceWarp&&state.frame!=='AR3'){
+         try{state.faceWarp=createFaceWarp(state.root);}catch(error){console.warn('[DCD face warp]',error);}
+       }
+       state.faceWarp?.update(points,width,height,now);
        const rawX=[points[234].x,points[454].x];
        state.root.__dcdFaceRegion={
          cx:(rawX[0]+rawX[1])*.5,
@@ -650,6 +794,8 @@ function tick(){
  // Restore the previous independently timed tracker: segmentation and
  // WebGL updates must not trigger a heavy face inference every animation frame.
  const now=performance.now();
+ if(['AR5-1','AR8','AR9','AR10'].includes(state.frame))state.faceWarp?.hide();
+ else state.faceWarp?.render(video,now,faceWarpTarget());
  if(!(state.face&&now-state.lastFace>=100)&&!handsDue(now))return;
  if(video.currentTime===state.lastVideoTime)return;
  state.lastVideoTime=video.currentTime;
@@ -714,6 +860,7 @@ function stop(preservePrimedAudio=false){
  state.face?.close();state.face=null;
  state.hand?.close();state.hand=null;
  state.tulle?.destroy();state.tulle=null;state.sheets=[];
+ state.faceWarp?.destroy();state.faceWarp=null;
  state.handGuide?.destroy();state.handGuide=null;
  state.root=null;state.stage=null;state.video=null;
 }
