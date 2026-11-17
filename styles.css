@@ -1739,3 +1739,6 @@ canvas.figure{object-fit:contain!important}
 
 /* NewAR1: restore original Figma 428x926 artboard placement. */
 #stage.page-ar .ar-press-copy{left:29px!important;top:829px!important;width:370px!important;height:24px!important;z-index:14!important;}
+
+/* AR9 / AR10: stable ending compositor. Never animate the portrait filters or opacity. */
+#stage .ar-immersive:is([data-ar-frame="AR9"],[data-ar-frame="AR10"]) :is(.ar-person-segment,.ar-portrait-camera,.ar-group3-figma,.ar-copy,.ar-final-not,.ar-final-rest){animation:none!important;transition:none!important;}
