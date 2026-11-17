@@ -22,7 +22,12 @@ function unlock(){
   ctx=new AudioCtx();
   master=ctx.createGain();master.gain.value=.9;master.connect(ctx.destination);
  }
- ctx.resume()?.catch(e=>console.warn('[DCD scene audio] resume:',e));
+ ctx.resume()?.then(()=>{
+  // The rotate/workbench scene may already have begun before the first
+  // pointer gesture. Start that pending ambience right after unlocking.
+  if(workbenchPages.has(activePage)&&!voices.has('workbench-ambience'))
+   play('workbench-ambience',{loop:true});
+ }).catch(e=>console.warn('[DCD scene audio] resume:',e));
 }
 async function buffer(name){
  if(decoded.has(name))return decoded.get(name);
@@ -79,7 +84,12 @@ async function play(name,options={}){
  }catch(e){console.warn('[DCD scene audio] play:',name,e)}
 }
 function scene(page){
- if(page===activePage)return;
+ if(page===activePage){
+  // Re-rendering the rotate guide or workbench must not silence audio.
+  if(workbenchPages.has(page)&&enabled&&!voices.has('workbench-ambience'))
+   play('workbench-ambience',{loop:true});
+  return;
+ }
  const previous=activePage;activePage=page;
  if(workbenchPages.has(page)){
   if(!workbenchPages.has(previous))play('workbench-ambience',{loop:true});
