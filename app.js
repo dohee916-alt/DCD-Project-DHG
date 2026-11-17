@@ -256,9 +256,9 @@ function introMarkup(p){
     h+='<button class="full-hit" data-action="enter" aria-label="Visit website"></button>';
     if(!openingSoundEnabled)h+='<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound on the opening advertisement"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>';
   }else if(s.phase==='guide'){
-    h+=text('PULL THE STRINGS APART',26,814,376,96,'doto guide-blink guide-copy');
+    h+=text('PULL THE STRINGS APART',26,819,376,96,'doto guide-blink guide-copy');
     // Figma 여기확인1: visible bounding boxes, with mirrored upper hand.
-    h+=img(A.gestureHand,18,395,142,161,'gesture gesture-upper');
+    h+=img(A.gestureHand,18,405,142,161,'gesture gesture-upper');
     h+=img(A.gestureHand,250,556,141,161,'gesture gesture-lower');
     h+='<div class="pull-zone left-zone" aria-label="Pull left string"></div><div class="pull-zone right-zone" aria-label="Pull right string"></div>';
   }
