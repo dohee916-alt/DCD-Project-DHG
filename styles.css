@@ -465,9 +465,9 @@ canvas.figure{object-fit:contain!important}
 .syringe-guide-core{animation:dcdGuideToBottle 1.5s ease-in-out infinite!important}
 .syringe-injection-guide{animation:dcdGuideToFigure 1.5s ease-in-out infinite!important}
 .pack-guide-hand{transform:none;animation:dcdGuideToPack 1.55s ease-in-out 3 forwards!important}
-@keyframes dcdGuideToBottle{0%{translate:0 0;opacity:1}99.9%{translate:-128px -111px;opacity:.43}100%{translate:0 0;opacity:1}}
-@keyframes dcdGuideToFigure{0%{translate:0 0;opacity:1}99.9%{translate:147px -87px;opacity:.43}100%{translate:0 0;opacity:1}}
-@keyframes dcdGuideToPack{0%{translate:0 0;opacity:1}99.9%{translate:297px -28px;opacity:.43}100%{translate:297px -28px;opacity:0}}
+@keyframes dcdGuideToBottle{0%{translate:0 0;opacity:1}99.9%{translate:-129.36px -107px;opacity:.43}100%{translate:0 0;opacity:1}}
+@keyframes dcdGuideToFigure{0%{translate:0 0;opacity:1}99.9%{translate:146.39px -85px;opacity:.43}100%{translate:0 0;opacity:1}}
+@keyframes dcdGuideToPack{0%{translate:0 0;opacity:1}99.9%{translate:292px -31px;opacity:.43}100%{translate:292px -31px;opacity:0}}
 
 
 /* WEB 15/16 -> portrait AR: preserve the Figma art while making the handoff legible. */
@@ -1037,22 +1037,21 @@ canvas.figure{object-fit:contain!important}
 
 /* WEB 01 user-approved try-webguide 607:336, not legacy WEB 01.
    Figma target shapes (30%) are reference points ONLY; no ghost rendering.
-   Source: image fill FILL, 164 x 185, 70% opacity, upper X-mirrored.
-   Upper: (152,370) => (70,257); lower: (252,564) => (353,676). */
+   Source: 여기확인1, 70% opacity, upper X-mirrored.
+   Upper visible bounds (18,395) => (-71,272); lower (250,560) => (351,676). */
 #stage.page-01.phase-guide .gesture{
- width:164px!important;height:185px!important;
- object-fit:cover!important;object-position:center!important;transform-origin:0 0!important;
+ object-fit:cover!important;object-position:center!important;transform-origin:center!important;
  mix-blend-mode:normal!important;pointer-events:none!important;
  z-index:6!important;
  animation:figmaTryWebguideHands 2.8s ease-in-out infinite!important;
 }
 #stage.page-01.phase-guide .gesture-upper{
  transform:scaleX(-1)!important;
- --gx:-82px;--gy:-113px;
+ --gx:-89px;--gy:-123px;
 }
 #stage.page-01.phase-guide .gesture-lower{
  transform:none!important;
- --gx:101px;--gy:112px;
+ --gx:101px;--gy:116px;
 }
 @keyframes figmaTryWebguideHands{
  /* Start -> outward pull -> disappear at destination -> instant reset.
