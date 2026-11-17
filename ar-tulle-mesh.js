@@ -728,8 +728,17 @@ function create(root){
     const radiusX=faceCenter.radiusX/faceCenter.fw;
     const radiusZ=faceCenter.radiusZ/faceCenter.fw;
     const anchorY=-radiusY-.025,headY=0;
-    const hairLine=faceCenter.crownCurve?.length>=8
+    const rawHairLine=faceCenter.crownCurve?.length>=8
       ?[...faceCenter.crownCurve].sort((a,b)=>a.x-b.x):null;
+    // Suppress single-column matte spikes, not whole sections of the scalp.
+    const hairLine=rawHairLine?.map((p,i,a)=>{
+      if(!i||i===a.length-1)return p;
+      const before=a[i-1],after=a[i+1];
+      const t=clamp((p.x-before.x)/Math.max(1e-6,after.x-before.x),0,1);
+      const expected=mix(before.y,after.y,t);
+      const maxCorrection=faceCenter.fw*.025/H;
+      return {x:p.x,y:p.y+clamp((expected-p.y)*.35,-maxCorrection,maxCorrection)};
+    })||null;
     function foreheadFallbackY(head,localX){
       const foreheadY=head.y-head.fh*.48;
       const lateral=Math.min(1,Math.abs(localX)/Math.max(.6,head.radiusX/head.fw));
@@ -737,16 +746,40 @@ function create(root){
     }
     function measuredCrownY(x){
       if(!hairLine)return null;
-      const pos=x/W;
-      if(pos<=hairLine[0].x)return hairLine[0].y*H;
+      const pos=x/W,first=hairLine[0],last=hairLine[hairLine.length-1];
+      // Extend the measured crown tangentially into the hanging side.
+      // Constant-height extrapolation creates a flat overhanging pin shelf.
+      if(pos<=first.x||pos>=last.x){
+        const left=pos<=first.x,edge=left?first:last;
+        const neighbor=left?hairLine[1]:hairLine[hairLine.length-2];
+        const gap=Math.abs(pos-edge.x)*W;
+        const dx=Math.max(.001,Math.abs(edge.x-neighbor.x)*W);
+        const outwardSlope=clamp((edge.y-neighbor.y)*H/dx,0,1.25);
+        const reach=Math.max(1,faceCenter.fw*.24);
+        const t=clamp(gap/reach,0,1);
+        return edge.y*H+Math.min(faceCenter.fw*.22,
+          gap*outwardSlope*.55+reach*.36*t*t);
+      }
+      // Shape-preserving cubic interpolation: no overshoot at the sample
+      // knots, and continuous first derivative along the crown.
+      const secant=(i,j)=>(hairLine[j].y-hairLine[i].y)/Math.max(1e-6,hairLine[j].x-hairLine[i].x);
+      const tangent=i=>{
+        if(i===0)return secant(0,1);
+        if(i===hairLine.length-1)return secant(i-1,i);
+        const a=secant(i-1,i),b=secant(i,i+1);
+        return a*b>0?2*a*b/(a+b):0;
+      };
       for(let i=1;i<hairLine.length;i++){
         const a=hairLine[i-1],b=hairLine[i];
         if(pos<=b.x){
-          const t=clamp((pos-a.x)/Math.max(.00001,b.x-a.x),0,1);
-          return (a.y+(b.y-a.y)*t)*H;
+          const dx=Math.max(1e-6,b.x-a.x);
+          const t=clamp((pos-a.x)/dx,0,1),t2=t*t,t3=t2*t;
+          const y=(2*t3-3*t2+1)*a.y+(t3-2*t2+t)*dx*tangent(i-1)
+            +(-2*t3+3*t2)*b.y+(t3-t2)*dx*tangent(i);
+          return clamp(y,Math.min(a.y,b.y),Math.max(a.y,b.y))*H;
         }
       }
-      return hairLine[hairLine.length-1].y*H;
+      return last.y*H;
     }
     const contactAge=clamp((now-layer.start-450)/1650,0,1);
     // Freeze only the accumulating gravity/constraint solver after the
@@ -871,7 +904,12 @@ function create(root){
         }
       }
       const margin=Math.max(3,head.fw*.025)+scalpClearance(head.fw);
-      const limit=clamp(screenX,leftBound-margin,rightBound+margin);
+      // Round the spatial transition at the hair-side limit instead of
+      // bending adjacent grid columns against a hard clamp plane.
+      const knee=Math.max(2,head.fw*.035);
+      const lo=leftBound-margin,hi=rightBound+margin;
+      const lower=Math.max(screenX,lo)+Math.pow(Math.max(0,knee-Math.abs(screenX-lo)),2)/(4*knee);
+      const limit=Math.min(lower,hi)-Math.pow(Math.max(0,knee-Math.abs(lower-hi)),2)/(4*knee);
       // Smooth correction of exterior vertices only; no global X shrink.
       const clearance=scalpClearance(head.fw);
       const upper=1-ease(clamp((screenY-foreheadY)/Math.max(1,head.fh*.45),0,1));
@@ -884,6 +922,38 @@ function create(root){
       mesh[at+6]=Math.min(u,1-u,v,1-v);mesh[at+7]=0;
       mesh[at+8]=nX;mesh[at+9]=nY;
       mesh[at+10]=Math.sqrt(Math.max(.08,1-nX*nX-nY*nY));
+    }
+    // Local spike cleanup only at the upper lateral head contour. Keep
+    // the central crown, chin hem and independent fabric folds untouched.
+    const N=GRID_COLS+1,count=nodes.length;
+    const xy=sim.upperSpikeXY||(sim.upperSpikeXY=new Float32Array(count*2));
+    for(let i=0;i<count;i++){xy[i*2]=mesh[i*stride];xy[i*2+1]=mesh[i*stride+1];}
+    const top=Number.isFinite(head.hairCrownY)?head.hairCrownY:head.y-head.fh*.88;
+    const bottom=head.y-head.fh*.36;
+    const threshold=Math.max(1.6,head.fw*.009),maxMove=head.fw*.042;
+    for(let i=0;i<count;i++){
+      const x=xy[i*2],y=xy[i*2+1],side=Math.sign(x-head.x);
+      if(y<top-head.fh*.20||y>bottom||Math.abs(x-head.x)<head.fw*.44)continue;
+      const r=Math.floor(i/N),c=i%N;
+      const pairs=[];
+      if(c>0&&c<GRID_COLS)pairs.push([i-1,i+1]);
+      if(r>0&&r<GRID_ROWS)pairs.push([i-N,i+N]);
+      let correctionX=0,correctionY=0;
+      for(const [a,b] of pairs){
+        const ax=xy[a*2],bx=xy[b*2],ay=xy[a*2+1],by=xy[b*2+1];
+        // Correct isolated exterior extrema only. A normal diagonal
+        // edge or a smooth folded sheet has no opposing-neighbor spike.
+        if((x-ax)*side>threshold&&(x-bx)*side>threshold)
+          correctionX=Math.max(correctionX,Math.min(maxMove,((x-(ax+bx)*.5)*side-threshold)*.65));
+        if(ay-y>threshold&&by-y>threshold){
+          const proposed=Math.min(maxMove,((ay+by)*.5-y-threshold)*.55);
+          const scalp=measuredCrownY(x);
+          const safe=Number.isFinite(scalp)?Math.max(0,scalp-scalpClearance(head.fw)-y):proposed;
+          correctionY=Math.max(correctionY,Math.min(proposed,safe));
+        }
+      }
+      mesh[i*stride]=x-side*correctionX;
+      mesh[i*stride+1]=y+correctionY;
     }
   }
   function arrival(t){
