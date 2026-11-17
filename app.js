@@ -340,7 +340,15 @@ function consentMarkup(){
   else h+=glassButton('YES',608,241,112,'ar')+glassButton('NO',730,241,112,'decline',true);
   return h;
 }
-function newPackMarkup(page=s.page,includeDose=true){
+// One physical dose label for every WEB/AR pack. Coordinates are local to
+// the WEB12 clear shell; AR scales the same geometry with its shell.
+const PACK_DOSE={x:52,y:181,w:81,h:36,packW:185.497,packH:391.108};
+function packDoseMarkup(x,y,w,h,cls=''){
+  const d=PACK_DOSE,scale=w/d.packW;
+  const dose=s.figures.reduce((sum,f)=>sum+f.orange,0).toFixed(1);
+  return '<div class="lay new-pack-dose '+cls+'" '+box(x+d.x*scale,y+d.y*h/d.packH,d.w,d.h,'transform:scale('+scale+');transform-origin:top left;')+'>SUM OF<br>APPLIED GLP-1<br>'+dose+'</div>';
+}
+function newPackMarkup(){
   // Figma 03_MOBILE_WEB / New12–New16 (615:538 etc).
   // These are the actual Figma slots and material bounds, not sizes inferred
   // from the different AR pack. Keep the group origin at the clear foil's origin.
@@ -353,10 +361,7 @@ function newPackMarkup(page=s.page,includeDose=true){
   let inside=img(A.arPackBack,2.235,2.980,182.517,385.149,'new-pack-layer new-pack-vertical new-pack-foil');
   inside+=figureSlots.map((q,i)=>canvasFigure(order[i],...q,'new-pack-figure')).join('');
   inside+=img(A.arPackClear,0,0,185.497,391.108,'new-pack-layer new-pack-vertical new-pack-clear');
-  // The fixed dose is physically on the pack; keep it with the flight.
-  // Portrait source x=190,y=260,w=36,h=81 -> landscape x=260,y=202.
-  const dose=s.figures.reduce((a,f)=>a+f.orange,0).toFixed(1);
-  if(includeDose)inside+=text('SUM OF<br>APPLIED GLP-1<br>'+dose,52,page==='15'?182:181,81,36,'new-pack-dose');
+  inside+=packDoseMarkup(0,0,185.497,391.108);
   return group(208,21,185.497,391.108,'new-pack-assembly',inside);
 }
 function newTicker(x,reverse=false){
@@ -408,7 +413,7 @@ function prescriptionGradientLayers(){
 function newPrescriptionMarkup(page=s.page){
   const side=page==='13',sign=page==='14'||page==='14done',consent=page==='15'||page==='16';
   let h=img(A.workbenchBackground,52,0,874,428,'bg');
-  h+=newPackMarkup(page);
+  h+=newPackMarkup();
   h+=text(consent?'PRESCRIBED':'PRESCRIPTION',93,21,25,291,'new-prescription-title');
   h+='<svg class="lay new-prescription-triangle" '+box(99,consent?168:192,20,17)+' viewBox="0 0 20 17" aria-hidden="true"><path d="M10 1 L17.77 12.75 L2.23 12.75 Z" fill="currentColor" stroke="currentColor" stroke-width=".6" stroke-linejoin="round"/></svg>';
   h+=text('DCD<br>LAB',99,373,79,25,'new-brand-name');
@@ -552,14 +557,7 @@ function arPackMarkup(figmaChoicePreview=false){
   front+=img(A.arOverlayFrontStates[0],47.523,145+dy,333.845,703.892,'ar-intact-clear ar-original-clear');
   front+='<canvas class="ar-front-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-front-morph" width="428" height="926" aria-hidden="true"></canvas>';
-  // Same normalized label geometry as the WEB physical pack, including
-  // the final WEB15/16 one-pixel Y adjustment. The AR5-1 preview scales
-  // this complete assembly, so the label follows its existing transform.
-  const dose=s.figures.reduce((a,f)=>a+f.orange,0).toFixed(1);
-  const doseScale=333.845/185.497;
-  const doseX=47.523+52*doseScale;
-  const doseY=145+dy+182*(703.892/391.108);
-  front+='<div class="lay new-pack-dose ar-pack-dose" '+box(doseX,doseY,81,36,'transform:scale('+doseScale+');transform-origin:top left;')+'>SUM OF<br>APPLIED GLP-1<br>'+dose+'</div>';
+  front+=packDoseMarkup(47.523,145+dy,333.845,703.892,'ar-pack-dose');
   h+='<div class="ar-pack-face ar-pack-front">'+front+'</div>';
   return h+'</div>';
 }
@@ -1221,7 +1219,7 @@ async function animatePackIntoPrescription(){
   flight.className='pack-flight-overlay';
   const front=document.createElement('div');
   front.className='pack-flight-front';
-  front.innerHTML=newPackMarkup('12');
+  front.innerHTML=newPackMarkup();
   flight.appendChild(front);
   root.appendChild(next);
   root.appendChild(flight);
