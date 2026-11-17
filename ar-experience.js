@@ -131,8 +131,8 @@ function stopWhisper(force=false){
    'AR6':{copy:[50,89,342,44]},
    'AR7':{copy:[50,89,342,44]},
    'AR8':{},
-   'AR9':{copy:[61,378,306,64]},
-   'AR10':{copy:[0,0,428,926],not:[61,330,306,70],rest:[61,402,306,96]}
+   'AR9':{copy:[61,430,306,64]},
+   'AR10':{copy:[0,0,428,926],not:[61,382,306,70],rest:[61,454,306,96]}
  };
  function placeText(node,rect){
    if(!node||!rect)return;
@@ -318,6 +318,8 @@ function completeHandPeel(){
     if(state.manualPeels===1)state.handGuide?.hideOnce(0);
   }else{
     state.autoPeeling=true;
+    caption('');
+    state.root?.classList.remove('ar-doto-blink');
     // Gesture three starts THREE separate automatic peel animations.
     // No fourth gesture is needed and the first two gestures remove one each.
     for(let i=0;i<3;i++)delay(()=>{
