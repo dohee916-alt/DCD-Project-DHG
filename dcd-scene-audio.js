@@ -15,6 +15,7 @@ const AudioCtx=window.AudioContext||window.webkitAudioContext;
 const workbenchPages=new Set(['03','workbench','08a','08b','09','10','11']);
 let ctx=null,master=null,activePage='',enabled=false;
 const decoded=new Map(),pending=new Map(),voices=new Map(),serials=new Map();
+const loopLoads=new Set();
 function unlock(){
  if(!AudioCtx)return;
  enabled=true;
@@ -25,7 +26,7 @@ function unlock(){
  ctx.resume()?.then(()=>{
   // The rotate/workbench scene may already have begun before the first
   // pointer gesture. Start that pending ambience right after unlocking.
-  if(workbenchPages.has(activePage)&&!voices.has('workbench-ambience'))
+  if(workbenchPages.has(activePage)&&!voices.has('workbench-ambience')&&!loopLoads.has('workbench-ambience'))
    play('workbench-ambience',{loop:true});
  }).catch(e=>console.warn('[DCD scene audio] resume:',e));
 }
@@ -48,6 +49,7 @@ async function buffer(name){
 }
 function stop(name,fade=0){
  serials.set(name,(serials.get(name)||0)+1);
+ loopLoads.delete(name);
  const voice=voices.get(name);
  if(!voice)return;
  voices.delete(name);
@@ -66,7 +68,8 @@ function stop(name,fade=0){
 async function play(name,options={}){
  if(!sounds[name])return;
  // Repeated pages must not restart ongoing atmospheric loops.
- if(options.loop&&voices.has(name))return;
+ if(options.loop&&(voices.has(name)||loopLoads.has(name)))return;
+ if(options.loop)loopLoads.add(name);
  if(!options.loop)stop(name);
  const latest=(serials.get(name)||0)+1;
  serials.set(name,latest);
@@ -83,11 +86,12 @@ async function play(name,options={}){
   node.onended=()=>{if(voices.get(name)===voice)voices.delete(name);try{node.disconnect();gain.disconnect()}catch{}};
   node.start(0);
  }catch(e){console.warn('[DCD scene audio] play:',name,e)}
+ finally{if(options.loop)loopLoads.delete(name)}
 }
 function scene(page){
  if(page===activePage){
   // Re-rendering the rotate guide or workbench must not silence audio.
-  if(workbenchPages.has(page)&&enabled&&!voices.has('workbench-ambience'))
+  if(workbenchPages.has(page)&&enabled&&!voices.has('workbench-ambience')&&!loopLoads.has('workbench-ambience'))
    play('workbench-ambience',{loop:true});
   return;
  }
