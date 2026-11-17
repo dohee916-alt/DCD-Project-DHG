@@ -285,7 +285,7 @@
 .ejecting-pack{animation:packExtrudeFigma 2.32s linear both!important}
 @keyframes packExtrudeFigma{0%{translate:0 0}47%{translate:106px 0}72%{translate:180px 0}85%{translate:218px 0}96%{translate:270px 0}100%{translate:270px 0}}
 .page-11 .rear-pack:not(.ejecting-pack){animation:none!important}
-.packed-copy.wave{font-family:Doto,Arial,sans-serif!important;font-size:16px!important;line-height:32px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:right!important;color:#d83a00}
+.packed-copy.wave{font-family:Doto,Arial,sans-serif!important;font-size:16px!important;line-height:28px!important;font-weight:900!important;font-variation-settings:"ROND" 0,"wght" 900!important;text-align:right!important;color:#d83a00}
 .packed-copy.wave span{display:inline-block;animation:packedLetterWaveFigma 1.24s ease-in-out infinite;vertical-align:top}
 @keyframes packedLetterWaveFigma{0%,42%,100%{translate:0 0}21%{translate:0 -5px}}
 
@@ -1365,8 +1365,8 @@ canvas.figure{object-fit:contain!important}
    Do not globally force black over the original ivory CTA. */
 .doto{color:#2e2924!important;line-height:1.08!important;}
 #stage .poster-click-guide,
-#stage.page-01 .guide-copy{color:#f9f6f2!important;line-height:32px!important;}
-#stage .ar-press-copy{color:#f9f6f2!important;line-height:29px!important;}/* Tighter two-line AR heading while keeping existing size and position. */
+#stage.page-01 .guide-copy{color:#f9f6f2!important;line-height:28px!important;}
+#stage .ar-press-copy{color:#f9f6f2!important;line-height:24px!important;}/* Tighter two-line AR heading while keeping existing size and position. */
 
 /* WEB04: orange syringe liquid layer only, 60% opacity */
 .syringe-2d .syringe-drug.orange{opacity:.7}
@@ -1637,7 +1637,7 @@ canvas.figure{object-fit:contain!important}
 }
 #stage .ar-immersive[data-ar-frame="AR3"] .ar-copy{
  
- font:900 16px/32px Doto,Arial,sans-serif;color:#2e2924;
+ font:900 16px/28px Doto,Arial,sans-serif;color:#2e2924;
  font-variation-settings:"ROND" 0,"wght" 900;
 }
 #stage .ar-immersive[data-ar-frame="AR3-1"] .ar-copy{
@@ -1660,12 +1660,12 @@ canvas.figure{object-fit:contain!important}
 }
 #stage .ar-immersive[data-ar-frame="AR6"] .ar-copy{
  
- font:900 16px/32px Doto,Arial,sans-serif;color:#2e2924;
+ font:900 16px/28px Doto,Arial,sans-serif;color:#2e2924;
  font-variation-settings:"ROND" 0,"wght" 900;
 }
 #stage .ar-immersive[data-ar-frame="AR7"] .ar-copy{
  
- font:900 16px/32px Doto,Arial,sans-serif;color:#2e2924;
+ font:900 16px/28px Doto,Arial,sans-serif;color:#2e2924;
  font-variation-settings:"ROND" 0,"wght" 900;
 }
 #stage .ar-immersive[data-ar-frame="AR8"] .ar-copy{
@@ -1741,3 +1741,7 @@ canvas.figure{object-fit:contain!important}
 
 /* AR9 / AR10: stable ending compositor. Never animate the portrait filters or opacity. */
 #stage .ar-immersive:is([data-ar-frame="AR9"],[data-ar-frame="AR10"]) :is(.ar-person-segment,.ar-portrait-camera,.ar-group3-figma,.ar-copy,.ar-final-not,.ar-final-rest){animation:none!important;transition:none!important;}
+
+/* Figma Doto guide line heights, 2026-11-17. Prompt 28px, Action 24px, Detail 12px. Keep each native text box and the existing type size/weight. */
+#stage :is(.rotate-guide,.ar-face-copy){line-height:28px!important;}
+#stage :is(.pack-guide-copy,.workbench-guide,.bottle-label,.signature-guide,.new-signature-guide,.new-section-prompt,.paper-prompt){line-height:12px!important;}
