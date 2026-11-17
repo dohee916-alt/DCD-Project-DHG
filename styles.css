@@ -404,7 +404,7 @@ canvas.figure{object-fit:contain!important}
 .ar-open-middle .ar-open-rotator img{left:-243px;top:-321px;width:1145px;height:648px;max-width:none;transform:none}
 .ar-open-final .ar-open-rotator img{left:0;top:-330px;width:1133px;height:659px;max-width:none;transform:none}
 .ar-falling-dolls,.ar-falling-dolls.released{z-index:2}
-.ar-headline{left:45px!important;top:93px!important;width:362px!important;height:25px!important}
+.ar-headline{left:45px!important;top:41px!important;width:362px!important;height:25px!important}
 .new-section-title{font:400 12px/15px Arial,sans-serif!important;color:#2b333d!important}
 .page-13.phase-typing .new-flow-content{animation:none!important;translate:0 0!important}
 @keyframes prescriptionContentRise{from{translate:0 310px}to{translate:0 0}}
@@ -1473,7 +1473,7 @@ canvas.figure{object-fit:contain!important}
  outline:2px solid white;outline-offset:2px;
 }
 #stage .ar-immersive .ar-ending-cta{
- position:absolute!important;left:80.103px!important;top:745.458px!important;
+ position:absolute!important;left:80.103px!important;top:693.458px!important;
  width:268px!important;height:111px!important;
  padding:0!important;margin:0!important;border:0!important;
  border-radius:0!important;background:none!important;box-shadow:none!important;
@@ -1628,7 +1628,7 @@ canvas.figure{object-fit:contain!important}
 
 /* === AR TEXT: CANONICAL FIGMA GEOMETRY, ONE RULE PER FRAME ===
    Figma 04_AR native 428 x 926 stage, identical to WEB's unmodified x/y.
-   Mock phone chrome is inside the Figma frame and is not subtracted.
+   Mock phone chrome is excluded: text boxes are frame-local Y minus 52px.
    Every frame has its OWN declaration — no later shared frame offsets.
    Do not add alternative .ar-copy/.ar-stigma typography blocks. */
 #stage .ar-immersive .ar-copy{
