@@ -566,7 +566,7 @@ window.DCD_AR_PACK_PREVIEW=()=>arPackMarkup(true);
 window.DCD_RENDER_FIGURES=drawFigures;
 function arMarkup(){
   if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',68,89,292,44,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
-  let h='<div class="lay ar-orange-background ar-prescription-background" '+box(0,0,428,926)+' aria-hidden="true"><div class="ar-fixed-bg">'+img(A.workbenchBackground,-84,52,655,874,'bg ar-fixed-bg-image')+'<div class="ar-fixed-base-tint"></div><div class="ar-fixed-gradient g1"></div><div class="ar-fixed-gradient g2"></div><div class="ar-fixed-gradient g3"></div><div class="ar-fixed-gradient g4"></div></div></div>'+text('NOW PRESCRIBE YOURSELF',33,129,362,25,'ar-headline');
+  let h='<div class="lay ar-orange-background ar-prescription-background" '+box(0,0,428,926)+' aria-hidden="true"><div class="ar-fixed-bg">'+img(A.workbenchBackground,-84,0,655,926,'bg ar-fixed-bg-image')+'<div class="ar-fixed-base-tint"></div><div class="ar-fixed-gradient g1"></div><div class="ar-fixed-gradient g2"></div><div class="ar-fixed-gradient g3"></div><div class="ar-fixed-gradient g4"></div></div></div>'+text('NOW PRESCRIBE YOURSELF',33,129,362,25,'ar-headline');
   h+=arPackMarkup();
   if(s.page==='ar')h+=text('PRESS THE PACK!',29,819,370,24,'doto guide-blink ar-press-copy')+'<button class="ar-pack-hit" data-action="openAr" aria-label="Open the pack"></button>';
   return h;
