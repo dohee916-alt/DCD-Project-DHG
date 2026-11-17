@@ -77,44 +77,27 @@ void main(){
   float right=texture2D(fabric,vUV+vec2(pixel.x,0.0)).a;
   float up=texture2D(fabric,vUV+vec2(0.0,pixel.y)).a;
   float down=texture2D(fabric,vUV-vec2(0.0,pixel.y)).a;
-  // Silk organza: low body coverage, directional filament scattering,
-  // and soft longitudinal fold ridges. Only the material changes.
-  float strand=smoothstep(.018,.38,fiber);
+  // The source is a sparse 64x64 photographed weave (66% holes).
+  // The former 0.06..0.67 threshold and 0.006 alpha erased its fine strands
+  // when sampled through mipmaps at phone resolution.
+  float strand=smoothstep(0.008,0.33,fiber);
   float detail=clamp(abs(left-right)+abs(up-down),0.0,1.0);
   vec3 N=normalize(vNormal);
-  vec3 axis=normalize(vec3(N.z,0.0,-N.x));
-  vec3 across=normalize(cross(N,axis));
-  // Broad, gently curved folds in material space, not a screen overlay.
-  float u=vUV.x,v=vUV.y;
-  float foldWeight=smoothstep(.08,.43,abs(u-.5))*.68+.24;
-  float phase=u*25.0+sin(v*3.6+u*4.0)*1.15+v*2.1;
-  float ridge=sin(phase);
-  float fineRidge=sin(u*47.0-v*3.0+sin(v*5.0)*.8);
-  vec3 clothN=normalize(N+axis*(.19*ridge+.045*fineRidge)*foldWeight
-    +across*(.055*cos(phase)*foldWeight));
-  vec3 V=vec3(0.0,0.0,1.0);
-  vec3 L=normalize(vec3(-.58,.58,1.0));
-  vec3 K=normalize(vec3(.82,.22,.42));
-  vec3 H1=normalize(L+V);
-  vec3 H2=normalize(K+V);
-  float ndv=clamp(abs(dot(clothN,V)),0.0,1.0);
-  float grazing=pow(1.0-ndv,2.1);
-  float diffuse=max(0.0,dot(clothN,L));
-  vec3 warp=normalize(vec3(clothN.z,0.0,-clothN.x));
-  vec3 weft=normalize(cross(clothN,warp));
-  // An elliptical highlight follows the warp/weft directions of the cloth.
-  float warpHighlight=exp(-10.0*pow(dot(H1,warp),2.0)-36.0*pow(dot(H1,weft),2.0))
-    *smoothstep(.18,.82,dot(clothN,H1));
-  float weftHighlight=exp(-31.0*pow(dot(H2,warp),2.0)-8.0*pow(dot(H2,weft),2.0))
-    *smoothstep(.14,.76,dot(clothN,H2));
-  float sheen=clamp(warpHighlight*.70+weftHighlight*.38+grazing*.72,0.0,1.0);
-  float valley=(1.0-smoothstep(-.85,.55,cos(phase)))*foldWeight;
-  vec3 pearl=mix(vec3(.65,.65,.68),vec3(.96,.94,.91),.35+.65*diffuse);
-  vec3 whiteNet=mix(pearl,vec3(.99,.985,1.0),sheen*.82);
-  // Keep the darker fold interiors transparent; light catches the ridges.
-  whiteNet*=1.0-.24*valley*(1.0-sheen);
-  float netAlpha=.075+.115*strand+.018*detail+.16*grazing+.15*sheen
-    +.035*valley;
+  vec3 L=normalize(vec3(-.55,.65,1.0));
+  float faceDiffuse=max(0.0,dot(N,L));
+  float grazing=pow(1.0-clamp(N.z,0.0,1.0),3.0);
+  float fiberLight=clamp(.38+.68*faceDiffuse+.18*(left-right+up-down),.38,1.24);
+  // Slight pearlescent warm/cool scatter, not an opaque grid.
+  float sheen=clamp(.42+.58*pow(1.0-abs(dot(normalize(N),normalize(L))),2.0)+.42*pow(max(0.0,dot(N,L)),7.0),0.0,1.0);
+  vec3 whiteNet=mix(vec3(.975,.938,.913),vec3(1.0,.963,.922),sheen)*fiberLight;
+  // Give the photographic thread visible scattering while leaving the
+  // spaces between woven fibers transparent. A faint organza body connects
+  // the fabric even when individual thread pixels shrink at camera scale.
+  // Fine, thin organza filament with a faint continuous translucent body.
+  // Avoid the coarse opaque mesh effect from the earlier yarn intensity.
+  // Physical alpha compositing accumulates each sheet. A continuous
+  // 12% body makes 1/3/5 layers distinguishable, even between fibers.
+  float netAlpha=.25+.19*strand+.025*detail+.055*grazing;
   // A separate embroidery coverage map prevents fibers from turning black.
   float stitch=texture2D(embroideryMask,vUV).a;
   float eLeft=texture2D(embroideryMask,vUV-vec2(pixel.x,0.0)).a;
@@ -186,7 +169,7 @@ function paintedFabric(height,index){
   // Render the real photographed yarn more finely rather than relying on
   // DOMMatrix pattern transforms (unsupported in some mobile WebViews).
   const fineTile=document.createElement('canvas');
-  const pitch=[16,15,18,16,17][index%5];
+  const pitch=[24,22,26,23,25][index%5];
   fineTile.width=fineTile.height=pitch;
   const ft=fineTile.getContext('2d');
   ft.imageSmoothingEnabled=true;ft.imageSmoothingQuality='high';
@@ -393,12 +376,12 @@ function canvasCloth(root){
        ctx.bezierCurveTo(-cw*.43,-ch*.47,-cw*.23,-ch*.58,0,-ch*.5);
        ctx.closePath();ctx.clip();
       if(pass===0){
-      ctx.fillStyle='rgba(239,236,233,.085)';
+      ctx.fillStyle='rgba(250,239,229,.21)';
       ctx.fillRect(l,t,cw,ch+fh*.06);
       ctx.save();
       ctx.rotate([0,.063,-.085,.115,-.045][layer.index%5]);
       ctx.translate((layer.index*11)%24,(layer.index*17)%24);
-      ctx.fillStyle=patterns[layer.index%5];ctx.globalAlpha=alpha*.28;
+      ctx.fillStyle=patterns[layer.index%5];ctx.globalAlpha=alpha*.49;
       ctx.fillRect(l-80,t-80,cw+160,ch+fh*.06+160);ctx.restore();
       // Soft fold shadow follows the tucked hem, without painting a hard line.
       ctx.globalAlpha=alpha*.26;
