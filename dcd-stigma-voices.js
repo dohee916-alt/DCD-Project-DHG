@@ -45,12 +45,28 @@ async function play(variant,index){
   if(ticket!==revision)return;
   const [start,duration]=CUES[idx];
   const current=ctx.createBufferSource(),volume=ctx.createGain();
-  current.buffer=decoded;volume.gain.value=.8;
-  current.connect(volume);volume.connect(ctx.destination);
+  // Distant, blurry speech: soften harsh consonants with low-pass filtering,
+  // blend in two quiet, staggered reflections, and retain intelligibility.
+  const softened=ctx.createBiquadFilter();
+  softened.type='lowpass';softened.frequency.value=2100;softened.Q.value=.55;
+  const dry=ctx.createGain();dry.gain.value=.56;
+  const early=ctx.createDelay(.7);early.delayTime.value=.16;
+  const late=ctx.createDelay(.7);late.delayTime.value=.33;
+  const earlyGain=ctx.createGain();earlyGain.gain.value=.25;
+  const lateGain=ctx.createGain();lateGain.gain.value=.14;
+  current.buffer=decoded;volume.gain.value=.73;
+  current.connect(softened);softened.connect(volume);
+  volume.connect(dry);dry.connect(ctx.destination);
+  volume.connect(early);early.connect(earlyGain);earlyGain.connect(ctx.destination);
+  volume.connect(late);late.connect(lateGain);lateGain.connect(ctx.destination);
   node=current;gain=volume;
   current.onended=()=>{
    if(node===current){node=null;gain=null}
-   try{current.disconnect();volume.disconnect()}catch{}
+   // Let delayed reflections finish before cleaning up the audio graph.
+   const cleanup=()=>{try{current.disconnect();softened.disconnect();volume.disconnect();
+     dry.disconnect();early.disconnect();late.disconnect();
+     earlyGain.disconnect();lateGain.disconnect()}catch{}};
+   setTimeout(cleanup,540);
   };
   current.start(0,start,Math.min(duration,decoded.duration-start));
  }catch(e){console.warn('[DCD stigma voice playback]',e)}
