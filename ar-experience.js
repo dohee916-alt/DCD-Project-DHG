@@ -262,6 +262,10 @@ function typeStigma(text,onComplete){
  const typed=state.root?.querySelector('.ar-stigma-typed');
  if(!typed)return;
  typed.textContent='';
+ // Only the GLP-1 question needs a wider, centered text box.
+ const wide=text==='WHY DON’T YOU JUST TAKE GLP-1?';
+ const rect=AR_TEXT_RECTS[state.frame]?.typed;
+ if(rect)placeText(typed,wide?[24,rect[1],380,rect[3]]:rect);
  const letters=[...text],session=state.session,frame=state.frame;
  let index=0;
  function next(){
