@@ -17,13 +17,17 @@ function stop(){
 function prime(){
  if(!AudioCtx)return Promise.resolve();
  try{
-  if(!ctx)ctx=window.DCD_AUDIO.get();
+  if(!ctx)ctx=new AudioCtx();
   armed=true;
   ctx.resume()?.catch(()=>{});
   if(!loading)loading=fetch(AUDIO).then(async r=>{
    if(!r.ok)throw Error('Stigma voices HTTP '+r.status);
    const data=await r.arrayBuffer();
-   return window.DCD_AUDIO.decode(ctx,data);
+   try{return await ctx.decodeAudioData(data.slice(0))}
+   catch(error){
+    const decoder=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
+    return decoder.default(data.slice(0));
+   }
   }).then(b=>{decoded=b;return b}).catch(e=>{
    loading=null;console.error('[DCD stigma voices]',e);return null;
   });
