@@ -155,7 +155,7 @@ function stopWhisper(force=false){
  }
  function clearScene(){
  if(!state.root)return;
- state.root.querySelector('.ar-copy').textContent='';
+ const copy=state.root.querySelector('.ar-copy');copy.textContent='';copy.classList.remove('ar-glass-ready');
  const stigma=state.root.querySelector('.ar-stigma-typed');if(stigma)stigma.textContent='';
  const heading=state.root.querySelector('.ar-stigma-heading');if(heading)heading.textContent='';
  state.root.querySelector('.ar-flow-choices').innerHTML='';
@@ -187,6 +187,10 @@ function maybeRestartEnding(){
  if(elapsed>=1500)restartEnding();
  else delay(maybeRestartEnding,Math.ceil(1500-elapsed));
 }
+function endingGlassText(element,value){
+ if(window.DCDFigmaGlass?.liveText)window.DCDFigmaGlass.liveText(element,value);
+ else element.textContent=value;
+}
 function typeEndingPrompt(text,onComplete){
  const root=state.root,copy=root?.querySelector('.ar-copy');
  if(!copy||state.frame!=='AR10')return;
@@ -199,7 +203,7 @@ function typeEndingPrompt(text,onComplete){
  const session=state.session;let i=0;
  function write(){
   if(state.root!==root||state.session!==session||state.frame!=='AR10')return;
-  prompt.textContent=letters.slice(0,++i).join('');
+  endingGlassText(prompt,letters.slice(0,++i).join(''));
   if(i<letters.length){delay(write,32);return;}
   onComplete?.();
  }
@@ -233,9 +237,10 @@ function typeCaption(value,duration=1200,onComplete=null){
    // Figma AR10 uses a separate 64px NOT and 26px supporting statement.
    const top=chars.slice(0,3);
    const lower=chars.length>4?chars.slice(4):'';
-   if(finalNot.textContent!==top)finalNot.textContent=top;
-   if(finalRest.textContent!==lower)finalRest.textContent=lower;
-  }else element.textContent=chars;
+   if(finalNot.textContent!==top)endingGlassText(finalNot,top);
+   if(finalRest.textContent!==lower)endingGlassText(finalRest,lower);
+  }else if(frame==='AR9')endingGlassText(element,chars);
+  else element.textContent=chars;
   if(i<letters.length)delay(write,period);
    else onComplete?.();
  }
