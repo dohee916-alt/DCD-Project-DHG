@@ -100,7 +100,7 @@ function canvasFigure(i,x,y,w,h,cls='',rot=0,view='front'){
 function waveText(value){return [...value].map((letter,i)=>'<span style="animation-delay:'+(i*.07)+'s">'+(letter===' '?'&nbsp;':letter)+'</span>').join('');}
 function handGuide(){return img(A.syringeGuideCore,176.36,243,141.635,160,'syringe-guide syringe-guide-core');}
 function injectionHandGuide(){return img(A.syringeGuideCore,176.61,243,140.75,159,'syringe-guide syringe-injection-guide');}
-const PACK_HAND_CYCLE_MS=1550,PACK_HAND_TOTAL_MS=PACK_HAND_CYCLE_MS*3;
+const PACK_HAND_CYCLE_MS=1550,PACK_HAND_TOTAL_MS=PACK_HAND_CYCLE_MS;
 function packHandGuide(){
   if(!s.packGuideHandFinished&&!s.packGuideHandStartedAt){
     s.packGuideHandStartedAt=Date.now();save();
@@ -361,11 +361,16 @@ function packDoseMarkup(x,y,w,h,cls=''){
   const d=PACK_DOSE,scale=w/d.packW,sy=h/d.packH;
   const {count,intensity}=doseSummary(),dose=count.toFixed(1);
   const common='transform:scale('+scale+');transform-origin:top left;';
-  // Top and bottom are centered on the pack, not the stage.
-  // Rotate only the bottom lettering, keeping its Figma-local anchor.
-  const intensityLabel=(top,reverse=false)=>'<div class="lay new-pack-dose pack-intensity '+cls+'" '+box(x+d.x*scale,y+top*sy,d.w,9,common)+'><span'+(reverse?' style="display:block;transform:rotate(180deg)"':'')+'>'+intensity+'</span></div>';
+  // The foil export contains transparent padding above and below the
+  // visible silver pack. Anchor to its actual metal perimeter, then inset
+  // by the reference design's normalized 4.5% / 3.8% of visible height.
+  // Keep the original dose lettering's font, color-dodge and native scale.
+  const foilTop=19.2,foilBottom=372.6,foilHeight=foilBottom-foilTop;
+  const topCenter=foilTop+.045*foilHeight;
+  const bottomCenter=foilBottom-.038*foilHeight;
+  const intensityLabel=(center,reverse=false)=>'<div class="lay new-pack-dose pack-intensity '+cls+(intensity==='STRONG'?' pack-intensity-strong':'')+'" '+box(x+((d.packW-d.w)/2)*scale,y+(center-4.5)*sy,d.w,9,common)+'><span'+(reverse?' style="display:block;transform:rotate(180deg)"':'')+'>'+intensity+'</span></div>';
   return '<div class="lay new-pack-dose '+cls+'" '+box(x+d.x*scale,y+d.y*sy,d.w,d.h,common)+'>SUM OF<br>APPLIED GLP-1<br>'+dose+'</div>'
-    +intensityLabel(13)+intensityLabel(372,true);
+    +intensityLabel(topCenter)+intensityLabel(bottomCenter,true);
 }
 function newPackMarkup(){
   // Figma 03_MOBILE_WEB / New12–New16 (615:538 etc).
