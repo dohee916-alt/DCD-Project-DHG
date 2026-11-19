@@ -30,12 +30,7 @@ function bytesFromBase64(b64,expected){
  return bytes.buffer;
 }
 async function decode(data){
- try{return await context.decodeAudioData(data.slice(0));}
- catch(error){
-   console.warn('[DCD SFX] Native decoder unavailable, using JS decoder:',error);
-   const module=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
-   return module.default(data.slice(0));
- }
+ return window.DCD_AUDIO.decode(context,data);
 }
 function stop(id){
  pending.delete(id);
@@ -77,14 +72,14 @@ function start(id,options={}){
 function flush(source){
  for(const [id,options] of [...pending]){
   if(clips[id]?.source!==source)continue;
-  pending.delete(id);start(id,options);
+  if(start(id,options))pending.delete(id);
  }
 }
 function unlock(){
  if(!AudioCtx)return;
  try{
   if(!context){
-    context=new AudioCtx();
+    context=window.DCD_AUDIO.get();
     bus=context.createGain();bus.gain.value=.87;bus.connect(context.destination);
   }
   context.resume()?.catch(error=>console.warn('[DCD SFX] Resume:',error));
@@ -117,11 +112,12 @@ function play(id,options={}){
   pending.set(id,options);
   context?.resume()?.then(()=>{
    if(pending.has(id)&&buffers[clips[id].source]){
-    const next=pending.get(id);pending.delete(id);start(id,next);
+    const next=pending.get(id);if(start(id,next))pending.delete(id);
    }
   });
  }
 }
+window.DCD_AUDIO.onRunning(()=>{flush('hq');flush('legacy');});
 window.DCD_WEB_SFX={unlock,play,stop,clips,status:()=>({
  context:context?.state,hd:!!buffers.hq,legacy:!!buffers.legacy,
  durationHQ:buffers.hq?.duration,durationLegacy:buffers.legacy?.duration
