@@ -9,7 +9,10 @@ const packSlots=[[638,134,172,62],[843,134,172,62],[638,229,172,61],[843,229,172
 // Keep the doll canvas at its original 346:873 aspect ratio and centered on the Figma slot.
 const activeDollRect={x:371.3,y:81,w:111.4,h:281};
 // Only the colored bulb is a valid source, never the empty neck or ring.
-const bottleLiquids={purple:{x:125,y:86,rx:39,ry:34,mouthX:177,mouthY:86},orange:{x:129,y:183,rx:41,ry:35,mouthX:178,mouthY:183}};
+const bottleLiquids={
+ purple:{x:128,y:91,rx:34,ry:32,mouthX:177,mouthY:91.5,neckStart:150,neckHalf:12},
+ orange:{x:124,y:174,rx:34,ry:28,mouthX:178,mouthY:173.5,neckStart:143,neckHalf:12}
+};
 const key='DCD_IMPLEMENTATION_1';
 const signaturePath='M2.50021 39.3162C3.97397 25.5131 15.0272 6.78039 32.7124 3.08321C57.2822 -2.05324 36.3968 27.7477 15.0272 52.6265C3.31169 66.2659 29.4323 61.4999 52.6083 32.6614C71.0303 9.7382 81.3467 24.5272 52.6083 61.4999';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -1333,11 +1336,11 @@ function syringeTipPoint(host){
 function bottleTouched(tip){
   if(!tip)return null;
   for(const color of ['purple','orange']){
-    const {x,y,rx,ry,mouthX,mouthY}=bottleLiquids[color];
-    if(tip.x>mouthX)continue;
-    // Only the actual release point: no swept path or enlarged collision.
+    const {x,y,rx,ry,mouthX,mouthY,neckStart,neckHalf}=bottleLiquids[color];
+    // Native image coordinates: require the ring center (2px tip tolerance).
+    if(tip.x>mouthX+2)continue;
     const inLiquid=((tip.x-x)/rx)**2+((tip.y-y)/ry)**2<=1;
-    const inNeck=tip.x>=x+rx-8&&Math.abs(tip.y-mouthY)<=9;
+    const inNeck=tip.x>=neckStart&&Math.abs(tip.y-mouthY)<=neckHalf;
     if(inLiquid||inNeck)return color;
   }
   return null;
