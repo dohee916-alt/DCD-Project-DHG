@@ -132,7 +132,7 @@ function stopWhisper(force=false){
    'AR3-1':{copy:[33,64,362,32]},
    'AR4':{heading:[61,64,306,32],typed:[61,109,306,46]},
    'AR5':{copy:[61,64,306,64]},
-   'AR5-1':{copy:[61,92,306,64]},
+   'AR5-1':{copy:[61,107,306,32]},
    'AR5-2':{heading:[61,64,306,32],typed:[61,109,306,46]},
    'AR6':{copy:[50,89,342,44]},
    'AR7':{copy:[50,89,342,44]},
@@ -166,6 +166,7 @@ function stopWhisper(force=false){
  const heading=state.root.querySelector('.ar-stigma-heading');if(heading)heading.textContent='';
  state.root.querySelector('.ar-flow-choices').innerHTML='';
  state.root.querySelector('.ar-choice-pack').innerHTML='';
+ state.root.classList.remove('ar-receipt-settled','ar-receipt-tint','ar-receipt-exiting','ar-receipt-no','ar-receipt-yes','ar-receipt-shaking');
   const endingHit=state.root.querySelector('.ar-ending-hit');if(endingHit)endingHit.hidden=true;
  state.endingReady=false;
  state.root.classList.toggle('ar-final-mode',state.frame==='AR9'||state.frame==='AR10');
@@ -427,6 +428,107 @@ function buttons(yes,no){
  area.querySelector('[data-ar-choice=yes]').addEventListener('click',e=>{e.stopPropagation();yes();});
  area.querySelector('[data-ar-choice=no]').addEventListener('click',e=>{e.stopPropagation();no();});
 }
+
+function showReceiptDecision(){
+ const root=state.root,session=state.session;
+ const preview=root.querySelector('.ar-choice-pack');
+ const area=root.querySelector('.ar-flow-choices');
+ const copy=root.querySelector('.ar-copy');
+ const data=window.DCD_AR_RECEIPT_DATA?.()||{expected:[],side:[],extra:[],count:0,intensity:'WEAK'};
+ const active=()=>state.root===root&&state.session===session&&state.frame==='AR5-1';
+ const asset='assets/figma-current/hd/';
+ const row=(label,cls='')=>'<div class="ar-receipt-row '+cls+'">'+label+'</div>';
+ const paperMarkup='<div class="ar-receipt-print">'+
+  '<img class="ar-receipt-icon" src="'+asset+'ar-prescription-syringe.svg" alt="">'+
+  '<div class="ar-receipt-title">PRESCRIPTION</div>'+
+  '<div class="ar-receipt-dose">SUM OF APPLIED GLP-1 : '+Number(data.count).toFixed(1)+'<br><b class="ar-receipt-strength '+data.intensity.toLowerCase()+'">'+data.intensity+'</b></div>'+
+  '<img class="ar-receipt-signature" alt="">'+
+  '<div class="ar-receipt-sections"><div class="ar-receipt-rule"></div>'+
+  '<div class="ar-receipt-heading">EXPECTED EFFECTS</div>'+
+  data.expected.map(v=>row(v)).join('')+
+  '<div class="ar-receipt-rule second"></div><div class="ar-receipt-heading">POSSIBLE SIDE EFFECTS</div>'+
+  data.side.map(v=>row(v)).join('')+
+  '<div class="ar-receipt-added"></div></div></div>';
+ preview.innerHTML='<div class="ar-receipt-assembly">'+
+  '<img class="ar-receipt-paper ar-receipt-back" src="'+asset+'ar-prescription-paper-back.png" alt="">'+
+  '<div class="ar-receipt-pack"><div class="ar-receipt-pack-inner">'+(window.DCD_AR_PACK_PREVIEW?.()||'')+'</div></div>'+
+  '<div class="ar-receipt-front"><img class="ar-receipt-paper" src="'+asset+'ar-prescription-paper-front.png" alt="">'+paperMarkup+'</div></div>';
+ window.DCD_RENDER_FIGURES?.();
+ const assembly=preview.querySelector('.ar-receipt-assembly'),pack=preview.querySelector('.ar-receipt-pack'),front=preview.querySelector('.ar-receipt-front'),back=preview.querySelector('.ar-receipt-back');
+ const ink=preview.querySelector('.ar-receipt-signature');
+ if(data.signature)window.DCD_AR_RECEIPT_SIGNATURE?.(data.signature).then(src=>{if(active()&&src){ink.src=src;ink.style.visibility='visible';}});
+ const additional=preview.querySelector('.ar-receipt-added');
+ let chosen=false;
+ function animate(node,frames,options){
+  // CSS final-state classes remain authoritative once a WAAPI motion ends.
+  return node.animate(frames,{fill:'forwards',...options});
+ }
+ function typeInto(node,value,done,interval=25){
+  let index=0;
+  function step(){
+   if(!active()||chosen||!node.isConnected)return;
+   node.textContent=value.slice(0,++index);
+   if(index<value.length)delay(step,interval);else done?.();
+  }
+  step();
+ }
+ function select(yes){
+  if(chosen||!active())return;
+  chosen=true;copy.textContent='';area.innerHTML='';
+  root.classList.add('ar-receipt-exiting',yes?'ar-receipt-yes':'ar-receipt-no');
+  if(yes){
+   root.classList.remove('ar-receipt-tint');
+   animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:950,easing:'cubic-bezier(.4,0,.8,1)'});
+   animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:950,easing:'cubic-bezier(.4,0,.8,1)'});
+   // Fly the same blister toward the viewer, growing to cover the entire stage.
+   animate(pack,[{transform:'translate(0,-158px) scale(1)'},{transform:'translate(-5px,-55px) scale(2.35)',offset:.72},{transform:'translate(-5px,-55px) scale(4.6)',opacity:0}],{duration:1250,easing:'cubic-bezier(.35,.05,.65,1)'});
+   delay(()=>{if(active())enter('AR5-2');},1280);
+  }else{
+   animate(pack,[{transform:'translateY(-158px)'},{transform:'translateY(0)'}],{duration:570,easing:'cubic-bezier(.3,.1,.2,1)'});
+   delay(()=>{
+    if(!active())return;
+    root.classList.remove('ar-receipt-tint');
+    animate(assembly,[{transform:'translate(6px,59px)'},{transform:'translate(590px,-920px) rotate(17deg)'}],{duration:1020,easing:'cubic-bezier(.45,0,.8,.95)'});
+   },580);
+   delay(()=>{if(active())enter('AR6');},1640);
+  }
+ }
+ function reveal(){
+  if(!active())return;
+  typeInto(copy,'WOULD YOU STILL TAKE IT?',()=>{
+   if(!active())return;
+   buttons(()=>select(true),()=>select(false));
+   // Show the buttons when the question completes; keep them available.
+   // Additional entries are appended one by one without moving existing rows.
+   let i=0;
+   function appendNext(){
+    if(!active()||chosen||i>=data.extra.length)return;
+    const line=document.createElement('div');line.className='ar-receipt-row ar-receipt-new';
+    additional.appendChild(line);
+    typeInto(line,data.extra[i++],()=>{line.classList.add('ar-receipt-typed');delay(appendNext,140);},26);
+   }
+   appendNext();
+  },45);
+ }
+ // Entry starts with the pack exactly sandwiched between the two native crops.
+ animate(assembly,[{transform:'translate(0,780px)'},{transform:'translate(0,0)'}],{duration:940,easing:'cubic-bezier(.18,.82,.22,1)'});
+ delay(()=>{if(active())root.classList.add('ar-receipt-tint');},30);
+ delay(()=>{
+  if(!active())return;
+  root.classList.add('ar-receipt-shaking');
+  animate(assembly,[
+   {transform:'translate(0,0) rotate(0deg)'},
+   {transform:'translate(3px,9px) rotate(-2.3deg)',offset:.16},
+   {transform:'translate(-3px,21px) rotate(2deg)',offset:.34},
+   {transform:'translate(7px,31px) rotate(-1.6deg)',offset:.53},
+   {transform:'translate(3px,43px) rotate(1.1deg)',offset:.72},
+   {transform:'translate(6px,59px) rotate(0deg)'}
+  ],{duration:1490,easing:'linear'});
+  animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:1490,easing:'cubic-bezier(.23,.55,.25,1)'});
+ },960);
+ delay(()=>{if(active()){root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');reveal();}},2490);
+}
+
 function enter(frame){
  if(!state.root||!frameNames.includes(frame))return;
  stopTimers();
@@ -474,20 +576,7 @@ function enter(frame){
    caption('WOULD YOU CHOOSE\nDIFFERENTLY NOW?');
    buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
  case 'AR5-1':
-   caption('DO YOU AGREE TO\nTEST IT ON YOU?');
-   // The original Figma AR5-1 contains the full approved blister pack, not
-   // merely the red gradient. Reuse the very same AR pack markup and dolls.
-   const preview=state.root.querySelector('.ar-choice-pack');
-   if(preview&&window.DCD_AR_PACK_PREVIEW){
-     preview.innerHTML=window.DCD_AR_PACK_PREVIEW();
-     window.DCD_RENDER_FIGURES?.();
-   }
-   // Figma AR5-1 (636:672) has a single centered NO button.
-   // The prior YES choice remains in AR5 and is not repeated here.
-   const choiceArea=state.root.querySelector('.ar-flow-choices');
-   choiceArea.innerHTML='<button type="button" data-ar-choice="no" class="ar-choice no">NO</button>';
-   choiceArea.querySelector('[data-ar-choice=no]').addEventListener('click',e=>{e.stopPropagation();enter('AR5-2');});
-   break;
+   showReceiptDecision();break;
  case 'AR5-2':
    caption('');
    // Keep both headings hidden until the old five sheets have fully exited.

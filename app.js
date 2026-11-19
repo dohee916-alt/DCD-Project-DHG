@@ -559,7 +559,7 @@ function bindNewSignature(){
     activePointer=null;penSamples=[];penBase=null;
     window.DCD_WEB_SFX?.stop('signature');
     if(!strokeMoved)return;
-    signatureInk=c.toDataURL('image/png');s.signed=true;save();
+    signatureInk=c.toDataURL('image/png');s.signed=true;try{sessionStorage.setItem(key+'-signature',signatureInk);}catch{}save();
     // Keep the SAME canvas mounted so additional strokes remain possible.
     // Page 15 starts only when the user explicitly taps NEXT.
   };
@@ -587,6 +587,50 @@ function arPackMarkup(figmaChoicePreview=false){
 }
 // Share the exact approved AR blister with the AR5-1 decision overlay.
 window.DCD_AR_PACK_PREVIEW=()=>arPackMarkup(true);
+
+// AR receipt: retain explicit selections until the ten-line limit.
+// Only when the explicit selections overflow do priority side effects
+// outrank selected expected effects; unselected stigma lines arrive later.
+function arReceiptPlan(expected,side){
+ const priority=[6,5,4,3], limit=10;
+ const ex=effects.map((label,i)=>({i,label})).filter(v=>expected.includes(v.i));
+ const se=sides.map((label,i)=>({i,label})).filter(v=>side.includes(v.i));
+ const selectedPriority=priority.map(i=>se.find(v=>v.i===i)).filter(Boolean);
+ let keptEx=ex,keptSe=se;
+ if(ex.length+se.length>limit){
+  keptEx=ex.slice(0,limit-selectedPriority.length);
+  const remaining=limit-selectedPriority.length-keptEx.length;
+  keptSe=[...selectedPriority,...se.filter(v=>!priority.includes(v.i)).slice(0,remaining)];
+ }
+ const missing=priority.filter(i=>!side.includes(i)).slice(0,Math.max(0,limit-keptEx.length-keptSe.length));
+ // Print the user-selected sections in their original authored list order;
+ // the appended lines follow the specified highest-to-lowest priority.
+ keptSe=[...keptSe].sort((a,b)=>a.i-b.i);
+ return {expected:keptEx.map(v=>v.label),side:keptSe.map(v=>v.label),extra:missing.map(i=>sides[i])};
+}
+window.DCD_AR_RECEIPT_PLAN=arReceiptPlan;
+window.DCD_AR_RECEIPT_DATA=()=>{
+ const receipt=arReceiptPlan(s.expected,s.side),dose=doseSummary();
+ let signature=signatureInk;
+ if(!signature)try{signature=sessionStorage.getItem(key+'-signature');}catch{}
+ return {...receipt,...dose,signature};
+};
+// Export the actual pen strokes tightly cropped, retaining their transparent background.
+window.DCD_AR_RECEIPT_SIGNATURE=async function(source){
+ if(!source)return null;
+ const image=new Image();image.src=source;
+ try{await image.decode();}catch{return null;}
+ const c=document.createElement('canvas');c.width=image.naturalWidth;c.height=image.naturalHeight;
+ const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(image,0,0);
+ const pixels=ctx.getImageData(0,0,c.width,c.height).data;
+ let l=c.width,r=-1,t=c.height,b=-1;
+ for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++)if(pixels[(y*c.width+x)*4+3]>12){l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y);}
+ if(r<l)return null;
+ const out=document.createElement('canvas');out.width=r-l+1;out.height=b-t+1;
+ out.getContext('2d').drawImage(c,l,t,out.width,out.height,0,0,out.width,out.height);
+ return out.toDataURL('image/png');
+};
+
 window.DCD_RENDER_FIGURES=drawFigures;
 function arMarkup(){
   if(s.page==='arFace')return window.DCD_AR_FLOW?.markup()||'<video class="ar-camera-video" autoplay muted playsinline aria-label="Front camera"></video><div class="ar-camera-wash"></div>'+text('POSITION YOUR FACE HERE',68,89,292,44,'doto ar-face-copy')+img(A.arFaceRing,69.5,267,289,375,'ar-face-ring');
@@ -1622,7 +1666,7 @@ window.DCD_RESTART_WEB=()=>{
  window.DCD_CAMPAIGN_AUDIO?.stop();
  window.DCD_WEB_SFX?.stop('signature');
  signatureInk=null;
- s=fresh();sessionStorage.removeItem(key);
+ s=fresh();sessionStorage.removeItem(key);sessionStorage.removeItem(key+'-signature');
  openingSoundEnabled=false;
  setPage('reel0','ready');
 };
