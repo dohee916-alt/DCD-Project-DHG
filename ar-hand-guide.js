@@ -134,7 +134,7 @@ function create(root){
      const target=foldedThumbIndex.find(e=>e.node===bone);
      if(!original||!target||axes[f][k].lengthSq()<.5)return;
      // Close inward with the four-finger grasp (MCP/PIP/DIP).
-     target.rotation.copy(original.rotation).multiply(new THREE.Quaternion().setFromAxisAngle(axes[f][k],[1.02,1.18,.62][k]));
+     target.rotation.copy(original.rotation).multiply(new THREE.Quaternion().setFromAxisAngle(axes[f][k],[1.18,1.48,.89][k]));
     }));
    }
    pose(foldedThumbIndex);
@@ -153,12 +153,14 @@ function create(root){
    // Source hand is broad in Z, and the camera must see its palm
    // rather than the back of the pinching fingers.
    centered.rotation.y=-Math.PI/2;
+   // Normalize using the original OPEN pose, independent of the closed grasp.
+   pose(initialThumbIndex);
    centered.updateMatrixWorld(true);
    const box=new THREE.Box3().setFromObject(centered);
    const center=box.getCenter(new THREE.Vector3());
    const size=box.getSize(new THREE.Vector3());
    centered.position.sub(center);
-   poseScale=207/Math.max(1,size.x,size.y);
+   poseScale=192/Math.max(1,size.x,size.y);
    // Soft, clean translucent guide hand using the original animated rig.
    // All supplied roughness, normal, bump and color maps are intentionally
    // replaced so the render never inherits gritty skin texture.
