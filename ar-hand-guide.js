@@ -96,6 +96,41 @@ function create(root){
    // Pose_OK target that was used when the fingertips actually met.
    initialThumbIndex=sample(openClip,.045);
    foldedThumbIndex=sample(clip,Math.max(.045,clip.duration-.025));
+   // Extend only the CLOSED snapshot with a natural three-finger grasp.
+   // The source rig's verified middle/ring/pinky joints flex about local X.
+   // Keep the authored thumb/index contact completely unchanged.
+   for(const entry of foldedThumbIndex){
+    entry.node.position.copy(entry.position);
+    entry.node.quaternion.copy(entry.rotation);
+    entry.node.scale.copy(entry.scale);
+   }
+   model.updateMatrixWorld(true);
+   const wrist=model.getObjectByName('radius_ulna');
+   const flexAxis=new THREE.Vector3(1,0,0);
+   const curlAngles=[.40,.65,.28];
+   for(const finger of ['midd','ring','pinky']){
+    const joints=['prox','midd','dist'].map(part=>model.getObjectByName(finger+'_'+part));
+    if(!wrist||joints.some(j=>!j))continue;
+    const base=joints.map(j=>j.quaternion.clone());
+    const target=wrist.getWorldPosition(new THREE.Vector3());
+    const tip=joints[2];
+    let best={distance:tip.getWorldPosition(new THREE.Vector3()).distanceTo(target),rot:base};
+    // Evaluate both flexion directions on this actual rig, then choose the
+    // closer-to-palm result. Modest angles avoid the earlier broken fist.
+    for(const sign of [-1,1]){
+     joints.forEach((j,k)=>j.quaternion.copy(base[k]).multiply(new THREE.Quaternion().setFromAxisAngle(flexAxis,sign*curlAngles[k])));
+     model.updateMatrixWorld(true);
+     const distance=tip.getWorldPosition(new THREE.Vector3()).distanceTo(target);
+     if(distance<best.distance)best={distance,rot:joints.map(j=>j.quaternion.clone())};
+    }
+    joints.forEach((j,k)=>j.quaternion.copy(best.rot[k]));
+    model.updateMatrixWorld(true);
+    for(const joint of joints){
+     const saved=foldedThumbIndex.find(entry=>entry.node===joint);
+     if(saved)saved.rotation.copy(joint.quaternion);
+    }
+   }
+   model.updateMatrixWorld(true);
    console.info('[DCD AR] Restored full-rig open/closed poses',
     {open:openClip.name,closed:clip.name,bones:handBones.length});
    const centered=new THREE.Group();
@@ -195,10 +230,10 @@ function create(root){
   // Continue until the first successful physical mask peel.
   const cycle=3.85;
   const t=((now-since)/1000)%cycle;
-  // 0.00–0.65: front-facing hand, thumb/index OPEN, other fingers CURLED
+  // 0.00–0.65: front-facing hand in the open source pose
   // 0.65–1.45: rotate to show back of hand; thumb/index stay OPEN
-  // 1.45–1.95: PINCH thumb/index while stationary, already back-facing
-  // 1.95–3.05: move AWAY from the screen, keeping pinch CLOSED
+  // 1.45–1.95: close all five fingers while stationary, already back-facing
+  // 1.95–3.05: move AWAY from the screen, keeping the grasp CLOSED
   // 2.70–3.20: fade out at the distant position
   // 3.20–3.85: invisible gap before next fresh front-facing appearance
   const rotate=smooth((t-.65)/.80);
