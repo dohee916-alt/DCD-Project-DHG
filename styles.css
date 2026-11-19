@@ -1616,10 +1616,10 @@ canvas.figure{object-fit:contain!important}
  display:none!important;opacity:0!important;visibility:hidden!important;
 }
 #stage .ar-immersive.ar-final-mode .ar-portrait-camera{
- display:block!important;visibility:visible!important;opacity:.35!important;
+ display:block!important;visibility:visible!important;opacity:.82!important;
  z-index:2!important;
- filter:blur(36px) grayscale(.35) sepia(.65) saturate(.82)!important;
- -webkit-filter:blur(36px) grayscale(.35) sepia(.65) saturate(.82)!important;
+ filter:blur(36px) grayscale(.55) sepia(.22) saturate(.85) brightness(.77) contrast(1.15)!important;
+ -webkit-filter:blur(36px) grayscale(.55) sepia(.22) saturate(.85) brightness(.77) contrast(1.15)!important;
  mask-image:none!important;-webkit-mask-image:none!important;
  mix-blend-mode:multiply!important;
 }
@@ -1865,10 +1865,10 @@ canvas.figure{object-fit:contain!important}
  display:none!important;visibility:hidden!important;opacity:0!important;
 }
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-portrait-camera{
- display:block!important;visibility:visible!important;opacity:.35!important;
+ display:block!important;visibility:visible!important;opacity:.82!important;
  z-index:2!important;
- filter:blur(36px) grayscale(.35) sepia(.65) saturate(.82)!important;
- -webkit-filter:blur(36px) grayscale(.35) sepia(.65) saturate(.82)!important;
+ filter:blur(36px) grayscale(.55) sepia(.22) saturate(.85) brightness(.77) contrast(1.15)!important;
+ -webkit-filter:blur(36px) grayscale(.55) sepia(.22) saturate(.85) brightness(.77) contrast(1.15)!important;
  mix-blend-mode:multiply!important;
  mask-image:none!important;-webkit-mask-image:none!important;
  animation:none!important;transition:none!important;
