@@ -350,7 +350,7 @@ const PACK_DOSE={x:52,y:181,w:81,h:36,packW:185.497,packH:391.108};
 // In-game dose intensity, based on the four starting morph levels and
 // the 7-point orange injection step (not clinical GLP-1 strength).
 function doseIntensity(count){
-  return count>=28?'STRONG':count>=10?'MEDIUM':'WEAK';
+  return count>=16?'STRONG':count>=7?'MEDIUM':'WEAK';
 }
 function doseSummary(){
   const count=s.figures.reduce((sum,f)=>sum+f.orange,0);
