@@ -9,7 +9,7 @@ const packSlots=[[638,134,172,62],[843,134,172,62],[638,229,172,61],[843,229,172
 // Keep the doll canvas at its original 346:873 aspect ratio and centered on the Figma slot.
 const activeDollRect={x:371.3,y:81,w:111.4,h:281};
 // Only the colored bulb is a valid source, never the empty neck or ring.
-const bottleLiquids={purple:{x:125,y:86,rx:39,ry:34},orange:{x:129,y:183,rx:41,ry:35}};
+const bottleLiquids={purple:{x:125,y:86,rx:39,ry:34,mouthX:182,mouthY:86,mouthRY:17},orange:{x:129,y:183,rx:41,ry:35,mouthX:183,mouthY:183,mouthRY:17}};
 const key='DCD_IMPLEMENTATION_1';
 const signaturePath='M2.50021 39.3162C3.97397 25.5131 15.0272 6.78039 32.7124 3.08321C57.2822 -2.05324 36.3968 27.7477 15.0272 52.6265C3.31169 66.2659 29.4323 61.4999 52.6083 32.6614C71.0303 9.7382 81.3467 24.5272 52.6083 61.4999';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -1334,7 +1334,11 @@ function bottleTouched(tip,previous=tip){
   if(!tip)return null;
   previous=previous||tip;
   for(const color of ['purple','orange']){
-    const {x,y,rx,ry}=bottleLiquids[color];
+    const {x,y,rx,ry,mouthX,mouthY,mouthRY}=bottleLiquids[color];
+    // Needletip must reach at least the center of the mouth ring.
+    // The open right half of the neck must not trigger the insertion.
+    if(tip.x>mouthX)continue;
+    if(tip.x>=x+rx-7&&Math.abs(tip.y-mouthY)<=mouthRY)return color;
     // Test the swept tip as well as the release point; tolerate 7 native
     // pixels for the antialiased boundary and low-rate touch input.
     const ax=(previous.x-x)/(rx+7),ay=(previous.y-y)/(ry+7);
