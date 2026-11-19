@@ -9,8 +9,8 @@ const PATH='assets/audio/';
 const parts=Array.from({length:8},(_,i)=>PATH+'dcd-fixed-sfx-part'+(i+1)+'.txt');
 const legacy=PATH+'dcd-approved-workbench-cues.mp3.b64';
 const clips={
- suction:{source:'hq',start:0,duration:1.33,gain:.72},
- injection:{source:'hq',start:1.48,duration:1.04,gain:.72},
+ suction:{source:'hq',start:0,duration:1.33,gain:.60},
+ injection:{source:'hq',start:1.48,duration:1.04,gain:.60},
  signature:{source:'hq',start:2.67,duration:1.36,gain:.30},
  pack:{source:'legacy',start:4.68,duration:.456,gain:.70},
  'machine-in':{source:'legacy',start:5.336,duration:1.45,gain:.72},
