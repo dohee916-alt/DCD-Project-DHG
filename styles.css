@@ -1865,3 +1865,19 @@ canvas.figure{object-fit:contain!important}
  mask-image:none!important;-webkit-mask-image:none!important;
  animation:none!important;transition:none!important;
 }
+
+/* AR ending glass: same glyph lighting as the opening, no layout changes.
+   Accessible DOM text remains present; canvas is a transparent paint layer. */
+#stage .ar-immersive:is([data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-glass-label{
+ font:inherit;letter-spacing:inherit;white-space:inherit;color:inherit;
+}
+#stage .ar-immersive:is([data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-glass-ready > .ar-glass-label{
+ color:transparent!important;
+}
+#stage .ar-immersive:is([data-ar-frame="AR9"],[data-ar-frame="AR10"]) canvas.ar-glass-live{
+ position:absolute;left:-4px;top:-4px;display:none;max-width:none;
+ pointer-events:none;
+}
+#stage .ar-immersive:is([data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-glass-ready > canvas.ar-glass-live{
+ display:block;
+}
