@@ -391,9 +391,10 @@ function completeHandPeel(){
   state.pinchStart=null;
   if(state.manualPeels<=2){
     removeFabric();
-    if(state.manualPeels===1)state.handGuide?.hideOnce(0);
+    // Keep the looping guide available for the next manual peel.
   }else{
     state.autoPeeling=true;
+    state.handGuide?.hideOnce();
     caption('');
     state.root?.classList.remove('ar-doto-blink');
     // Gesture three starts THREE separate automatic peel animations.
