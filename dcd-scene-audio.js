@@ -98,7 +98,12 @@ async function play(name,options={}){
   node.connect(gain);gain.connect(master);
   const voice={node,gain};
   voices.set(name,voice);
-  node.onended=()=>{if(voices.get(name)===voice)voices.delete(name);try{node.disconnect();gain.disconnect()}catch{}};
+  node.onended=()=>{
+   const natural=voices.get(name)===voice&&serials.get(name)===latest;
+   if(voices.get(name)===voice)voices.delete(name);
+   try{node.disconnect();gain.disconnect()}catch{}
+   if(natural&&name==='final-message'&&['AR9','AR10'].includes(activePage))window.DCD_AR_FLOW?.endingAudioEnded?.();
+  };
   node.start(0,instantSounds.has(name)?(onsetOffsets.get(name)||0):0);
  }catch(e){console.warn('[DCD scene audio] play:',name,e)}
  finally{if(options.loop)loopLoads.delete(name)}
