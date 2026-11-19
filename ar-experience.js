@@ -132,7 +132,7 @@ function stopWhisper(force=false){
    'AR7':{copy:[50,89,342,44]},
    'AR8':{},
    'AR9':{copy:[61,430,306,64]},
-   'AR10':{copy:[0,0,428,926],not:[61,382,306,70],rest:[61,454,306,96]}
+   'AR10':{copy:[0,0,428,926],not:[61,388,306,70],rest:[61,454,306,96]}
  };
  function placeText(node,rect){
    if(!node||!rect)return;
@@ -187,24 +187,33 @@ function maybeRestartEnding(){
  if(elapsed>=1500)restartEnding();
  else delay(maybeRestartEnding,Math.ceil(1500-elapsed));
 }
-function typeEndingPrompt(){
+function typeEndingPrompt(text,onComplete){
  const root=state.root,copy=root?.querySelector('.ar-copy');
  if(!copy||state.frame!=='AR10')return;
+ copy.replaceChildren();
  const prompt=document.createElement('span');
  prompt.className='ar-ending-prompt';
- const lines=[..."CLICK IF YOU’RE READY TO SEE\nPEOPLE’S BODIES DIFFERENTLY"];
+ const letters=[...text];
  copy.appendChild(prompt);
- placeText(prompt,[33,688,362,58]);
+ placeText(prompt,[61,444,306,64]);
  const session=state.session;let i=0;
  function write(){
   if(state.root!==root||state.session!==session||state.frame!=='AR10')return;
-  prompt.textContent=lines.slice(0,++i).join('');
-  if(i<lines.length){delay(write,30);return;}
-  state.endingReady=true;state.endingReadyAt=performance.now();
-  const hit=root.querySelector('.ar-ending-hit');if(hit)hit.hidden=false;
-  maybeRestartEnding();
+  prompt.textContent=letters.slice(0,++i).join('');
+  if(i<letters.length){delay(write,32);return;}
+  onComplete?.();
  }
  write();
+}
+function showEndingExit(){
+ typeEndingPrompt('THEN TAP\nTO EXIT',()=>{
+  state.endingReady=true;state.endingReadyAt=performance.now();
+  const hit=state.root?.querySelector('.ar-ending-hit');if(hit)hit.hidden=false;
+  maybeRestartEnding();
+ });
+}
+function showEndingQuestion(){
+ typeEndingPrompt('READY TO SEE\nBODIES DIFFERENTLY?',()=>delay(showEndingExit,2200));
 }
 function caption(value){const e=state.root?.querySelector('.ar-copy');if(e)e.textContent=value;}
 function typeCaption(value,duration=1200,onComplete=null){
@@ -485,7 +494,7 @@ function enter(frame){
    delay(()=>enter('AR10'),3400);break;
  case 'AR10':
     typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1500,()=>{
-      delay(typeEndingPrompt,850);
+      delay(showEndingQuestion,2000);
     });
     break;
  }
