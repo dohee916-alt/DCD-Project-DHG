@@ -139,7 +139,7 @@ function duck(ms){
 }
 function burst(kind='web'){
  gesture();const audio=FX.burst;
- audio.pause();try{audio.currentTime=kind==='ar'?1.04:0;}catch{}
+ audio.pause();audio.volume=kind==='ar'?.8:1;try{audio.currentTime=kind==='ar'?1.04:0;}catch{}
  duck(kind==='ar'?700:1700);attempt(audio);
 }
 function whoosh(){
