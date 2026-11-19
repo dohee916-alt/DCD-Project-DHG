@@ -1291,8 +1291,8 @@ canvas.figure{object-fit:contain!important}
   visibility:visible!important;
   opacity:.82!important;
   z-index:3!important;
-  filter:blur(24px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
-  -webkit-filter:blur(24px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
+  filter:blur(36px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
+  -webkit-filter:blur(36px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
   mix-blend-mode:multiply!important;
 }
 /* Keep the user's moving portrait visible while the matting model warms up,
@@ -1618,8 +1618,8 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive.ar-final-mode .ar-portrait-camera{
  display:block!important;visibility:visible!important;opacity:1!important;
  z-index:2!important;
- filter:blur(24px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
- -webkit-filter:blur(24px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
+ filter:blur(36px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
+ -webkit-filter:blur(36px) grayscale(.15) sepia(.72) saturate(1.2) brightness(.66)!important;
  mask-image:none!important;-webkit-mask-image:none!important;
  mix-blend-mode:normal!important;
 }
