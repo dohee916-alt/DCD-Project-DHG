@@ -1444,8 +1444,6 @@ async function inject(host){
 function packActive(){s.figures[s.active].packed=true;s.packGuideDone=true;s.loaded=null;let n=s.figures.findIndex(f=>!f.packed);if(n<0){save();beginPacking();}else{s.active=n;save();render();}}
 async function animatePackActive(el){
   if(!el){packActive();return;}
-  // Play only on accepted drop, as the doll flips into its foil cavity.
-  window.DCD_WEB_SFX?.play('pack');
   s.phase='packing';const i=s.active,f=s.figures[i],q=packSlots[i];
   const back=el.cloneNode(false);back.classList.remove('active-figure','dragging');back.classList.add('packing-back');back.dataset.view='back';back.style.opacity='0';back.style.pointerEvents='none';el.parentElement.appendChild(back);
   // Start movement immediately on release; loading the back image must not
@@ -1473,8 +1471,13 @@ async function animatePackActive(el){
     {offset:.5,translate:midTranslate,transform:midTransform,opacity:0},
     {offset:1,translate:to,transform:endTransform,opacity:1}
   ],timing);
-  await Promise.allSettled([a.finished,b.finished]);
-  if(workbenchActive()&&s.phase==='packing'){s.phase='ready';packActive();}
+  const results=await Promise.allSettled([a.finished,b.finished]);
+  if(workbenchActive()&&s.phase==='packing'){
+    // Contact sound belongs to the completed flip at the foil cavity,
+    // not the pointer release that begins the 650 ms flight.
+    if(results.every(result=>result.status==='fulfilled'))window.DCD_WEB_SFX?.play('pack');
+    s.phase='ready';packActive();
+  }
 }
 
 function unpack(i){s.figures[i].packed=false;s.active=i;s.loaded=null;save();render();}
