@@ -19,6 +19,7 @@ const loopLoads=new Set();
 const instantSounds=new Set(['prescription-check','prescription-next']);
 const onsetOffsets=new Map();
 let primed=false;
+const recovery=new Map();
 function onset(buffer){
  const n=Math.min(buffer.length,Math.floor(buffer.sampleRate*.9)),step=Math.max(1,Math.floor(buffer.sampleRate*.002));
  const channels=Array.from({length:buffer.numberOfChannels},(_,i)=>buffer.getChannelData(i));
@@ -32,11 +33,11 @@ function unlock(){
  if(!AudioCtx)return;
  enabled=true;
  if(!ctx){
-  ctx=new AudioCtx();
+  ctx=window.DCD_AUDIO.get();
   master=ctx.createGain();master.gain.value=.9;master.connect(ctx.destination);
  }
  ctx.resume()?.then(()=>{
-  if(!primed){primed=true;for(const name of instantSounds)preload(name);}
+  if(!primed){primed=true;for(const name of Object.keys(sounds))preload(name);}
   // The rotate/workbench scene may already have begun before the first
   // pointer gesture. Start that pending ambience right after unlocking.
   if(workbenchPages.has(activePage)&&!voices.has('workbench-ambience')&&!loopLoads.has('workbench-ambience'))
@@ -49,18 +50,13 @@ async function buffer(name){
  const promise=fetch(PATH+name+'.opus').then(async r=>{
   if(!r.ok)throw Error(name+' HTTP '+r.status);
   const data=await r.arrayBuffer();
-  // Avoid recursively restarting the ambience when its asset finishes loading.
-  await ctx.resume();
-  try{return await ctx.decodeAudioData(data.slice(0))}
-  catch(nativeError){
-   const decoder=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
-   return decoder.default(data.slice(0));
-  }
+  return window.DCD_AUDIO.decode(ctx,data);
  }).then(b=>{decoded.set(name,b);if(instantSounds.has(name))onsetOffsets.set(name,onset(b));pending.delete(name);return b})
    .catch(e=>{pending.delete(name);console.warn('[DCD scene audio] '+name,e);throw e});
  pending.set(name,promise);return promise;
 }
 function stop(name,fade=0){
+ recovery.delete(name);
  serials.set(name,(serials.get(name)||0)+1);
  loopLoads.delete(name);
  const voice=voices.get(name);
@@ -87,11 +83,13 @@ async function play(name,options={}){
  const latest=(serials.get(name)||0)+1;
  serials.set(name,latest);
  try{
-  if(!enabled)return;
+  if(!enabled){recovery.set(name,{options,page:activePage});return;}
   // Decoded clicks start synchronously in the original input handler.
   const cached=decoded.get(name);
   const b=cached||await buffer(name);
-  if(serials.get(name)!==latest||!ctx||ctx.state!=='running')return;
+  if(serials.get(name)!==latest||!ctx)return;
+  if(ctx.state!=='running'){recovery.set(name,{options,page:activePage});return;}
+  recovery.delete(name);
   const node=ctx.createBufferSource(),gain=ctx.createGain();
   node.buffer=b;node.loop=!!options.loop;
   gain.gain.value=(options.gain??sounds[name].gain);
@@ -129,5 +127,6 @@ function scene(page){
  if(page==='reel0'||page==='01')stop('mask-all-cleared');
 }
 function preload(name){if(!AudioCtx||!sounds[name])return;return buffer(name).catch(()=>{})}
+window.DCD_AUDIO.onRunning(()=>{for(const [name,request] of [...recovery]){recovery.delete(name);if(request.page===activePage)play(name,request.options);}});
 window.DCD_SCENE_AUDIO={unlock,play,stop,scene,preload,status:()=>({page:activePage,unlocked:enabled,playing:[...voices.keys()],ready:[...decoded.keys()]})};
 })();
