@@ -554,7 +554,7 @@ function arPackMarkup(figmaChoicePreview=false){
   let front=img(A.arOverlayFoilStates[0],figmaChoicePreview?50.5:51.55,150.363+dy,328.482,693.166,'ar-intact-foil ar-original-foil');
   front+='<canvas class="ar-foil-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-foil-morph" width="428" height="926" aria-hidden="true"></canvas>';
-  front+=order.map((index,i)=>{const q=slots[i];return figmaChoicePreview?img('assets/figma-current/hd/ar5-1-doll-figma.png',q[0],q[1],q[2],q[3],'ar-pack-doll ar-choice-figma-doll'):canvasFigure(index,q[0],q[1],q[2],q[3],'ar-pack-doll');}).join('');
+  front+=order.map((index,i)=>{const q=slots[i];return canvasFigure(index,q[0],q[1],q[2],q[3],'ar-pack-doll');}).join('');
   front+=img(A.arOverlayFrontStates[0],47.523,145+dy,333.845,703.892,'ar-intact-clear ar-original-clear');
   front+='<canvas class="ar-front-static" width="428" height="926" aria-hidden="true"></canvas>';
   front+='<canvas class="ar-front-morph" width="428" height="926" aria-hidden="true"></canvas>';
