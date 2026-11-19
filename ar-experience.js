@@ -27,7 +27,7 @@ function markup(){
  '<div class="ar-flash" aria-hidden="true"></div>'+
  '<div class="ar-copy" aria-live="polite"></div>'+ 
  '<div class="ar-stigma-message" aria-live="polite"><div class="ar-stigma-heading">THEY SAY</div><div class="ar-stigma-typed"></div></div>'+
-  '<button type=\"button\" class=\"ar-ending-cta\" aria-label=\"READY TO SEE DIFFERENTLY?\"><img src=\"assets/figma-current/hd/ar10-ready-see-figma.svg\" alt=\"\" draggable=\"false\"></button>'+
+  '<button type="button" class="ar-ending-hit" aria-label="Return to the beginning" hidden></button>'+
  '<svg class="ar-face-guide" aria-hidden="true" width="289" height="375" viewBox="0 0 289 375" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="144.5" cy="187.5" rx="142" ry="185" stroke="#D83A00" stroke-width="5" stroke-linecap="round" stroke-dasharray="0.5 30"/></svg>'+
  '<div class="ar-gesture-guide" aria-hidden="true"></div>'+
  '<div class="ar-flow-choices"></div></div>';
@@ -160,7 +160,8 @@ function stopWhisper(force=false){
  const heading=state.root.querySelector('.ar-stigma-heading');if(heading)heading.textContent='';
  state.root.querySelector('.ar-flow-choices').innerHTML='';
  state.root.querySelector('.ar-choice-pack').innerHTML='';
-  state.root.querySelector('.ar-ending-cta')?.classList.remove('visible');
+  const endingHit=state.root.querySelector('.ar-ending-hit');if(endingHit)endingHit.hidden=true;
+ state.endingReady=false;
  state.root.classList.toggle('ar-final-mode',state.frame==='AR9'||state.frame==='AR10');
  state.root.classList.toggle('ar-moment',state.frame==='AR8');
  state.root.classList.toggle('ar-align-gesture',state.frame==='AR3');
@@ -169,6 +170,41 @@ function stopWhisper(force=false){
  state.handGuide?.setFrame(state.frame);
  state.root.classList.toggle('ar-choice-phase',state.frame==='AR5-1');
  state.root.classList.toggle('ar-plain-choice',state.frame==='AR5');
+}
+function restartEnding(){
+ if(!state.root||state.frame!=='AR10'||!state.endingReady||state.endingRestarting)return;
+ state.endingRestarting=true;
+ window.DCD_RESTART_WEB?.();
+}
+function endingAudioEnded(){
+ if(!state.root||!['AR9','AR10'].includes(state.frame))return;
+ state.endingMusicEnded=true;
+ maybeRestartEnding();
+}
+function maybeRestartEnding(){
+ if(!state.root||state.frame!=='AR10'||!state.endingReady||!state.endingMusicEnded||state.endingRestarting)return;
+ const elapsed=performance.now()-state.endingReadyAt;
+ if(elapsed>=1500)restartEnding();
+ else delay(maybeRestartEnding,Math.ceil(1500-elapsed));
+}
+function typeEndingPrompt(){
+ const root=state.root,copy=root?.querySelector('.ar-copy');
+ if(!copy||state.frame!=='AR10')return;
+ const prompt=document.createElement('span');
+ prompt.className='ar-ending-prompt';
+ const lines=[..."CLICK IF YOU’RE READY TO SEE\nPEOPLE’S BODIES DIFFERENTLY"];
+ copy.appendChild(prompt);
+ placeText(prompt,[33,688,362,58]);
+ const session=state.session;let i=0;
+ function write(){
+  if(state.root!==root||state.session!==session||state.frame!=='AR10')return;
+  prompt.textContent=lines.slice(0,++i).join('');
+  if(i<lines.length){delay(write,30);return;}
+  state.endingReady=true;state.endingReadyAt=performance.now();
+  const hit=root.querySelector('.ar-ending-hit');if(hit)hit.hidden=false;
+  maybeRestartEnding();
+ }
+ write();
 }
 function caption(value){const e=state.root?.querySelector('.ar-copy');if(e)e.textContent=value;}
 function typeCaption(value,duration=1200,onComplete=null){
@@ -367,6 +403,8 @@ function enter(frame){
  if(['AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'].includes(frame))
    window.DCD_STIGMA_VOICES?.stop?.();
  state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
+ if(frame==='AR9'){state.endingMusicEnded=false;state.endingRestarting=false;}
+ if(frame==='AR10')state.endingRestarting=false;
  state.root.dataset.arFrame=frame;clearScene();layoutText();
  window.DCD_SCENE_AUDIO?.scene?.(frame);
  switch(frame){
@@ -447,7 +485,7 @@ function enter(frame){
    delay(()=>enter('AR10'),3400);break;
  case 'AR10':
     typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1500,()=>{
-      delay(()=>{if(state.frame==='AR10')state.root?.querySelector('.ar-ending-cta')?.classList.add('visible');},850);
+      delay(typeEndingPrompt,850);
     });
     break;
  }
@@ -913,11 +951,7 @@ function mount(stage,video){
  if(state.root===root){state.video=video||state.video;return;}
  stop(true);
  state.root=root;state.stage=stage;state.video=video||root.querySelector('video');
-  root.querySelector('.ar-ending-cta')?.addEventListener('click',()=>{
-    if(state.frame!=='AR10')return;
-    // Return to WEB01's initial pull-guide, skipping the preceding advert.
-    window.DCD_RESTART_WEB?.();
-  });
+  root.querySelector('.ar-ending-hit')?.addEventListener('click',restartEnding);
  // Do NOT allocate GPU organza or start heavy matting before AR3 can see
  // the face. Those visuals are only needed after the detection transition.
  state.tulle=null;
@@ -971,7 +1005,7 @@ function stop(preservePrimedAudio=false){
  state.root=null;state.stage=null;state.video=null;
 }
 
-window.DCD_AR_FLOW={markup,mount,start,stop,cameraError,primeWhisper,frame:()=>state.frame,debugNext:()=>{
+window.DCD_AR_FLOW={markup,mount,start,stop,cameraError,primeWhisper,endingAudioEnded,frame:()=>state.frame,debugNext:()=>{
  const pos=frameNames.indexOf(state.frame);
  if(state.frame==='AR4'){for(let i=state.maskCount;i<5;i++)addFabric();enter('AR5');}
  else if(state.frame==='AR5'){enter('AR5-1');}
