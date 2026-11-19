@@ -82,7 +82,70 @@
       el.parentElement?.classList.add('figma-glass-ready');
     }).catch(error=>console.warn('[DCD] Figma glass:',error));
   }
-  window.DCDFigmaGlass={render(root){
+  // Cache the shaded glyphs once, instead of running a 4x pixel filter
+  // across an entire paragraph on every 32ms typewriter update.
+  const liveGlyphs=new Map();
+  const measure=document.createElement('canvas').getContext('2d');
+  const fontOf=style=>[style.fontStyle,style.fontWeight,style.fontSize,style.fontFamily].join(' ');
+  function liveGlyph(ch,font,lineHeight){
+    const key=font+'|'+lineHeight+'|'+ch;
+    if(liveGlyphs.has(key))return liveGlyphs.get(key);
+    measure.font=font;
+    const width=measure.measureText(ch).width;
+    if(!ch.trim()){const result={width};liveGlyphs.set(key,result);return result;}
+    const pad=4,w=Math.ceil((width+pad*2)*samples),h=Math.ceil((lineHeight+pad*2)*samples);
+    const mask=document.createElement('canvas');mask.width=w;mask.height=h;
+    const m=mask.getContext('2d',{willReadFrequently:true});
+    m.scale(samples,samples);m.font=font;m.textBaseline='middle';m.fillStyle='#fff';
+    m.fillText(ch,pad,pad+lineHeight/2);
+    const alpha=glyphMask(mask,w,h);
+    const out=document.createElement('canvas');out.width=w;out.height=h;
+    lightMap(out,alpha,null,w,h,blueprints.come.color,blueprints.come.fill);
+    const result={width,canvas:out,pad};
+    liveGlyphs.set(key,result);return result;
+  }
+  function liveText(el,value){
+    // Keep accessible text in its original Figma box, with the canvas
+    // painted over it. Fall back to normal type if canvas fails.
+    if(!el)return;
+    let label=el.querySelector(':scope > .ar-glass-label'),canvas=el.querySelector(':scope > canvas.ar-glass-live');
+    if(!label||!canvas){
+      el.replaceChildren();
+      label=document.createElement('span');label.className='ar-glass-label';
+      canvas=document.createElement('canvas');canvas.className='ar-glass-live';canvas.setAttribute('aria-hidden','true');
+      el.append(label,canvas);
+    }
+    label.textContent=value;
+    try{
+      const style=getComputedStyle(el),font=fontOf(style);
+      if(!document.fonts.check(font)){document.fonts.load(font).then(()=>{if(el.isConnected&&label.textContent===value)liveText(el,value);}).catch(()=>{});return;}
+      const w=el.clientWidth,h=el.clientHeight,lineHeight=parseFloat(style.lineHeight)||parseFloat(style.fontSize)*1.2;
+      if(!w||!h)return;
+      const pad=4;
+      if(canvas.width!==Math.ceil((w+2*pad)*samples)||canvas.height!==Math.ceil((h+2*pad)*samples)){
+        canvas.width=Math.ceil((w+2*pad)*samples);canvas.height=Math.ceil((h+2*pad)*samples);
+        canvas.style.width=(w+2*pad)+'px';canvas.style.height=(h+2*pad)+'px';
+      }
+      const ctx=canvas.getContext('2d');
+      ctx.setTransform(samples,0,0,samples,pad*samples,pad*samples);
+      ctx.clearRect(-pad,-pad,w+2*pad,h+2*pad);
+      measure.font=font;
+      const lines=value.split('\n');
+      lines.forEach((line,row)=>{
+        let x=(w-measure.measureText(line).width)/2;
+        let prefix='';
+        for(const ch of line){
+          const g=liveGlyph(ch,font,lineHeight);
+          const prevWidth=measure.measureText(prefix).width;
+          const nextWidth=measure.measureText(prefix+ch).width;
+          if(g.canvas)ctx.drawImage(g.canvas,x+prevWidth-g.pad,row*lineHeight-g.pad,g.canvas.width/samples,g.canvas.height/samples);
+          prefix+=ch;
+        }
+      });
+      el.classList.add('ar-glass-ready');
+    }catch(error){el.classList.remove('ar-glass-ready');console.warn('[DCD] Ending glass:',error);}
+  }
+  window.DCDFigmaGlass={liveText,render(root){
     root.querySelectorAll('canvas[data-figma-glass]').forEach(renderCanvas);
   }};
 })();
