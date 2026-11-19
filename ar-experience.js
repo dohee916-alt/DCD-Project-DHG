@@ -349,7 +349,7 @@ function surroundStigmas(variant,done){
  window.DCD_STIGMA_VOICES?.surround?.(variant);
  delay(()=>{
   if(state.frame!==frame||state.session!==session)return;
-  window.DCD_STIGMA_VOICES?.stop?.();done();
+  done();
  },5900);
 }
 function showStigmaSequence(variant,done){
@@ -372,6 +372,8 @@ function removeFabric(){
  if(state.maskCount===0)return;
  state.maskCount--;
   whisperForLayers(state.frame==='AR7');
+  window.DCD_STIGMA_VOICES?.surroundLevel?.(state.maskCount);
+  if(state.maskCount===0)window.DCD_STIGMA_VOICES?.stop?.();
   const sheet=state.sheets.pop();
  if(!sheet)return;
  window.DCD_SCENE_AUDIO?.play?.('mask-peel');
@@ -420,7 +422,8 @@ function enter(frame){
  // Whispering is one continuous ambience from AR3-1 through all five first
  // stigma labels and cloth arrivals. Do not restart at every new frame.
  if(['AR8','AR9','AR10'].includes(frame))stopWhisper(true);
- if(['AR5','AR5-1','AR5-2','AR6','AR7','AR8','AR9','AR10'].includes(frame))
+ // Preserve the overlapping voices through the choice and gesture scenes.
+ if(['AR3','AR3-1','AR4','AR8','AR9','AR10'].includes(frame))
    window.DCD_STIGMA_VOICES?.stop?.();
  state.frame=frame;state.guideSince=0;state.pinchStart=null;state.pinchReady=true;
  if(frame==='AR9'){state.endingMusicEnded=false;state.endingRestarting=false;}
@@ -1060,6 +1063,7 @@ function startArVisuals(){
 function stop(preservePrimedAudio=false){
  state.session++;
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
+ window.DCD_STIGMA_VOICES?.stop?.();
  if(!preservePrimedAudio)stopWhisper(true);
  state.matte?.stop();state.matte=null;
  state.face?.close();state.face=null;
