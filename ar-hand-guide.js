@@ -61,10 +61,10 @@ function create(root){
    renderer.toneMapping=THREE.NoToneMapping;
    el.replaceChildren(renderer.domElement);
    renderer.domElement.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none';
-   scene.add(new THREE.HemisphereLight(0xffeee6,0xf2c4b1,1.35));
-   const key=new THREE.DirectionalLight(0xffffff,.58);
+   scene.add(new THREE.HemisphereLight(0xffeee6,0xf2c4b1,1.02));
+   const key=new THREE.DirectionalLight(0xffffff,.92);
    key.position.set(-6,10,16);scene.add(key);
-   const fill=new THREE.DirectionalLight(0xffdfce,.42);
+   const fill=new THREE.DirectionalLight(0xffdfce,.36);
    fill.position.set(7,2,-5);scene.add(fill);
    // Exact pre-regression *closed* gesture from the old working
    // 2026-11-09 Pose_OK implementation (a314b99e28a1).
@@ -128,7 +128,10 @@ function create(root){
     // Preserve authored glTF normals, including matching normals at UV seams.
     // Render a depth-writing opaque surface so overlapping triangles never
     // accumulate alpha. Overall guide opacity is applied once by the DOM.
-    const material=new THREE.MeshPhysicalMaterial({
+    const authored=Array.isArray(mesh.material)?mesh.material[0]:mesh.material;
+     const material=new THREE.MeshPhysicalMaterial({
+      map:authored?.map||null,normalMap:authored?.normalMap||null,
+      normalScale:authored?.normalScale?.clone().multiplyScalar(.35)||new THREE.Vector2(.35,.35),
      color:0xffffff,roughness:.52,metalness:0,clearcoat:.08,
      clearcoatRoughness:.65,flatShading:false,
      transparent:false,opacity:1,premultipliedAlpha:true,side:THREE.FrontSide,
@@ -151,12 +154,16 @@ function create(root){
        '// Keep palm and fingertips defined, soften only the wrist cut.',
        'float wristAlpha=smoothstep(-0.10,8.6,vDcdLocalY);',
        'float blush=smoothstep(0.0,24.0,vDcdLocalY);',
-       'diffuseColor.rgb=mix(dcdPeach,dcdIvory,blush);',
+       'float handDetail=1.0;',
+        '#ifdef USE_MAP',
+        'handDetail=clamp(0.87+0.28*dot(diffuseColor.rgb,vec3(.2126,.7152,.0722)),.87,1.08);',
+        '#endif',
+        'diffuseColor.rgb=mix(dcdPeach,dcdIvory,blush)*handDetail;',
        '// Fade is composited after depth resolution, not per triangle.'
       ].join('\n'))
       .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n gl_FragColor.a=wristAlpha;');
     };
-    material.customProgramCacheKey=()=> 'dcd-authored-normals-depth-composite-v5';
+    material.customProgramCacheKey=()=> 'dcd-authored-normals-soft-anatomy-v6';
     owned.push(material);
     mesh.material=material;
    });
