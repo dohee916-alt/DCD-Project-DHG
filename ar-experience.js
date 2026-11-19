@@ -70,7 +70,7 @@ function primeWhisper(){
  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
  if(!AudioContextClass)return;
  try{
-  whisperContext ||=new AudioContextClass();
+  whisperContext ||=window.DCD_AUDIO.get();
   state.whisperPrimed=true;
   whisperContext.resume()?.catch?.(error=>console.warn('[DCD AR] Audio permission:',error));
   if(!whisperGain){whisperGain=whisperContext.createGain();whisperGain.gain.value=whisperTarget;whisperGain.connect(whisperContext.destination);}
@@ -83,11 +83,7 @@ function primeWhisper(){
      for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
      // iOS Safari cannot reliably decode Ogg/Opus natively. Keep a
      // pristine copy for the WASM fallback; decodeAudioData may detach its input.
-     return whisperContext.decodeAudioData(bytes.buffer.slice(0)).catch(async nativeError=>{
-       console.info('[DCD AR] Native Opus decoder unavailable, loading browser decoder:',nativeError);
-       const decoder=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
-       return decoder.default(bytes.buffer.slice(0));
-     });
+     return window.DCD_AUDIO.decode(whisperContext,bytes.buffer);
    }).then(buffer=>{
      whisperBuffer=buffer;
      if(whisperWanted)playWhisperBuffer();
