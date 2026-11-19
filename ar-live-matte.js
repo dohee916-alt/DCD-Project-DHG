@@ -119,16 +119,6 @@ function create(root,video,canvas,onFrame){
  const alphaCtx=alphaCanvas.getContext('2d',{alpha:true});
  let hasAlpha=false,latestMaskAt=0,paintFrame=0,lastPaint=0,maskAnchor=null;
  let alphaPlacement=null,lastMaskDx=0,lastMaskDy=0;
- let choiceMask=null,choiceCtx=null,choicePlacement=null,choiceAnchor=null,choiceDx=0,choiceDy=0,choiceMode=false;
- const inChoice=()=>root.dataset.arFrame==='AR5-1';
- function resetChoiceMask(){choiceMask=null;choiceCtx=null;choicePlacement=null;choiceAnchor=null;choiceDx=0;choiceDy=0;choiceMode=false;}
- function ensureChoiceMask(){
-  if(!inChoice()){if(choiceMode)resetChoiceMask();return false;}
-  if(!choiceMode){choiceMode=true;choiceDx=choiceDy=0;}
-  if(!hasAlpha||!alphaPlacement)return false;
-  if(!choiceMask){choiceMask=document.createElement('canvas');choiceMask.width=alphaCanvas.width;choiceMask.height=alphaCanvas.height;choiceCtx=choiceMask.getContext('2d',{alpha:true});choiceCtx.drawImage(alphaCanvas,0,0);choicePlacement={...alphaPlacement};choiceAnchor=maskAnchor?{...maskAnchor}:null;choiceDx=lastMaskDx;choiceDy=lastMaskDy;}
-  return true;
- }
  // Ending uses a stable live alpha: only accept a fresh mask after checking its coverage.
  let finalCoverage=null;
  const ending=()=>['AR9','AR10'].includes(root.dataset.arFrame);
@@ -150,11 +140,11 @@ function create(root,video,canvas,onFrame){
    paintLiveOnce(now);
  }
  function paintLiveOnce(now=performance.now()){
-   const portraitVisible=inChoice();
-   ensureChoiceMask();
+   const portraitVisible=['AR5-1','AR9','AR10'].includes(root.dataset.arFrame);
+   if(portraitVisible)return; // these pages use the raw live camera
    // In camera/veil scenes the matte is hidden and only supplies scalp data.
    // Do not composite the full HD video thirty times a second behind it.
-   if(!hasAlpha||!visible||video.readyState<2||now-lastPaint<(portraitVisible?50:150))return;
+   if(!hasAlpha||!visible||video.readyState<2||now-lastPaint<(portraitVisible?33:100))return;
    lastPaint=now;
    const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
    if(!vw||!vh)return;
@@ -168,24 +158,17 @@ function create(root,video,canvas,onFrame){
      // inference can take many frames; leaving its alpha at old coordinates
      // clips moving hair/cheeks even when the live camera image is fresh.
      const face=root.__dcdFaceRegion;
-     if(inChoice()&&choiceMask&&choicePlacement){
-       // AR5-1 only: retain the accepted silhouette while the user reads
-       // consent. The RGB is still the CURRENT camera video. Smooth its
-       // tracked translation rather than jumping between inference masks.
-       if(face&&choiceAnchor&&now-face.at<650){
-         const targetX=(face.cx-choiceAnchor.cx)*dw,targetY=(face.top-choiceAnchor.top)*dh;
-         const limit=w*.12;
-         choiceDx+=.16*(Math.max(-limit,Math.min(limit,targetX))-choiceDx);
-         choiceDy+=.16*(Math.max(-limit,Math.min(limit,targetY))-choiceDy);
-       }
-       subjectCtx.drawImage(choiceMask,choicePlacement.x+choiceDx,choicePlacement.y+choiceDy,choicePlacement.width,choicePlacement.height);
-     }else{
-       const aligned=face&&maskAnchor&&now-face.at<650;
-       if(aligned){
-         lastMaskDx=(face.cx-maskAnchor.cx)*dw;
-         lastMaskDy=(face.top-maskAnchor.top)*dh;
-       }
-       if(alphaPlacement)subjectCtx.drawImage(alphaCanvas,alphaPlacement.x+lastMaskDx,alphaPlacement.y+lastMaskDy,alphaPlacement.width,alphaPlacement.height);
+     const aligned=face&&maskAnchor&&now-face.at<650;
+     // The landmark coordinates refer to the UNMIRRORED source video.
+     // Keep the last tracked offset while a turned/occluded face is briefly lost.
+     if(aligned){
+       lastMaskDx=(face.cx-maskAnchor.cx)*dw;
+       lastMaskDy=(face.top-maskAnchor.top)*dh;
+     }
+     if(alphaPlacement){
+       subjectCtx.drawImage(alphaCanvas,
+         alphaPlacement.x+lastMaskDx,alphaPlacement.y+lastMaskDy,
+         alphaPlacement.width,alphaPlacement.height);
      }
      subjectCtx.globalCompositeOperation='source-over';
      // Replace the displayed canvas in one draw, without an intermediate blank.
@@ -283,7 +266,7 @@ function create(root,video,canvas,onFrame){
   const f=fallback;
   if(!f||video.readyState<2||!video.videoWidth)return;
   const w=canvas.width,h=canvas.height,vw=video.videoWidth,vh=video.videoHeight;
-  if((ending()||inChoice())&&hasAlpha&&visible)return; // retain valid live composite during engine handover
+  if(ending()&&hasAlpha&&visible)return; // keep live video through the last valid alpha during engine handover
   if(now-f.lastSegment>=(ending()?175:80)){
    f.source.width=vw;f.source.height=vh;
    f.sourceCtx.drawImage(video,0,0,vw,vh);
@@ -327,7 +310,7 @@ function create(root,video,canvas,onFrame){
   try{onFrame?.(f.source,vw,vh);}catch(error){console.warn('[DCD AR] Portrait tracking:',error);}
  }
  function stop(){
-  live=false;resetChoiceMask();cancelAnimationFrame(paintFrame);closeWorker();clearInterval(timer);
+  live=false;cancelAnimationFrame(paintFrame);closeWorker();clearInterval(timer);
   if(frameHandle)video.cancelVideoFrameCallback?.(frameHandle);
   fallback?.segmenter.close();fallback=null;
   disableSemantic();
@@ -428,13 +411,13 @@ function create(root,video,canvas,onFrame){
  }
  async function submit(now,metadata){
   if(!live)return;
+  if(['AR5-1','AR9','AR10'].includes(root.dataset.arFrame))return;
   if(fallback){drawFallback(now);return;}
-  if(inChoice()&&ensureChoiceMask()&&visible)return; // no expensive hidden matte inference while reading consent
   if(visible&&performance.now()-lastCapture>MAX_VISIBLE_AGE*2.2&&ready){next('Portrait frame stalled');return;}
   if(pending&&performance.now()-pending.started>(firstFrame?9000:MAX_VISIBLE_AGE)){next('Frame processing timed out');return;}
   if(!ready||pending||video.readyState<2||!video.videoWidth)return;
-  const portraitVisible=inChoice();
-  if(lastCapture&&now-lastCapture<(portraitVisible?150:175))return;
+  const portraitVisible=['AR5-1','AR9','AR10'].includes(root.dataset.arFrame);
+  if(lastCapture&&now-lastCapture<(portraitVisible?80:175))return;
   const time=metadata?.mediaTime??video.currentTime;
   if(time<=lastVideoTime)return;
   lastVideoTime=time;
