@@ -436,7 +436,7 @@ function enter(frame){
    }
    delay(readyForStigmas,500);break;
  case 'AR5':
-   caption('DO YOU WANT TO\nCHANGE YOUR CHOICE?');
+   caption('WOULD YOU CHOOSE\nDIFFERENTLY NOW?');
    buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
  case 'AR5-1':
    caption('DO YOU AGREE TO\nTEST IT ON YOU?');
