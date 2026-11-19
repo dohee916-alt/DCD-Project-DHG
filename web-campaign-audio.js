@@ -49,7 +49,7 @@ async function preload(){
   const bytes=await r.arrayBuffer();
   if(bytes.byteLength<50000)throw Error('Music MP3 truncated');
   if(!ctx)return null;
-  return window.DCD_AUDIO.decode(ctx,bytes);
+  return ctx.decodeAudioData(bytes.slice(0));
  }).then(buffer=>{
   if(buffer&&ctx){
    decoded=buildSeamlessLoop(buffer);
@@ -57,7 +57,6 @@ async function preload(){
   }
  }).catch(error=>{
   console.warn('[DCD BGM] Seamless decode unavailable, original MP3 fallback:',error);
-  loading=null;
   if(allowed&&scene==='00')attempt(musicFallback);
  });
  return loading;
@@ -67,7 +66,7 @@ function startMusic(){
  if(source&&!stopping)return;
  if(!AudioCtx){if(musicFallback.paused)attempt(musicFallback);return;}
  if(!ctx){
-  try{ctx=window.DCD_AUDIO.get();bus=ctx.createGain();bus.gain.value=VOLUME;bus.connect(ctx.destination);}
+  try{ctx=new AudioCtx();bus=ctx.createGain();bus.gain.value=VOLUME;bus.connect(ctx.destination);}
   catch(error){console.warn('[DCD BGM] AudioContext:',error);attempt(musicFallback);return;}
  }
  ctx.resume()?.catch(error=>console.warn('[DCD BGM] Resume:',error));
@@ -109,10 +108,7 @@ function gesture(){
  if(scene==='00')startMusic();
  if((scene==='00'||scene==='01')&&FX.creak.paused)attempt(FX.creak);
 }
-function enableMusic(){musicEnabled=true;
- // Create and resume in the actual ENABLE SOUND gesture, before Reel1 scrolls into view.
- if(AudioCtx&&!ctx){try{ctx=window.DCD_AUDIO.get();bus=ctx.createGain();bus.gain.value=VOLUME;bus.connect(ctx.destination);ctx.resume()?.catch(()=>{});preload();}catch(e){console.warn('[DCD BGM]',e);}}
- gesture();startMusic();}
+function enableMusic(){musicEnabled=true;gesture();startMusic();}
 function enableOnGesture(){gesture();}
 document.addEventListener('touchstart',enableOnGesture,{capture:true,passive:true});
 document.addEventListener('pointerdown',enableOnGesture,{capture:true,passive:true});
