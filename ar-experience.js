@@ -583,9 +583,9 @@ function handBackFacing(h,world,aspect){
  const estimates=[metric,image].filter(Boolean);
  const clearlyPalm=estimates.some(v=>v.facing>.35&&v.mean<-.10)
    &&!estimates.some(v=>v.facing>.20&&v.mean>.06&&v.curl.filter(d=>d>.025).length>=2);
- const valid=!clearlyPalm&&estimates.some(v=>v.facing>.19&&v.mean>.008
-   &&(v.pinch<.90||v.curl.filter(d=>d>.035).length>=2));
- const hold=!clearlyPalm&&estimates.some(v=>v.facing>.12&&v.mean>-.055&&v.pinch<1.10);
+ const valid=!clearlyPalm&&estimates.some(v=>v.facing>.16&&v.mean>.004
+   &&(v.pinch<.98||v.curl.filter(d=>d>.025).length>=2));
+ const hold=!clearlyPalm&&estimates.some(v=>v.facing>.10&&v.mean>-.055&&v.pinch<1.18);
  return {valid,hold,clearlyPalm,score:e.mean,facing:e.facing,pinch:e.pinch,imageDepth:image?.mean,
    worldDepth:metric?.mean};
 }
@@ -596,7 +596,7 @@ function observeHands(result,now){
   const box=state.faceBox;
   if(!box)return; // Never substitute an inferred face center.
   const faceWidth=Math.max(.16,box.r-box.l),faceHeight=Math.max(.17,box.b-box.t);
-  const near=(p,padX=.10,padY=.09)=>p.x>box.l-padX&&p.x<box.r+padX
+  const near=(p,padX=.12,padY=.11)=>p.x>box.l-padX&&p.x<box.r+padX
     &&p.y>box.t-padY&&p.y<box.b+padY;
   const display=p=>({x:1-p.x,y:p.y});
   const choices=hands.map((h,i)=>({h,label:labels[i]?.[0],world:worlds[i]})).filter(({h})=>h?.length>=21).map(({h,label,world})=>{
@@ -604,14 +604,14 @@ function observeHands(result,now){
     const pick={x:(index.x+thumb.x)*.5,y:(index.y+thumb.y)*.5};
     const palmWidth=Math.max(.035,distance(h[5],h[17]));
     const tipGap=distance(h[4],h[8]);
-    const pinchLimit=Math.max(.085,palmWidth*1.0);
+    const pinchLimit=Math.max(.092,palmWidth*1.08);
     const palmSpan=Math.max(.04,distance(h[0],h[9]));
     return {pick,tipGap,pinch:tipGap<pinchLimit,
       holding:!!state.pinchStart&&tipGap<pinchLimit*1.25,
-      palmSpan,onFace:near(pick)||near(index,.11,.10),h,back:handBackFacing(h,world,aspect),side:label?.categoryName||label?.displayName};
+      palmSpan,onFace:near(pick)||near(index,.13,.12),h,back:handBackFacing(h,world,aspect),side:label?.categoryName||label?.displayName};
   });
   if(!choices.length){
-    if(state.pinchStart&&now-state.pinchStart.lastSeen<240)return;
+    if(state.pinchStart&&now-state.pinchStart.lastSeen<320)return;
     state.pinchStart=null;return;
   }
   const mid={x:(box.l+box.r)*.5,y:(box.t+box.b)*.5};
@@ -630,7 +630,7 @@ function observeHands(result,now){
   if(!hand){state.pinchStart=null;if(choices.every(c=>!c.pinch))state.pinchReady=true;return;}
   // Palm facing the camera must not advance or complete a peel.
   if(hand.back?.clearlyPalm){state.pinchStart=null;return;}
-  if(!hand.back?.valid&&!(state.pinchStart&&hand.back?.hold&&now-state.pinchStart.lastBack<280)){state.pinchStart=null;return;}
+  if(!hand.back?.valid&&!(state.pinchStart&&hand.back?.hold&&now-state.pinchStart.lastBack<360)){state.pinchStart=null;return;}
   if(state.pinchStart&&hand.back?.valid)state.pinchStart.lastBack=now;
   if(state.frame==='AR6'){
     if(!hand.onFace||!hand.pinch){state.pinchStart=null;return;}
@@ -661,10 +661,10 @@ function observeHands(result,now){
   const moved=distance(hand.pick,start.point);
   const outward=distance(hand.pick,mid)-distance(start.point,mid);
   // A gentle diagonal tug is enough; thresholds scale with face size.
-  const movedEnough=moved>Math.max(.030,faceWidth*.085)
-    &&outward>Math.max(.010,Math.min(faceWidth,faceHeight)*.035);
+  const movedEnough=moved>Math.max(.026,faceWidth*.075)
+    &&outward>Math.max(.008,Math.min(faceWidth,faceHeight)*.030);
   // A hand moving only toward the lens is not an intentional outward peel.
-  if(now-start.near>=90&&movedEnough&&hand.back?.valid)completeHandPeel();
+  if(now-start.near>=90&&movedEnough&&(hand.back?.valid||(hand.back?.hold&&now-start.lastBack<220)))completeHandPeel();
 }
 async function loadHandWhenNeeded(session){
  if(!state.playing||session!==state.session||state.hand)return;
