@@ -9,7 +9,7 @@ const packSlots=[[638,134,172,62],[843,134,172,62],[638,229,172,61],[843,229,172
 // Keep the doll canvas at its original 346:873 aspect ratio and centered on the Figma slot.
 const activeDollRect={x:371.3,y:81,w:111.4,h:281};
 // Only the colored bulb is a valid source, never the empty neck or ring.
-const bottleLiquids={purple:{x:125,y:86,rx:39,ry:34},orange:{x:129,y:174,rx:39,ry:34}};
+const bottleLiquids={purple:{x:125,y:86,rx:39,ry:34},orange:{x:129,y:183,rx:41,ry:35}};
 const key='DCD_IMPLEMENTATION_1';
 const signaturePath='M2.50021 39.3162C3.97397 25.5131 15.0272 6.78039 32.7124 3.08321C57.2822 -2.05324 36.3968 27.7477 15.0272 52.6265C3.31169 66.2659 29.4323 61.4999 52.6083 32.6614C71.0303 9.7382 81.3467 24.5272 52.6083 61.4999';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -1330,11 +1330,18 @@ function syringeTipPoint(host){
   const bounds=marker.getBoundingClientRect();
   return localPoint({clientX:bounds.left+bounds.width/2,clientY:bounds.top+bounds.height/2});
 }
-function bottleTouched(tip){
+function bottleTouched(tip,previous=tip){
   if(!tip)return null;
+  previous=previous||tip;
   for(const color of ['purple','orange']){
     const {x,y,rx,ry}=bottleLiquids[color];
-    if(((tip.x-x)/rx)**2+((tip.y-y)/ry)**2<=1)return color;
+    // Test the swept tip as well as the release point; tolerate 7 native
+    // pixels for the antialiased boundary and low-rate touch input.
+    const ax=(previous.x-x)/(rx+7),ay=(previous.y-y)/(ry+7);
+    const bx=(tip.x-x)/(rx+7),by=(tip.y-y)/(ry+7);
+    const dx=bx-ax,dy=by-ay,den=dx*dx+dy*dy;
+    const t=den?clamp(-(ax*dx+ay*dy)/den,0,1):0;
+    if((ax+t*dx)**2+(ay+t*dy)**2<=1)return color;
   }
   return null;
 }
@@ -1673,8 +1680,17 @@ stage.addEventListener('pointermove',e=>{
     el.style.translate=(p.x-drag.start.x)+'px '+(p.y-drag.start.y)+'px';
     if(drag.kind==='syringe')el.style.transform='rotate('+drag.angle+'deg)';
   }
-  // NEVER trigger fill or injection during a drag. The person chooses
-  // when to stop, even if the needle passes through the doll.
+  // Bottle filling begins on true needle contact. Injection into the
+  // doll still requires release, preserving the intentional injection UX.
+  if(drag.kind==='syringe'&&!s.loaded&&workbenchReady()){
+    const tip=syringeTipPoint(el),color=bottleTouched(tip,drag.lastTip);
+    drag.lastTip=tip;
+    if(color&&s.figures[s.active].value!==(color==='orange'?0:100)){
+      const pointerId=drag.pointerId;drag=null;
+      if(stage.hasPointerCapture(pointerId))stage.releasePointerCapture(pointerId);
+      el.classList.remove('dragging');fillSyringe(color,el);return;
+    }
+  }
   drag.last=p;
 });
 stage.addEventListener('pointerup',e=>{
@@ -1691,7 +1707,7 @@ stage.addEventListener('pointerup',e=>{
       d.el.style.transform='rotate('+d.angle+'deg)';
     }
     const tip=syringeTipPoint(d.el);
-    const color=!s.loaded&&bottleTouched(tip);
+    const color=!s.loaded&&bottleTouched(tip,d.lastTip);
     if(color)fillSyringe(color,d.el);
     else if(s.loaded&&abdomenTouched(tip))inject(d.el);
     else render();
