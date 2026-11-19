@@ -939,6 +939,7 @@ function phoneDevice(){
 async function beginAr(){
   if(arHandoffActive||!['15','16'].includes(s.page))return;
   if(s.page==='15')window.DCD_CONSENT_AUDIO?.yes?.();
+  window.DCD_AR_FLOW?.bridgeWhisper?.(.025,2.8);
   arHandoffActive=true;
   arDropFinished=false;arCameraReady=false;arCameraError='';
   [A.arOverlayFoilStates[0],A.arOverlayFoilStates[2],A.arOverlayFrontStates[0],A.arOverlayFrontStates[1]]
@@ -1130,7 +1131,8 @@ function openArPack(){
   save();
   // Must be called from the user click itself to satisfy browser camera
   // activation policy. Never request permission merely on entering AR.
-  window.DCD_AR_FLOW?.primeWhisper?.();
+  window.DCD_CONSENT_AUDIO?.open?.();
+  window.DCD_AR_FLOW?.bridgeWhisper?.(.065,2.0);
   window.DCD_STIGMA_VOICES?.prime?.();
   askArCamera();
   setPage('arOpen','opening');
