@@ -459,7 +459,7 @@ canvas.figure{object-fit:contain!important}
 .syringe-guide,.pack-guide-hand{z-index:10;pointer-events:none;overflow:visible;object-fit:fill;mix-blend-mode:normal!important}
 .syringe-guide-core{animation:dcdGuideToBottle 1.5s ease-in-out infinite!important}
 .syringe-injection-guide{animation:dcdGuideToFigure 1.5s ease-in-out infinite!important}
-.pack-guide-hand{transform:none;animation:dcdGuideToPack 1.55s ease-in-out 3 forwards!important}
+.pack-guide-hand{transform:none;animation:dcdGuideToPack 1.55s ease-in-out 1 forwards!important}
 @keyframes dcdGuideToBottle{0%{translate:0 0;opacity:1}99.9%{translate:-129.36px -107px;opacity:.43}100%{translate:0 0;opacity:1}}
 @keyframes dcdGuideToFigure{0%{translate:0 0;opacity:1}99.9%{translate:146.39px -85px;opacity:.43}100%{translate:0 0;opacity:1}}
 @keyframes dcdGuideToPack{0%{translate:0 0;opacity:1}99.9%{translate:292px -31px;opacity:.43}100%{translate:292px -31px;opacity:0}}
@@ -1881,3 +1881,7 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive:is([data-ar-frame="AR9"],[data-ar-frame="AR10"]) .ar-glass-ready > canvas.ar-glass-live{
  display:block;
 }
+
+/* Match the central dose's etched color-dodge type. Only STRONG is warm gold. */
+.new-pack-dose.pack-intensity{color:#2b333d;mix-blend-mode:color-dodge;}
+.new-pack-dose.pack-intensity-strong{color:#554326;}
