@@ -529,21 +529,41 @@ function observeFace(points,now){
    enter('AR3-1');
  }
 }
-// Camera input is unmirrored; only the displayed video is mirrored.
-// Anatomical right palm has positive projected winding in raw image XY;
-// left palm has the opposite winding. Reject edge-on and uncertain hands.
-function handBackFacing(h,label,aspect){
- if(!label||label.score<.65)return null;
- const side=label.categoryName||label.displayName;
- if(side!=='Right'&&side!=='Left')return null;
- const v=(a,b)=>[a.x-b.x,(a.y-b.y)*aspect,(a.z||0)-(b.z||0)];
- const u=v(h[5],h[0]),w=v(h[17],h[0]);
- const n=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];
- const length=Math.hypot(...n);if(length<1e-7)return null;
- return (side==='Right'?-1:1)*n[2]/length;
+// The physical palm plane is built from the wrist and four MCP joints.
+// Its normal is deliberately oriented AWAY from the camera (positive z).
+// The flexed fingertips must lie behind that plane for a dorsal pinch;
+// this geometric check does not depend on a possibly mirrored Left/Right label.
+function handPlaneEvidence(h,aspect=1){
+ if(!h||h.length<21)return null;
+ const p=i=>[h[i].x,h[i].y*aspect,h[i].z];
+ const sub=(a,b)=>a.map((x,k)=>x-b[k]);
+ const dot=(a,b)=>a.reduce((n,x,k)=>n+x*b[k],0);
+ const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+ const wrist=p(0),index=p(5),pinky=p(17),middle=p(9),ring=p(13);
+ const n1=cross(sub(index,wrist),sub(pinky,wrist));
+ const n2=cross(sub(index,middle),sub(pinky,middle));
+ // First triangle spans the palm; the second refines it only if compatible.
+ const n=n1.map((x,i)=>x+(dot(n1,n2)>0?n2[i]:-n2[i])*.25);
+ const len=Math.hypot(...n),width=Math.hypot(...sub(index,pinky));
+ if(!Number.isFinite(len)||len<1e-8||width<1e-5)return null;
+ const unit=n.map(x=>x/len*(n[2]<0?-1:1));
+ const center=wrist.map((x,i)=>(x+index[i]+middle[i]+ring[i]+pinky[i])/5);
+ const depth=i=>dot(sub(p(i),center),unit)/width;
+ const thumb=depth(4),finger=depth(8),curl=[12,16,20].map(depth);
+ return {facing:unit[2],thumb,finger,mean:(thumb+finger)/2,curl, pinch:Math.hypot(...sub(p(4),p(8)))/width};
+}
+function handBackFacing(h,world,aspect){
+ const image=handPlaneEvidence(h,aspect),metric=handPlaneEvidence(world,1);
+ const e=metric||image;if(!e)return null;
+ // Near-edge-on hands are ambiguous. A pinch on the visible palm lies
+ // toward the lens (negative depth); it must never arm the peel.
+ const valid=e.facing>.38&&e.mean>.025&&Math.min(e.thumb,e.finger)>-.055
+   &&e.pinch<.62&&(!image||image.mean>-.055);
+ return {valid,score:e.mean,facing:e.facing,pinch:e.pinch,imageDepth:image?.mean,
+   worldDepth:metric?.mean};
 }
 function observeHands(result,now){
- const hands=result?.landmarks||[],labels=result?.handedness||result?.handednesses||[];
+ const hands=result?.landmarks||[],labels=result?.handedness||result?.handednesses||[],worlds=result?.worldLandmarks||[];
  const aspect=(state.video?.videoHeight||1)/(state.video?.videoWidth||1);
   if(!['AR6','AR7'].includes(state.frame)||state.autoPeeling)return;
   const box=state.faceBox;
@@ -552,7 +572,7 @@ function observeHands(result,now){
   const near=(p,padX=.10,padY=.09)=>p.x>box.l-padX&&p.x<box.r+padX
     &&p.y>box.t-padY&&p.y<box.b+padY;
   const display=p=>({x:1-p.x,y:p.y});
-  const choices=hands.map((h,i)=>({h,label:labels[i]?.[0]})).filter(({h})=>h?.length>=21).map(({h,label})=>{
+  const choices=hands.map((h,i)=>({h,label:labels[i]?.[0],world:worlds[i]})).filter(({h})=>h?.length>=21).map(({h,label,world})=>{
     const index=display(h[8]),thumb=display(h[4]);
     const pick={x:(index.x+thumb.x)*.5,y:(index.y+thumb.y)*.5};
     const palmWidth=Math.max(.035,distance(h[5],h[17]));
@@ -561,11 +581,10 @@ function observeHands(result,now){
     const palmSpan=Math.max(.04,distance(h[0],h[9]));
     return {pick,tipGap,pinch:tipGap<pinchLimit,
       holding:!!state.pinchStart&&tipGap<pinchLimit*1.25,
-      palmSpan,onFace:near(pick)||near(index,.11,.10),h,back:handBackFacing(h,label,aspect),side:label?.categoryName||label?.displayName};
+      palmSpan,onFace:near(pick)||near(index,.11,.10),h,back:handBackFacing(h,world,aspect),side:label?.categoryName||label?.displayName};
   });
   if(!choices.length){
     // A brief occlusion of fingertips by the face should not lose the grip.
-    if(state.pinchStart&&now-state.pinchStart.lastSeen<420)return;
     state.pinchStart=null;return;
   }
   const mid={x:(box.l+box.r)*.5,y:(box.t+box.b)*.5};
@@ -579,11 +598,11 @@ function observeHands(result,now){
   }
   // Keep the currently gripping hand; never switch to another candidate
   // merely because the original hand temporarily turns edge-on.
-  const hand=state.pinchStart?choices.find(c=>c.side===state.pinchStart.side):choices.find(c=>c.back!==null&&c.back>.32);
-  if(!hand){state.pinchStart=null;return;}
-  if(state.root)state.root.dataset.handFacing=hand.back===null?'unknown':hand.back>.32?'back':'palm-or-edge';
+  const hand=state.pinchStart?choices.find(c=>c.side===state.pinchStart.side):choices.find(c=>c.back?.valid);
+  if(state.root){const e=(hand||choices[0])?.back;state.root.dataset.handFacing=e?.valid?'back-pinch':'rejected';state.root.dataset.handDepth=e?e.score.toFixed(3):'unknown';}
+  if(!hand){state.pinchStart=null;if(choices.every(c=>!c.pinch))state.pinchReady=true;return;}
   // Palm facing the camera must not advance or complete a peel.
-  if(hand.back===null||hand.back<(state.pinchStart&&state.pinchStart.side===hand.side? .20:.32)){
+  if(!hand.back?.valid){
     state.pinchStart=null;return;
   }
   if(state.frame==='AR6'){
@@ -593,7 +612,7 @@ function observeHands(result,now){
       return;
     }
     state.pinchStart.lastSeen=now;
-    if(now-state.pinchStart.near>=95)enter('AR7');
+    if(now-state.pinchStart.near>=210)enter('AR7');
     return;
   }
   if(!hand.pinch&&!hand.holding){
@@ -618,7 +637,7 @@ function observeHands(result,now){
   const movedEnough=moved>Math.max(.045,faceWidth*.13)
     &&outward>Math.max(.019,Math.min(faceWidth,faceHeight)*.055);
   // A hand moving only toward the lens is not an intentional outward peel.
-  if(now-start.near>=90&&movedEnough)completeHandPeel();
+  if(now-start.near>=210&&movedEnough)completeHandPeel();
 }
 async function loadHandWhenNeeded(session){
  if(!state.playing||session!==state.session||state.hand)return;
