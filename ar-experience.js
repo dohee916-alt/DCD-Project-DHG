@@ -25,7 +25,7 @@ function markup(){
  '<div class="ar-choice-pack" aria-hidden="true"></div>'+
  '<div class="ar-final-color" aria-hidden="true"></div>'+
  '<div class="ar-flash" aria-hidden="true"></div>'+
- '<div class="ar-copy" aria-live="polite"></div>'+ 
+ '<div class="ar-surround-stigmas" aria-hidden="true"></div>'+'<div class="ar-copy" aria-live="polite"></div>'+ 
  '<div class="ar-stigma-message" aria-live="polite"><div class="ar-stigma-heading">THEY SAY</div><div class="ar-stigma-typed"></div></div>'+
   '<button type="button" class="ar-ending-hit" aria-label="Return to the beginning" hidden></button>'+
  '<svg class="ar-face-guide" aria-hidden="true" width="289" height="375" viewBox="0 0 289 375" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="144.5" cy="187.5" rx="142" ry="185" stroke="#D83A00" stroke-width="5" stroke-linecap="round" stroke-dasharray="0.5 30"/></svg>'+
@@ -160,6 +160,7 @@ function stopWhisper(force=false){
  const heading=state.root.querySelector('.ar-stigma-heading');if(heading)heading.textContent='';
  state.root.querySelector('.ar-flow-choices').innerHTML='';
  state.root.querySelector('.ar-choice-pack').innerHTML='';
+ const surround=state.root.querySelector('.ar-surround-stigmas');if(surround){surround.classList.remove('active');surround.replaceChildren();}
   const endingHit=state.root.querySelector('.ar-ending-hit');if(endingHit)endingHit.hidden=true;
  state.endingReady=false;
  state.root.classList.toggle('ar-final-mode',state.frame==='AR9'||state.frame==='AR10');
@@ -333,11 +334,29 @@ function typeStigma(text,onComplete){
  }
  next();
 }
+function surroundStigmas(variant,done){
+ const layer=state.root?.querySelector('.ar-surround-stigmas');if(!layer){done();return;}
+ const frame=state.frame,session=state.session;
+ const positions=[[8,222,220,-7],[209,330,205,6],[12,479,240,-4],[184,606,230,5],[32,749,330,-3]];
+ const sequence=[0,2,1,4,3,2,0,4,1,3];
+ const times=[0,260,520,740,1000,2120,2420,2680,3000,3220];
+ layer.replaceChildren();layer.classList.add('active');
+ window.DCD_STIGMA_VOICES?.surround?.(variant);
+ sequence.forEach((i,j)=>delay(()=>{
+  if(state.frame!==frame||state.session!==session)return;
+  const [x,y,w,r]=positions[i],span=document.createElement('span');
+  span.className='ar-surround-phrase';span.textContent=ORGANZA_TEXT[variant][i];
+  span.style.cssText='left:'+x+'px;top:'+y+'px;width:'+w+'px;--angle:'+r+'deg;--drift:'+(j%2?16:-16)+'px;--size:'+(j<5?23:19)+'px';
+  layer.appendChild(span);
+  delay(()=>span.remove(),2350);
+ },times[j]));
+ delay(()=>{layer.classList.remove('active');layer.replaceChildren();window.DCD_STIGMA_VOICES?.stop?.();done();},5900);
+}
 function showStigmaSequence(variant,done){
  const words=ORGANZA_TEXT[variant];
  let index=0;
  function next(){
-   if(index>=words.length){delay(done,2000);return;}
+   if(index>=words.length){surroundStigmas(variant,done);return;}
    window.DCD_STIGMA_VOICES?.play?.(variant,index);
    typeStigma(words[index],()=>{
      // Launch the sheet and its arrival sound immediately on the final typed character.
@@ -436,7 +455,7 @@ function enter(frame){
    }
    delay(readyForStigmas,500);break;
  case 'AR5':
-   caption('DO YOU WANT TO\nCHANGE YOUR CHOICE?');
+   caption('WOULD YOU CHOOSE\nDIFFERENTLY NOW?');
    buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
  case 'AR5-1':
    caption('DO YOU AGREE TO\nTEST IT ON YOU?');
