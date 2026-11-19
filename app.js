@@ -347,10 +347,25 @@ function consentMarkup(){
 // One physical dose label for every WEB/AR pack. Coordinates are local to
 // the WEB12 clear shell; AR scales the same geometry with its shell.
 const PACK_DOSE={x:52,y:181,w:81,h:36,packW:185.497,packH:391.108};
+// In-game dose intensity, based on the four starting morph levels and
+// the 7-point orange injection step (not clinical GLP-1 strength).
+function doseIntensity(count){
+  return count>=28?'STRONG':count>=10?'MEDIUM':'WEAK';
+}
+function doseSummary(){
+  const count=s.figures.reduce((sum,f)=>sum+f.orange,0);
+  return {count,intensity:doseIntensity(count)};
+}
+window.DCD_DOSE_SUMMARY=doseSummary;
 function packDoseMarkup(x,y,w,h,cls=''){
-  const d=PACK_DOSE,scale=w/d.packW;
-  const dose=s.figures.reduce((sum,f)=>sum+f.orange,0).toFixed(1);
-  return '<div class="lay new-pack-dose '+cls+'" '+box(x+d.x*scale,y+d.y*h/d.packH,d.w,d.h,'transform:scale('+scale+');transform-origin:top left;')+'>SUM OF<br>APPLIED GLP-1<br>'+dose+'</div>';
+  const d=PACK_DOSE,scale=w/d.packW,sy=h/d.packH;
+  const {count,intensity}=doseSummary(),dose=count.toFixed(1);
+  const common='transform:scale('+scale+');transform-origin:top left;';
+  // Top and bottom are centered on the pack, not the stage.
+  // Rotate only the bottom lettering, keeping its Figma-local anchor.
+  const intensityLabel=(top,reverse=false)=>'<div class="lay new-pack-dose pack-intensity '+cls+'" '+box(x+d.x*scale,y+top*sy,d.w,9,common)+'><span'+(reverse?' style="display:block;transform:rotate(180deg)"':'')+'>'+intensity+'</span></div>';
+  return '<div class="lay new-pack-dose '+cls+'" '+box(x+d.x*scale,y+d.y*sy,d.w,d.h,common)+'>SUM OF<br>APPLIED GLP-1<br>'+dose+'</div>'
+    +intensityLabel(13)+intensityLabel(372,true);
 }
 function newPackMarkup(){
   // Figma 03_MOBILE_WEB / New12–New16 (615:538 etc).
