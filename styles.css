@@ -1743,9 +1743,9 @@ canvas.figure{object-fit:contain!important}
  position:absolute;inset:0;pointer-events:none;opacity:0;
  animation:dcdWhisperEcho 4s ease-out both,dcdWhisperTracking 4s ease-in-out both;
 }
-.ar-whisper-echo.left{--echo-x:-17px;--echo-y:-6px;--echo-strength:.24}
-.ar-whisper-echo.right{--echo-x:14px;--echo-y:5px;--echo-strength:.20;animation-delay:.17s,0s}
-.ar-whisper-echo.far{--echo-x:-27px;--echo-y:2px;--echo-strength:.12;animation-delay:.34s,0s}
+.ar-whisper-echo.left{--echo-x:-43px;--echo-y:-6px;--echo-strength:.46}
+.ar-whisper-echo.right{--echo-x:43px;--echo-y:5px;--echo-strength:.42;animation-delay:.17s,0s}
+.ar-whisper-echo.far{--echo-x:-68px;--echo-y:2px;--echo-strength:.24;animation-delay:.34s,0s}
 @keyframes dcdWhisperFocus{
  0%{opacity:.12;filter:blur(2.8px)}
  13%,37%{opacity:1;filter:blur(0)}
@@ -1755,11 +1755,13 @@ canvas.figure{object-fit:contain!important}
 }
 @keyframes dcdWhisperEcho{
  0%,13%{opacity:0;transform:translate(0);filter:blur(0)}
- 24%{opacity:var(--echo-strength)}
- 49%{opacity:0;transform:translate(var(--echo-x),var(--echo-y));filter:blur(2.5px)}
+ 24%{opacity:var(--echo-strength);transform:translate(calc(var(--echo-x)*.22),calc(var(--echo-y)*.22));filter:blur(.4px)}
+ 37%{opacity:calc(var(--echo-strength)*.75);transform:translate(calc(var(--echo-x)*.70),calc(var(--echo-y)*.70));filter:blur(1.1px)}
+ 51%{opacity:0;transform:translate(var(--echo-x),var(--echo-y));filter:blur(3px)}
  58%{opacity:0;transform:translate(0);filter:blur(0)}
- 64%{opacity:calc(var(--echo-strength)*.7)}
- 90%,100%{opacity:0;transform:translate(var(--echo-x),var(--echo-y));filter:blur(3px)}
+ 65%{opacity:var(--echo-strength);transform:translate(calc(var(--echo-x)*.30),calc(var(--echo-y)*.30));filter:blur(.5px)}
+ 78%{opacity:calc(var(--echo-strength)*.6);transform:translate(calc(var(--echo-x)*.88),var(--echo-y));filter:blur(1.5px)}
+ 90%,100%{opacity:0;transform:translate(calc(var(--echo-x)*1.25),var(--echo-y));filter:blur(4px)}
 }
 @keyframes dcdWhisperTracking{
  0%,100%{letter-spacing:0}
@@ -1835,3 +1837,24 @@ canvas.figure{object-fit:contain!important}
  z-index:30;pointer-events:auto;cursor:pointer;
 }
 #stage .ar-immersive .ar-ending-hit:focus-visible{outline:2px solid #fff;outline-offset:-4px}
+
+/* Experimental surround climax: existing type and cloth stay unchanged. */
+#stage .ar-surround-stigmas{position:absolute;inset:0;z-index:11;pointer-events:none;overflow:hidden;display:none}
+#stage .ar-surround-stigmas.active{display:block}
+#stage .ar-surround-phrase{position:absolute;display:block;font:700 var(--size,23px)/1.1 "Turret Road",Arial,sans-serif;color:#221813;letter-spacing:.4px;text-align:center;text-wrap:balance;opacity:0;animation:dcdSurroundPhrase 2.35s cubic-bezier(.2,.65,.25,1) both}
+@keyframes dcdSurroundPhrase{
+ 0%{opacity:0;transform:translate(var(--drift),9px) rotate(var(--angle)) scale(.93);filter:blur(7px);letter-spacing:2.2px}
+ 18%,37%{opacity:.94;transform:translate(0,0) rotate(var(--angle)) scale(1);filter:blur(0);letter-spacing:.4px}
+ 48%{opacity:.28;filter:blur(1.7px)}
+ 58%,69%{opacity:.72;filter:blur(.25px)}
+ 100%{opacity:0;transform:translate(calc(var(--drift)*-.55),-12px) rotate(var(--angle)) scale(1.06);filter:blur(5px);letter-spacing:1.3px}
+}
+@keyframes dcdWhisperFocus{
+ 0%{opacity:.08;filter:blur(4px);transform:translateY(3px) scale(.96)}
+ 13%,37%{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}
+ 46%{opacity:.45;filter:blur(1.8px);transform:translateX(-3px)}
+ 57%,64%{opacity:1;filter:blur(0);transform:translateX(1px) scale(1.025)}
+ 82%,100%{opacity:0;filter:blur(4px);transform:translateY(-3px) scale(1.045)}
+}
+@media(prefers-reduced-motion:reduce){#stage .ar-surround-phrase{animation:dcdSurroundReduced 2.35s linear both}}
+@keyframes dcdSurroundReduced{0%,100%{opacity:0}20%,75%{opacity:.85}}
