@@ -104,11 +104,17 @@ function playWhisperBuffer(){
  whisperNode=node;
  node.onended=()=>{if(whisperNode===node)whisperNode=null;};
 }
+function bridgeWhisper(level=.025,fade=1.7){
+ primeWhisper();
+ whisperWanted=true;
+ whisperLevel(level,fade);
+ playWhisperBuffer();
+}
 function startWhisper(){
  whisperWanted=true;
  if(!whisperContext)primeWhisper();
  // The whispered crowd is prominent before stigma appears.
- if(whisperGain&&whisperContext)whisperLevel(WHISPER_MAX,.3);
+ if(whisperGain&&whisperContext)whisperLevel(WHISPER_MAX,3.0);
  playWhisperBuffer();
 }
 function stopWhisper(force=false){
@@ -436,8 +442,9 @@ function enter(frame){
  state.root.dataset.arFrame=frame;clearScene();layoutText();
  window.DCD_SCENE_AUDIO?.scene?.(frame);
  switch(frame){
- case 'AR3':state.portraitPending=false;caption('POSITION YOUR FACE HERE');break;
+ case 'AR3':state.portraitPending=false;caption('POSITION YOUR FACE HERE');bridgeWhisper(.065,1.6);break;
  case 'AR3-1':
+   window.DCD_CONSENT_AUDIO?.finish?.();
    // The cutout is already visibly ready before this transition.
    caption("What's with all the whispering?");
     startWhisper();
@@ -1066,6 +1073,7 @@ function startArVisuals(){
  ensurePortraitMatte();
 }
 function stop(preservePrimedAudio=false){
+ if(!preservePrimedAudio)window.DCD_CONSENT_AUDIO?.stop?.();
  state.session++;
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
  window.DCD_STIGMA_VOICES?.stop?.();
@@ -1079,7 +1087,7 @@ function stop(preservePrimedAudio=false){
  state.root=null;state.stage=null;state.video=null;
 }
 
-window.DCD_AR_FLOW={markup,mount,start,stop,cameraError,primeWhisper,endingAudioEnded,frame:()=>state.frame,debugNext:()=>{
+window.DCD_AR_FLOW={markup,mount,start,stop,cameraError,primeWhisper,bridgeWhisper,endingAudioEnded,frame:()=>state.frame,debugNext:()=>{
  const pos=frameNames.indexOf(state.frame);
  if(state.frame==='AR4'){for(let i=state.maskCount;i<5;i++)addFabric();enter('AR5');}
  else if(state.frame==='AR5'){enter('AR5-1');}
