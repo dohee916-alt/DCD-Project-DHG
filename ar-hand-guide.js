@@ -96,41 +96,48 @@ function create(root){
    // Pose_OK target that was used when the fingertips actually met.
    initialThumbIndex=sample(openClip,.045);
    foldedThumbIndex=sample(clip,Math.max(.045,clip.duration-.025));
-   // Extend only the CLOSED snapshot with a natural three-finger grasp.
-   // The source rig's verified middle/ring/pinky joints flex about local X.
-   // Keep the authored thumb/index contact completely unchanged.
-   for(const entry of foldedThumbIndex){
-    entry.node.position.copy(entry.position);
-    entry.node.quaternion.copy(entry.rotation);
-    entry.node.scale.copy(entry.scale);
+   // Transfer the authored INDEX finger's actual flexion from open to
+   // closed to the three other fingers. Use each joint's anatomical
+   // frame, rather than guessing a local X axis/sign.
+   const pose=(entries)=>{for(const e of entries){e.node.position.copy(e.position);e.node.quaternion.copy(e.rotation);e.node.scale.copy(e.scale);}model.updateMatrixWorld(true);};
+   const getJoint=(name)=>model.getObjectByName(name);
+   const read=(prefix)=>['prox','midd','dist'].map(part=>getJoint(prefix+'_'+part));
+   const indexBones=['index','ind','fore','pointer','forefinger'].map(read).find(bs=>bs.every(Boolean))||null;
+   // Normalize bone names as a fallback for the authored index rig.
+   const indexRig=indexBones||['prox','midd','dist'].map(part=>handBones.find(b=>/index|fore|pointer|^ind[_ .]/i.test(b.name)&&b.name.toLowerCase().endsWith(part)));
+   const fingers=['midd','ring','pinky'].map(read).filter(bs=>bs.every(Boolean));
+   pose(initialThumbIndex);
+   const wrist=getJoint('radius_ulna');
+   const mid=getJoint('midd_prox'),little=getJoint('pinky_prox');
+   if(indexRig.every(Boolean)&&wrist&&mid&&little){
+    // A palmward normal is determined from the model's ACTUAL authored
+    // index closing motion, never from a wrist-distance heuristic.
+    const at=b=>b.getWorldPosition(new THREE.Vector3());
+    const openIndex=at(indexRig[2]),palmAcross=at(little).sub(at(indexRig[0])).normalize();
+    const palmForward=at(mid).sub(at(wrist)).normalize();
+    const palmNormal=new THREE.Vector3().crossVectors(palmAcross,palmForward).normalize();
+    pose(foldedThumbIndex);
+    const closedIndex=at(indexRig[2]);
+    if(closedIndex.clone().sub(openIndex).dot(palmNormal)<0)palmNormal.negate();
+    pose(initialThumbIndex);
+    // The local flexion axis is perpendicular to each finger segment AND
+    // the palmward direction. This prevents outward splay/backwards bends.
+    const axes=fingers.map(bs=>bs.map((bone,k)=>{
+     const worldQ=bone.getWorldQuaternion(new THREE.Quaternion());
+     const longitudinal=k<2?at(bs[k+1]).sub(at(bone)).normalize():at(bone).sub(at(bs[k-1])).normalize();
+     const axis=new THREE.Vector3().crossVectors(longitudinal,palmNormal).normalize();
+     return axis.applyQuaternion(worldQ.invert()).normalize();
+    }));
+    pose(foldedThumbIndex);
+    fingers.forEach((bs,f)=>bs.forEach((bone,k)=>{
+     const original=initialThumbIndex.find(e=>e.node===bone);
+     const target=foldedThumbIndex.find(e=>e.node===bone);
+     if(!original||!target||axes[f][k].lengthSq()<.5)return;
+     // Close inward with the four-finger grasp (MCP/PIP/DIP).
+     target.rotation.copy(original.rotation).multiply(new THREE.Quaternion().setFromAxisAngle(axes[f][k],[1.02,1.18,.62][k]));
+    }));
    }
-   model.updateMatrixWorld(true);
-   const wrist=model.getObjectByName('radius_ulna');
-   const flexAxis=new THREE.Vector3(1,0,0);
-   const curlAngles=[.40,.65,.28];
-   for(const finger of ['midd','ring','pinky']){
-    const joints=['prox','midd','dist'].map(part=>model.getObjectByName(finger+'_'+part));
-    if(!wrist||joints.some(j=>!j))continue;
-    const base=joints.map(j=>j.quaternion.clone());
-    const target=wrist.getWorldPosition(new THREE.Vector3());
-    const tip=joints[2];
-    let best={distance:tip.getWorldPosition(new THREE.Vector3()).distanceTo(target),rot:base};
-    // Evaluate both flexion directions on this actual rig, then choose the
-    // closer-to-palm result. Modest angles avoid the earlier broken fist.
-    for(const sign of [-1,1]){
-     joints.forEach((j,k)=>j.quaternion.copy(base[k]).multiply(new THREE.Quaternion().setFromAxisAngle(flexAxis,sign*curlAngles[k])));
-     model.updateMatrixWorld(true);
-     const distance=tip.getWorldPosition(new THREE.Vector3()).distanceTo(target);
-     if(distance<best.distance)best={distance,rot:joints.map(j=>j.quaternion.clone())};
-    }
-    joints.forEach((j,k)=>j.quaternion.copy(best.rot[k]));
-    model.updateMatrixWorld(true);
-    for(const joint of joints){
-     const saved=foldedThumbIndex.find(entry=>entry.node===joint);
-     if(saved)saved.rotation.copy(joint.quaternion);
-    }
-   }
-   model.updateMatrixWorld(true);
+   pose(foldedThumbIndex);
    console.info('[DCD AR] Restored full-rig open/closed poses',
     {open:openClip.name,closed:clip.name,bones:handBones.length});
    const centered=new THREE.Group();
