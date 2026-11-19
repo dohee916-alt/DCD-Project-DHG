@@ -419,7 +419,7 @@ function startNewTickers(){
 }
 function newButton(label,action,x,y,disabled=false,size=null,signatureArrow=false){
   // WEB14 signature has its own right-pointing Figma button in two editable states.
-  const source=signatureArrow?(disabled?'new14-right-arrow-disabled.svg':'new14-right-arrow-enabled.svg'):(label==='YES'?'yesButtonAlpha.png?v=original-new15-20261104':label==='NO'?'noButtonAlpha.png?v=original-new15-20261104':label==='TEST IT'?'testButtonAlpha.png?v=original-new16-20261104':'nextButtonAlpha.png');
+  const source=signatureArrow?(disabled?'new14-right-arrow-disabled.svg?v=signature-circle-146':'new14-right-arrow-enabled.svg?v=signature-circle-146'):(label==='YES'?'yesButtonAlpha.png?v=original-new15-20261104':label==='NO'?'noButtonAlpha.png?v=original-new15-20261104':label==='TEST IT'?'testButtonAlpha.png?v=original-new16-20261104':'nextButtonAlpha.png');
   const wide=size?.[0]??(label==='TEST IT'?140:label==='NEXT'?67:134);
   const high=size?.[1]??69;
   return '<button class="lay new-ui-button'+(signatureArrow?' new-signature-next':'')+(disabled?' disabled':'')+'" '+box(x,y,wide,high)+' data-action="'+action+'" aria-label="'+label+'" '+(disabled?'disabled':'')+'><img src="assets/figma-current/hd/'+source+'" alt=""></button>';
@@ -549,7 +549,7 @@ function bindNewSignature(){
       hasInk=true;
       stage.querySelectorAll('.new-signature-sample,.new-signature-trace,.new-signature-guide').forEach(n=>n.remove());
       const next=stage.querySelector('.new-ui-button[data-action="next"]');
-      if(next){next.disabled=false;next.removeAttribute('disabled');next.classList.remove('disabled');const icon=next.querySelector('img');if(next.classList.contains('new-signature-next')&&icon)icon.src='assets/figma-current/hd/new14-right-arrow-enabled.svg';}
+      if(next){next.disabled=false;next.removeAttribute('disabled');next.classList.remove('disabled');const icon=next.querySelector('img');if(next.classList.contains('new-signature-next')&&icon)icon.src='assets/figma-current/hd/new14-right-arrow-enabled.svg?v=signature-circle-146';}
     }
   };
   const finish=e=>{
