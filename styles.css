@@ -1835,3 +1835,24 @@ canvas.figure{object-fit:contain!important}
  z-index:30;pointer-events:auto;cursor:pointer;
 }
 #stage .ar-immersive .ar-ending-hit:focus-visible{outline:2px solid #fff;outline-offset:-4px}
+
+/* Experimental surround climax: existing type and cloth stay unchanged. */
+#stage .ar-surround-stigmas{position:absolute;inset:0;z-index:11;pointer-events:none;overflow:hidden;display:none}
+#stage .ar-surround-stigmas.active{display:block}
+#stage .ar-surround-phrase{position:absolute;display:block;font:700 var(--size,23px)/1.1 "Turret Road",Arial,sans-serif;color:#221813;letter-spacing:.4px;text-align:center;text-wrap:balance;opacity:0;animation:dcdSurroundPhrase 2.35s cubic-bezier(.2,.65,.25,1) both}
+@keyframes dcdSurroundPhrase{
+ 0%{opacity:0;transform:translate(var(--drift),9px) rotate(var(--angle)) scale(.93);filter:blur(7px);letter-spacing:2.2px}
+ 18%,37%{opacity:.94;transform:translate(0,0) rotate(var(--angle)) scale(1);filter:blur(0);letter-spacing:.4px}
+ 48%{opacity:.28;filter:blur(1.7px)}
+ 58%,69%{opacity:.72;filter:blur(.25px)}
+ 100%{opacity:0;transform:translate(calc(var(--drift)*-.55),-12px) rotate(var(--angle)) scale(1.06);filter:blur(5px);letter-spacing:1.3px}
+}
+@keyframes dcdWhisperFocus{
+ 0%{opacity:.08;filter:blur(4px);transform:translateY(3px) scale(.96)}
+ 13%,37%{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}
+ 46%{opacity:.45;filter:blur(1.8px);transform:translateX(-3px)}
+ 57%,64%{opacity:1;filter:blur(0);transform:translateX(1px) scale(1.025)}
+ 82%,100%{opacity:0;filter:blur(4px);transform:translateY(-3px) scale(1.045)}
+}
+@media(prefers-reduced-motion:reduce){#stage .ar-surround-phrase{animation:dcdSurroundReduced 2.35s linear both}}
+@keyframes dcdSurroundReduced{0%,100%{opacity:0}20%,75%{opacity:.85}}
