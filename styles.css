@@ -1885,3 +1885,7 @@ canvas.figure{object-fit:contain!important}
 /* Match the central dose's etched color-dodge type. Only STRONG is warm gold. */
 .new-pack-dose.pack-intensity{color:#2b333d;mix-blend-mode:color-dodge;}
 .new-pack-dose.pack-intensity-strong{color:#554326;}
+
+/* Signature-only SVG compatibility: render the Figma shadow outside the image filter graph. */
+#stage .new-ui-button.new-signature-next img{filter:drop-shadow(0 2.54194px 2.54194px rgba(255,106,106,.15)) drop-shadow(0 8.89677px 4.44839px rgba(255,106,106,.13));}
+#stage .new-ui-button.new-signature-next.disabled img{filter:drop-shadow(0 2.54194px 2.54194px rgba(97,92,89,.09)) drop-shadow(0 8.89677px 4.44839px rgba(97,92,89,.078));}
