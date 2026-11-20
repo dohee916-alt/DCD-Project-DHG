@@ -2020,3 +2020,9 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-yes .ar-portrait-camera,
 #stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-yes .ar-group3-figma,
 #stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-yes .ar-organza-stack{transition-duration:1.35s!important}
+
+/* Pre-promote the complete receipt pack so the short YES zoom is one
+   composited movement; keep the dose and all material layers registered. */
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-pack,
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-front,
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-back{will-change:transform;backface-visibility:hidden}

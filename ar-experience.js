@@ -501,20 +501,21 @@ function showReceiptDecision(){
   chosen=true;window.DCD_SCENE_AUDIO?.stop?.('clock-ticking');copy.textContent='';area.innerHTML='';
   root.classList.add('ar-receipt-exiting',yes?'ar-receipt-yes':'ar-receipt-no');
   if(yes){
-   animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.42,.04,.48,1)'});
-   animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.42,.04,.48,1)'});
-   // Use the actual rendered pack and viewport bounds; stop at cover,
-   // rather than arbitrary magnification or a second flight offscreen.
+   // Measure first, then animate only the already registered layers.
+   // Use one uninterrupted compositor transform to the same cover endpoint.
    const box=pack.getBoundingClientRect(),view=root.getBoundingClientRect();
    const zoom=Math.max(view.width/box.width,view.height/box.height);
    const sx=box.width/pack.offsetWidth,sy=box.height/pack.offsetHeight;
    const dx=(view.left+view.width/2-box.left-box.width/2)/sx;
    const dy=(view.top+view.height/2-box.top-box.height/2)/sy;
+   animate(front,[{transform:'translate3d(0,0,0)'},{transform:'translate3d(0,740px,0)'}],{duration:650,easing:'cubic-bezier(.32,.02,.7,1)'});
+   animate(back,[{transform:'translate3d(0,0,0)'},{transform:'translate3d(0,740px,0)'}],{duration:650,easing:'cubic-bezier(.32,.02,.7,1)'});
    const motion=animate(pack,[
-    {transform:'translate(0,0) scale(1)'},
-    {transform:`translate(${dx}px,${dy}px) scale(${zoom})`}
-   ],{duration:1450,delay:120,easing:'cubic-bezier(.35,.05,.5,1)'});
-   delay(()=>{if(active())root.classList.remove('ar-receipt-tint');},150);
+    {transform:'translate3d(0,0,0) scale(1)'},
+    {transform:`translate3d(${dx}px,${dy}px,0) scale(${zoom})`}
+   ],{duration:620,easing:'cubic-bezier(.42,.03,.82,.88)'});
+   // Avoid animating two full-screen blur filters during the approach.
+   // AR6 restores its own camera state once the pack reaches cover.
    motion.finished.then(()=>{if(active())enter('AR6');}).catch(()=>{});
   }else{
    animate(pack,[{transform:'translateY(0)'},{transform:'translateY(158px)'}],{duration:820,easing:'cubic-bezier(.3,.1,.22,1)'});
