@@ -1089,7 +1089,7 @@ function createFaceWarp(root){
  return {update,render,hide,destroy};
 }
 function faceWarpTarget(){
- if(['AR3-1','AR4','AR5'].includes(state.frame))return 1;
+ if(['AR3-1','AR4','AR5','AR5-1'].includes(state.frame))return 1;
  if(state.frame==='AR5-2')return -1;
  if(['AR6','AR7'].includes(state.frame)){
    const sign=state.variant==='replacement'?-1:1;
@@ -1156,7 +1156,7 @@ function tick(){
  // Restore the previous independently timed tracker: segmentation and
  // WebGL updates must not trigger a heavy face inference every animation frame.
  const now=performance.now();
- if(['AR5-1','AR8','AR9','AR10'].includes(state.frame))state.faceWarp?.hide();
+ if(['AR8','AR9','AR10'].includes(state.frame))state.faceWarp?.hide();
  else state.faceWarp?.render(video,now,faceWarpTarget());
  if(!(state.face&&now-state.lastFace>=100)&&!handsDue(now))return;
  if(video.currentTime===state.lastVideoTime)return;

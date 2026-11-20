@@ -1981,7 +1981,11 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive.ar-final-mode.ar-matting-active .ar-person-segment{
  display:none!important;visibility:hidden!important;opacity:0!important;mask-image:none!important;-webkit-mask-image:none!important;
 }
-#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-face-warp{visibility:hidden!important}
+/* Preserve the live corrected full-frame camera during reconsideration. */
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-face-warp{filter:blur(0px);transition:filter 1.05s ease}
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-tint .ar-face-warp{filter:blur(36px);transition:filter 3.5s ease}
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-yes .ar-face-warp{transition-duration:1.35s}
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-no .ar-face-warp{transition-duration:1.4s}
 #stage .ar-immersive[data-ar-frame="AR5-1"]:is(.ar-matting-active,:not(.ar-matting-active)) .ar-portrait-camera{
  display:block!important;visibility:visible!important;opacity:1!important;
  filter:blur(0px)!important;-webkit-filter:blur(0px)!important;
