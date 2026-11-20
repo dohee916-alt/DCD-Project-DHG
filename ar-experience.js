@@ -532,14 +532,14 @@ function showReceiptDecision(){
     if(!active()||chosen||i>=data.extra.length)return;
     const line=document.createElement('div');line.className='ar-receipt-row ar-receipt-new';
     additional.appendChild(line);
-    typeInto(line,data.extra[i++],()=>{line.classList.add('ar-receipt-typed');delay(appendNext,140);},26);
+    typeInto(line,data.extra[i++],()=>{line.classList.add('ar-receipt-typed');delay(appendNext,110);},23);
    }
    appendNext();
-  },45);
+  },38);
  }
  // Entry starts with the pack exactly sandwiched between the two native crops.
- animate(assembly,[{transform:'translate(0,780px)'},{transform:'translate(0,0)'}],{duration:1750,easing:'cubic-bezier(.25,.65,.25,1)'});
- delay(()=>{if(active())root.classList.add('ar-receipt-tint');},350);
+ animate(assembly,[{transform:'translate(0,780px)'},{transform:'translate(0,0)'}],{duration:1450,easing:'cubic-bezier(.25,.65,.25,1)'});
+ delay(()=>{if(active())root.classList.add('ar-receipt-tint');},250);
  delay(()=>{
   if(!active())return;
   root.classList.add('ar-receipt-shaking');
@@ -550,16 +550,16 @@ function showReceiptDecision(){
    {transform:'translate(7px,31px) rotate(-1.6deg)',offset:.53},
    {transform:'translate(3px,43px) rotate(1.1deg)',offset:.72},
    {transform:'translate(6px,59px) rotate(0deg)'}
-  ],{duration:1750,easing:'linear'});
-  animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:1750,easing:'cubic-bezier(.23,.55,.25,1)'});
- },2350);
+  ],{duration:1450,easing:'linear'});
+  animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:1450,easing:'cubic-bezier(.23,.55,.25,1)'});
+ },1850);
  delay(()=>{if(active()){
   // Lock to actual Figma frame-local coordinates; cancel all retained entrance transforms.
   assembly.getAnimations().forEach(a=>a.cancel());pack.getAnimations().forEach(a=>a.cancel());
   assembly.style.left='50px';assembly.style.top='265px';assembly.style.transform='none';
   pack.style.left='45px';pack.style.top='-131px';pack.style.transform='none';
-  root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');delay(reveal,850);
- }},4150);
+  root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');delay(reveal,500);
+ }},3350);
 }
 
 function enter(frame){
@@ -607,13 +607,13 @@ function enter(frame){
    delay(readyForStigmas,500);break;
  case 'AR5':
    // The five first stigmas lead automatically to the new receipt decision.
-   typeCaption('ANY REGRETS?',950,()=>{
+   typeCaption('ANY REGRETS?',800,()=>{
      delay(()=>{
        if(state.frame!=='AR5')return;
-       typeCaption('YOU HAVE ONE MORE CHANCE.',1750,()=>{
-         delay(()=>{if(state.frame==='AR5')enter('AR5-1');},2900);
+       typeCaption('YOU HAVE ONE MORE CHANCE.',1450,()=>{
+         delay(()=>{if(state.frame==='AR5')enter('AR5-1');},2300);
        });
-     },2200);
+     },1750);
    });
    break;
  case 'AR5-1':
