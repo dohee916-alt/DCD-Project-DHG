@@ -501,13 +501,18 @@ function showReceiptDecision(){
   chosen=true;window.DCD_SCENE_AUDIO?.stop?.('clock-ticking');copy.textContent='';area.innerHTML='';
   root.classList.add('ar-receipt-exiting',yes?'ar-receipt-yes':'ar-receipt-no');
   if(yes){
-   // Separate two physical objects without a giant pack zoom. All pack
-   // layers travel together at their original dimensions.
-   root.classList.remove('ar-receipt-tint');
-   animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1250,easing:'cubic-bezier(.42,.04,.48,1)'});
-   animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1250,easing:'cubic-bezier(.42,.04,.48,1)'});
-   animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-740px)'}],{duration:1250,delay:150,easing:'cubic-bezier(.42,.04,.48,1)'});
-   delay(()=>{if(active())enter('AR6');},1450);
+   // Keep the agreed forward approach, but cap magnification at 1.35x.
+   // The paper drops away while the complete pack approaches as one object.
+   animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.42,.04,.48,1)'});
+   animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.42,.04,.48,1)'});
+   animate(pack,[
+    {transform:'translate(0,0) scale(1)'},
+    {transform:'translate(-3px,65px) scale(1.35)',offset:.48},
+    {transform:'translate(-3px,-850px) scale(1.35)'}
+   ],{duration:1850,delay:120,easing:'cubic-bezier(.35,.05,.5,1)'});
+   // Restore camera focus during the approach, without dissolving the pack.
+   delay(()=>{if(active())root.classList.remove('ar-receipt-tint');},450);
+   delay(()=>{if(active())enter('AR6');},2020);
   }else{
    animate(pack,[{transform:'translateY(0)'},{transform:'translateY(158px)'}],{duration:820,easing:'cubic-bezier(.3,.1,.22,1)'});
    delay(()=>{
