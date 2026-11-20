@@ -658,14 +658,19 @@ function enter(frame){
    let began=false;
    function beginEnding(){
     if(began||state.session!==session||state.frame!=='AR9')return;
-    began=true;typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1700);
+    began=true;
+    typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1700);
+    const copy=state.root.querySelector('.ar-copy');
+    // Ease the first glyph into view without changing the established typewriter pace.
+    copy?.animate([{opacity:0},{opacity:1}],{duration:420,easing:'ease-out',fill:'none'});
     delay(()=>enter('AR10'),3550);
    }
-   // The first letter starts with actual playback, not entry into AR9.
-   // A failed/unavailable audio asset must not trap the visitor.
+   // Let the opening music establish itself for a short beat before the first glyph.
+   // Preserve synchronization with actual playback even when decoding is delayed.
+   const leadIn=650;
    if(audioStart&&typeof audioStart.then==='function')audioStart.then(result=>{
-    if(result?.started)delay(beginEnding,result.latencyMs||0);else beginEnding();
-   }).catch(beginEnding);else beginEnding();
+    delay(beginEnding,leadIn+(result?.started?result.latencyMs||0:0));
+   }).catch(()=>delay(beginEnding,leadIn));else delay(beginEnding,leadIn);
    break;
  }
  case 'AR10':
