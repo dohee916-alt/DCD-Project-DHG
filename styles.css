@@ -1994,3 +1994,12 @@ canvas.figure{object-fit:contain!important}
 }
 #stage .ar-immersive[data-ar-frame="AR5-1"]{background:transparent!important}
 #stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-tint{background:transparent!important}
+
+/* Receipt choice exit: retain the actual foil/plastic material throughout.
+   The fully enlarged pack hides the camera while its focus resets. */
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-occluded .ar-portrait-camera,
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-occluded .ar-group3-figma,
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-occluded .ar-organza-stack{transition-duration:.28s!important}
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-no .ar-portrait-camera,
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-no .ar-group3-figma,
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-no .ar-organza-stack{transition-duration:1.4s!important}

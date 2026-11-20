@@ -166,7 +166,7 @@ function stopWhisper(force=false){
  const heading=state.root.querySelector('.ar-stigma-heading');if(heading){heading.textContent='';heading.classList.remove('ar-stigma-heading-exit');}
  state.root.querySelector('.ar-flow-choices').innerHTML='';
  state.root.querySelector('.ar-choice-pack').innerHTML='';
- state.root.classList.remove('ar-receipt-settled','ar-receipt-tint','ar-receipt-exiting','ar-receipt-no','ar-receipt-yes','ar-receipt-shaking');
+ state.root.classList.remove('ar-receipt-settled','ar-receipt-tint','ar-receipt-exiting','ar-receipt-no','ar-receipt-yes','ar-receipt-shaking','ar-receipt-occluded');
   const endingHit=state.root.querySelector('.ar-ending-hit');if(endingHit)endingHit.hidden=true;
  state.endingReady=false;
  state.root.classList.toggle('ar-final-mode',state.frame==='AR9'||state.frame==='AR10');
@@ -501,20 +501,40 @@ function showReceiptDecision(){
   chosen=true;window.DCD_SCENE_AUDIO?.stop?.('clock-ticking');copy.textContent='';area.innerHTML='';
   root.classList.add('ar-receipt-exiting',yes?'ar-receipt-yes':'ar-receipt-no');
   if(yes){
-   root.classList.remove('ar-receipt-tint');
-   animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:950,easing:'cubic-bezier(.4,0,.8,1)'});
-   animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:950,easing:'cubic-bezier(.4,0,.8,1)'});
-   // Fly the same blister toward the viewer, growing to cover the entire stage.
-   animate(pack,[{transform:'translate(0,0) scale(1)'},{transform:'translate(-5px,-55px) scale(2.35)',offset:.72},{transform:'translate(-5px,-55px) scale(4.6)',opacity:0}],{duration:1250,easing:'cubic-bezier(.35,.05,.65,1)'});
-   delay(()=>{if(active())enter('AR6');},1280);
+   // The physical pack stays solid. First separate the paper, then use
+   // the foil as a full-screen occluder while the live camera refocuses.
+   animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.45,.05,.35,1)'});
+   animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.45,.05,.35,1)'});
+   // Current pack centre: (217.077,391.392). Move it exactly to stage
+   // centre (214,463); scale sufficiently to cover EVERY viewport edge.
+   // No opacity keyframes, no dissolve, no change in material.
+   animate(pack,[{transform:'translate(0,0) scale(1)'},{transform:'translate(-3.077px,71.608px) scale(4.1)'}],{duration:1350,delay:180,easing:'cubic-bezier(.32,.04,.45,1)'});
+   delay(()=>{
+    if(!active())return;
+    root.classList.add('ar-receipt-occluded');
+    root.classList.remove('ar-receipt-tint');
+   },1530);
+   // Keep the fully occluding real pack fixed while the camera clears.
+   // Push past the lens with an opaque upward sweep, revealing live AR.
+   delay(()=>{
+    if(!active())return;
+    animate(pack,[{transform:'translate(-3.077px,71.608px) scale(4.1)'},{transform:'translate(-3.077px,-1600px) scale(4.1)'}],{duration:680,easing:'cubic-bezier(.55,.03,.85,.55)'});
+   },1930);
+   delay(()=>{if(active())enter('AR6');},2640);
   }else{
-   animate(pack,[{transform:'translateY(0)'},{transform:'translateY(158px)'}],{duration:570,easing:'cubic-bezier(.3,.1,.2,1)'});
+   animate(pack,[{transform:'translateY(0)'},{transform:'translateY(158px)'}],{duration:820,easing:'cubic-bezier(.3,.1,.22,1)'});
    delay(()=>{
     if(!active())return;
     root.classList.remove('ar-receipt-tint');
-    animate(assembly,[{transform:'translate(0,0)'},{transform:'translate(590px,-920px) rotate(17deg)'}],{duration:1020,easing:'cubic-bezier(.45,0,.8,.95)'});
-   },580);
-   delay(()=>{if(active())enter('AR5-2');},1640);
+    // Withdraw the complete sandwich downward in depth. Avoid diagonal
+    // throws, sharp spins and transparency changes.
+    animate(assembly,[
+     {transform:'perspective(1100px) translate3d(0,0,0) rotateX(0deg)'},
+     {transform:'perspective(1100px) translate3d(0,38px,-80px) rotateX(7deg)',offset:.28},
+     {transform:'perspective(1100px) translate3d(0,1120px,-220px) rotateX(11deg)'}
+    ],{duration:1450,easing:'cubic-bezier(.42,.04,.48,1)'});
+   },940);
+   delay(()=>{if(active())enter('AR5-2');},2440);
   }
  }
  function reveal(){
