@@ -211,7 +211,7 @@ function typeEndingPrompt(text,onComplete){
  function write(){
   if(state.root!==root||state.session!==session||state.frame!=='AR10')return;
   endingGlassText(prompt,letters.slice(0,++i).join(''));
-  if(i<letters.length){delay(write,36);return;}
+  if(i<letters.length){delay(write,40);return;}
   onComplete?.();
  }
  write();
@@ -505,10 +505,10 @@ function showReceiptDecision(){
    // the foil as a full-screen occluder while the live camera refocuses.
    animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.45,.05,.35,1)'});
    animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.45,.05,.35,1)'});
-   // Current pack centre: (217.077,391.392). Move it exactly to stage
+   // Current pack centre: (217.077,361.392). Move it exactly to stage
    // centre (214,463); scale sufficiently to cover EVERY viewport edge.
    // No opacity keyframes, no dissolve, no change in material.
-   animate(pack,[{transform:'translate(0,0) scale(1)'},{transform:'translate(-3.077px,71.608px) scale(4.1)'}],{duration:1350,delay:180,easing:'cubic-bezier(.32,.04,.45,1)'});
+   animate(pack,[{transform:'translate(0,0) scale(1)'},{transform:'translate(-3.077px,101.608px) scale(4.1)'}],{duration:1350,delay:180,easing:'cubic-bezier(.32,.04,.45,1)'});
    delay(()=>{
     if(!active())return;
     root.classList.add('ar-receipt-occluded');
@@ -518,7 +518,7 @@ function showReceiptDecision(){
    // Push past the lens with an opaque upward sweep, revealing live AR.
    delay(()=>{
     if(!active())return;
-    animate(pack,[{transform:'translate(-3.077px,71.608px) scale(4.1)'},{transform:'translate(-3.077px,-1600px) scale(4.1)'}],{duration:680,easing:'cubic-bezier(.55,.03,.85,.55)'});
+    animate(pack,[{transform:'translate(-3.077px,101.608px) scale(4.1)'},{transform:'translate(-3.077px,-1600px) scale(4.1)'}],{duration:680,easing:'cubic-bezier(.55,.03,.85,.55)'});
    },1930);
    delay(()=>{if(active())enter('AR6');},2640);
   }else{
@@ -574,7 +574,7 @@ function showReceiptDecision(){
  delay(()=>{if(active()){
   // Lock to actual Figma frame-local coordinates; cancel all retained entrance transforms.
   assembly.getAnimations().forEach(a=>a.cancel());pack.getAnimations().forEach(a=>a.cancel());
-  assembly.style.left='50px';assembly.style.top='265px';assembly.style.transform='none';
+  assembly.style.left='50px';assembly.style.top='235px';assembly.style.transform='none';
   pack.style.left='45px';pack.style.top='-131px';pack.style.transform='none';
   root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');delay(reveal,850);
  }},4850);
@@ -664,10 +664,10 @@ function enter(frame){
    caption('');
    delay(()=>enter('AR9'),1800);break;
  case 'AR9':
-   typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1550);
-   delay(()=>enter('AR10'),3400);break;
+   typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1700);
+   delay(()=>enter('AR10'),3550);break;
  case 'AR10':
-    typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1650,()=>{
+    typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1800,()=>{
       delay(showEndingQuestion,2000);
     });
     break;
