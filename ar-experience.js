@@ -532,15 +532,14 @@ function showReceiptDecision(){
   window.DCD_SCENE_AUDIO?.play?.('clock-ticking',{loop:true});
   typeInto(copy,'WOULD YOU STILL TAKE IT?',()=>{
    if(!active())return;
-   buttons(()=>select(true),()=>select(false));
-   // Show the buttons when the question completes; keep them available.
-   // Additional entries are appended one by one without moving existing rows.
+   // Reveal choices only after every prescription entry has finished typing.
    let i=0;
    function appendNext(){
-    if(!active()||chosen||i>=data.extra.length)return;
+    if(!active()||chosen)return;
+    if(i>=data.extra.length){buttons(()=>select(true),()=>select(false));return;}
     const line=document.createElement('div');line.className='ar-receipt-row ar-receipt-new';
     additional.appendChild(line);
-    typeInto(line,data.extra[i++],()=>{line.classList.add('ar-receipt-typed');delay(appendNext,110);},23);
+    typeInto(line,data.extra[i++],()=>{line.classList.add('ar-receipt-typed');if(i>=data.extra.length)appendNext();else delay(appendNext,110);},23);
    }
    appendNext();
   },38);
