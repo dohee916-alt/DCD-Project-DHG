@@ -482,7 +482,7 @@ function showReceiptDecision(){
    animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:950,easing:'cubic-bezier(.4,0,.8,1)'});
    // Fly the same blister toward the viewer, growing to cover the entire stage.
    animate(pack,[{transform:'translate(0,-158px) scale(1)'},{transform:'translate(-5px,-55px) scale(2.35)',offset:.72},{transform:'translate(-5px,-55px) scale(4.6)',opacity:0}],{duration:1250,easing:'cubic-bezier(.35,.05,.65,1)'});
-   delay(()=>{if(active())enter('AR5-2');},1280);
+   delay(()=>{if(active())enter('AR6');},1280);
   }else{
    animate(pack,[{transform:'translateY(-158px)'},{transform:'translateY(0)'}],{duration:570,easing:'cubic-bezier(.3,.1,.2,1)'});
    delay(()=>{
@@ -490,7 +490,7 @@ function showReceiptDecision(){
     root.classList.remove('ar-receipt-tint');
     animate(assembly,[{transform:'translate(6px,59px)'},{transform:'translate(590px,-920px) rotate(17deg)'}],{duration:1020,easing:'cubic-bezier(.45,0,.8,.95)'});
    },580);
-   delay(()=>{if(active())enter('AR6');},1640);
+   delay(()=>{if(active())enter('AR5-2');},1640);
   }
  }
  function reveal(){
@@ -573,8 +573,16 @@ function enter(frame){
    }
    delay(readyForStigmas,500);break;
  case 'AR5':
-   caption('WOULD YOU CHOOSE\nDIFFERENTLY NOW?');
-   buttons(()=>enter('AR5-1'),()=>enter('AR6'));break;
+   // The five first stigmas lead automatically to the new receipt decision.
+   typeCaption('ANY REGRETS?',620,()=>{
+     delay(()=>{
+       if(state.frame!=='AR5')return;
+       typeCaption('YOU HAVE ONE MORE CHANCE.',1100,()=>{
+         delay(()=>{if(state.frame==='AR5')enter('AR5-1');},1050);
+       });
+     },1250);
+   });
+   break;
  case 'AR5-1':
    showReceiptDecision();break;
  case 'AR5-2':
