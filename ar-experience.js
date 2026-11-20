@@ -211,7 +211,7 @@ function typeEndingPrompt(text,onComplete){
  function write(){
   if(state.root!==root||state.session!==session||state.frame!=='AR10')return;
   endingGlassText(prompt,letters.slice(0,++i).join(''));
-  if(i<letters.length){delay(write,32);return;}
+  if(i<letters.length){delay(write,36);return;}
   onComplete?.();
  }
  write();
@@ -644,10 +644,10 @@ function enter(frame){
    caption('');
    delay(()=>enter('AR9'),1800);break;
  case 'AR9':
-   typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1400);
+   typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1550);
    delay(()=>enter('AR10'),3400);break;
  case 'AR10':
-    typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1500,()=>{
+    typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1650,()=>{
       delay(showEndingQuestion,2000);
     });
     break;
