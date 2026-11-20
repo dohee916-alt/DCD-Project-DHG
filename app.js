@@ -128,7 +128,7 @@ function syringeMarkup(cls=''){
     img(A.syringeBarrel,0,0,22,219,'syringe-barrel')+
     '<span class="syringe-tip-marker" aria-hidden="true"></span>');
 }
-function setPage(p,phase='ready'){if(p==='14'&&!['14','14done'].includes(s.page)){signatureInk=null;s.signed=false;}if((s.page==='12'||s.page==='13')&&p!==s.page)window.DCD_SCENE_AUDIO?.stop?.('prescription-typing',.06);if(s.page==='15'&&p!=='15'&&window.DCD_CONSENT_AUDIO?.status?.()!=='yes')window.DCD_CONSENT_AUDIO?.no?.();window.DCD_CAMPAIGN_AUDIO?.setScene(p);if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){window.DCD_SCENE_AUDIO?.stop?.('prescription-typing',.08);s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
+function setPage(p,phase='ready'){if(p==='14'&&!['14','14done'].includes(s.page)){signatureInk=null;s.signed=false;delete s.receiptSignature;try{sessionStorage.removeItem(key+'-signature');}catch{}}if((s.page==='12'||s.page==='13')&&p!==s.page)window.DCD_SCENE_AUDIO?.stop?.('prescription-typing',.06);if(s.page==='15'&&p!=='15'&&window.DCD_CONSENT_AUDIO?.status?.()!=='yes')window.DCD_CONSENT_AUDIO?.no?.();window.DCD_CAMPAIGN_AUDIO?.setScene(p);if(p!=='arOpen')cancelAnimationFrame(arMorphFrame);clearTimers();if(!['ar','arOpen','arFace'].includes(p)){cancelAnimationFrame(arDropFrame);stopArCamera();}s.page=p;s.phase=p==='12'&&phase==='ready'?'typing':phase;save();render();if(p==='12'&&s.phase==='typing')later(()=>{if(s.page==='12'&&s.phase==='typing'){window.DCD_SCENE_AUDIO?.stop?.('prescription-typing',.08);s.phase='ready';stage.classList.replace('phase-typing','phase-ready');}},4200);}
 function dimensions(){return mobilePortraitLandscape()||['reel0','00','01','02','03','ar','arOpen','arFace'].includes(s.page)?[428,926]:[874,428];}
 function fit(){
  const [w,h]=dimensions(),v=document.querySelector('#viewport');
@@ -559,7 +559,7 @@ function bindNewSignature(){
     activePointer=null;penSamples=[];penBase=null;
     window.DCD_WEB_SFX?.stop('signature');
     if(!strokeMoved)return;
-    signatureInk=c.toDataURL('image/png');s.signed=true;try{sessionStorage.setItem(key+'-signature',signatureInk);}catch{}save();
+    signatureInk=c.toDataURL('image/png');s.signed=true;try{const cropped=cropReceiptInk(c)||signatureInk;s.receiptSignature=cropped;sessionStorage.setItem(key+'-signature',cropped);}catch{}save();
     // Keep the SAME canvas mounted so additional strokes remain possible.
     // Page 15 starts only when the user explicitly taps NEXT.
   };
@@ -619,24 +619,32 @@ function arReceiptPlan(expected,side){
 window.DCD_AR_RECEIPT_PLAN=arReceiptPlan;
 window.DCD_AR_RECEIPT_DATA=()=>{
  const receipt=arReceiptPlan(s.expected,s.side),dose=doseSummary();
- let signature=signatureInk;
+ let signature=s.receiptSignature||signatureInk;
  if(!signature)try{signature=sessionStorage.getItem(key+'-signature');}catch{}
  return {...receipt,...dose,signature};
 };
 // Export the actual pen strokes tightly cropped, retaining their transparent background.
-window.DCD_AR_RECEIPT_SIGNATURE=async function(source){
- if(!source)return null;
- const image=new Image();image.src=source;
- try{await image.decode();}catch{return null;}
- const c=document.createElement('canvas');c.width=image.naturalWidth;c.height=image.naturalHeight;
- const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(image,0,0);
- const pixels=ctx.getImageData(0,0,c.width,c.height).data;
- let l=c.width,r=-1,t=c.height,b=-1;
- for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++)if(pixels[(y*c.width+x)*4+3]>12){l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y);}
+function cropReceiptInk(canvas){
+ const w=canvas.width,h=canvas.height,context=canvas.getContext('2d',{willReadFrequently:true});
+ const pixels=context.getImageData(0,0,w,h).data;
+ let l=w,r=-1,t=h,b=-1;
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;if(pixels[i+3]>12){l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y);}}
  if(r<l)return null;
  const out=document.createElement('canvas');out.width=r-l+1;out.height=b-t+1;
- out.getContext('2d').drawImage(c,l,t,out.width,out.height,0,0,out.width,out.height);
+ out.getContext('2d').drawImage(canvas,l,t,out.width,out.height,0,0,out.width,out.height);
  return out.toDataURL('image/png');
+}
+window.DCD_AR_RECEIPT_SIGNATURE=function(source){
+ if(!source)return Promise.resolve(null);
+ return new Promise(resolve=>{
+  const image=new Image();
+  image.onload=()=>{try{
+   const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+   canvas.getContext('2d').drawImage(image,0,0);resolve(cropReceiptInk(canvas)||source);
+  }catch{resolve(source);}};
+  image.onerror=()=>resolve(null);
+  image.src=source;
+ });
 };
 
 window.DCD_RENDER_FIGURES=drawFigures;

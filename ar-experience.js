@@ -132,7 +132,7 @@ function stopWhisper(force=false){
    'AR3-1':{copy:[33,64,362,32]},
    'AR4':{heading:[61,64,306,32],typed:[61,109,306,46]},
    'AR5':{copy:[61,64,306,64]},
-   'AR5-1':{copy:[61,107,306,32]},
+   'AR5-1':{copy:[61,55,306,32]},
    'AR5-2':{heading:[61,64,306,32],typed:[61,109,306,46]},
    'AR6':{copy:[50,89,342,44]},
    'AR7':{copy:[50,89,342,44]},
@@ -456,7 +456,11 @@ function showReceiptDecision(){
  window.DCD_RENDER_FIGURES?.();
  const assembly=preview.querySelector('.ar-receipt-assembly'),pack=preview.querySelector('.ar-receipt-pack'),front=preview.querySelector('.ar-receipt-front'),back=preview.querySelector('.ar-receipt-back');
  const ink=preview.querySelector('.ar-receipt-signature');
- if(data.signature)window.DCD_AR_RECEIPT_SIGNATURE?.(data.signature).then(src=>{if(active()&&src){ink.src=src;ink.style.visibility='visible';}});
+ if(data.signature){
+  // Show captured ink immediately, then replace it with its tightly cropped real strokes.
+  ink.src=data.signature;ink.style.visibility='visible';
+  window.DCD_AR_RECEIPT_SIGNATURE?.(data.signature).then(src=>{if(active()&&src)ink.src=src;});
+ }
  const additional=preview.querySelector('.ar-receipt-added');
  preview.querySelector('.ar-receipt-sections').style.setProperty('--side-rule-y',(60.5+17*(data.expected.length-1))+'px');
  let chosen=false;
@@ -531,7 +535,7 @@ function showReceiptDecision(){
  delay(()=>{if(active()){
   // Lock to actual Figma frame-local coordinates; cancel all retained entrance transforms.
   assembly.getAnimations().forEach(a=>a.cancel());pack.getAnimations().forEach(a=>a.cancel());
-  assembly.style.left='50px';assembly.style.top='265px';assembly.style.transform='none';
+  assembly.style.left='50px';assembly.style.top='213px';assembly.style.transform='none';
   pack.style.left='45px';pack.style.top='-131px';pack.style.transform='none';
   root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');reveal();
  }},2490);
