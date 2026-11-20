@@ -163,7 +163,7 @@ function stopWhisper(force=false){
  if(!state.root)return;
  const copy=state.root.querySelector('.ar-copy');copy.textContent='';copy.classList.remove('ar-glass-ready');
  const stigma=state.root.querySelector('.ar-stigma-typed');if(stigma)stigma.textContent='';
- const heading=state.root.querySelector('.ar-stigma-heading');if(heading)heading.textContent='';
+ const heading=state.root.querySelector('.ar-stigma-heading');if(heading){heading.textContent='';heading.classList.remove('ar-stigma-heading-exit');}
  state.root.querySelector('.ar-flow-choices').innerHTML='';
  state.root.querySelector('.ar-choice-pack').innerHTML='';
  state.root.classList.remove('ar-receipt-settled','ar-receipt-tint','ar-receipt-exiting','ar-receipt-no','ar-receipt-yes','ar-receipt-shaking');
@@ -316,6 +316,7 @@ function typeStigmaTimed(node,text,ms,onComplete){
  next();
 }
 function typeStigmaHeading(text,onComplete){
+ window.DCD_SCENE_AUDIO?.play?.('clock-ticking',{loop:true});
  typeStigmaTimed(state.root?.querySelector('.ar-stigma-heading'),text,42,onComplete);
 }
 function typeStigma(text,onComplete){
@@ -370,6 +371,24 @@ function showStigmaSequence(variant,done){
  function next(){
    if(index>=words.length){surroundStigmas(variant,done);return;}
    window.DCD_STIGMA_VOICES?.play?.(variant,index);
+   if(index===words.length-1){
+     // The fifth phrase's approved focus motion is 4s: its final fade
+     // begins at 64% and finishes at 82%. End the heading at the same instant.
+     const root=state.root,session=state.session,frame=state.frame;
+     const heading=root.querySelector('.ar-stigma-heading');
+     heading.classList.add('ar-stigma-heading-exit');
+     const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+     delay(()=>{
+       if(state.root!==root||state.session!==session||state.frame!==frame)return;
+       heading.textContent='';
+       if(reduced)root.querySelector('.ar-stigma-typed').textContent='';
+       window.DCD_SCENE_AUDIO?.stop?.('clock-ticking',.20);
+     },reduced?4000:3280);
+     delay(()=>{
+       if(state.root===root&&state.session===session&&state.frame===frame)
+         root.querySelector('.ar-stigma-typed').textContent='';
+     },4340);
+   }
    typeStigma(words[index],()=>{
      // Launch the sheet and its arrival sound immediately on the final typed character.
      if(!state.root||state.variant!==variant)return;
@@ -405,7 +424,8 @@ function completeHandPeel(){
   state.pinchStart=null;
   if(state.manualPeels<=2){
     removeFabric();
-    // Keep the looping guide available for the next manual peel.
+    // Give the user time to continue unaided after each successful peel.
+    state.handGuide?.afterPeel?.();
   }else{
     state.autoPeeling=true;
     state.handGuide?.hideOnce();
@@ -1185,6 +1205,7 @@ function stop(preservePrimedAudio=false){
  if(!preservePrimedAudio)window.DCD_CONSENT_AUDIO?.stop?.();
  state.session++;
  state.playing=false;cancelAnimationFrame(state.requestId);stopTimers();
+ window.DCD_SCENE_AUDIO?.stop?.('clock-ticking',.10);
  window.DCD_STIGMA_VOICES?.stop?.();
  if(!preservePrimedAudio)stopWhisper(true);
  state.matte?.stop();state.matte=null;

@@ -14,7 +14,7 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const SRC='assets/models/Do_Hand_DetailedRiggedAnimated_shared_16022026.glb';
 function create(root){
  const el=root.querySelector('.ar-gesture-guide');
- let active=true,frame='',since=0,played=false,raf=0,last=0;
+ let active=true,frame='',since=0,played=false,raf=0,last=0,afterFirstPeel=false;
  let ready=false,started=false,initialThumbIndex=[],foldedThumbIndex=[];
  let renderer=null,scene=null,camera=null,pivot=null,mixer=null,clip=null,THREE=null;
  let model=null,poseScale=1;
@@ -25,10 +25,17 @@ function create(root){
   // One uninterrupted demonstration from AR6 into AR7. Only a real first
   // fabric removal calls hideOnce(); changing stages must not stop it.
   if(name==='AR6'&&previous!=='AR6'&&previous!=='AR7'&&!played){
-   since=0;started=false;
+   since=0;started=false;afterFirstPeel=false;
   }
   el.style.display=(name==='AR6'||name==='AR7')&&!played?'block':'none';
   el.style.opacity='0';
+ }
+ function afterPeel(){
+  afterFirstPeel=true;
+  since=performance.now()+3000;
+  started=true;
+  el.style.opacity='0';
+  el.style.display='none';
  }
  function hideOnce(){
   played=true;
@@ -231,13 +238,14 @@ function create(root){
   // A slow GLB fetch must never consume the single demonstration before
   // the WebGL model has rendered its first frame.
   if(!started){since=now;started=true;}
+  if(now<since){el.style.opacity='0';el.style.display='none';return;}
   if(now-last<33)return;
   last=now;
   // One discrete demonstration. The hand never travels back toward the
   // viewer at the end. It DISAPPEARS in the distance and a fresh OPEN hand
   // appears at the original front position at the next loop boundary.
   // Continue until the first successful physical mask peel.
-  const cycle=3.85;
+  const cycle=afterFirstPeel?6.20:3.85;
   const t=((now-since)/1000)%cycle;
   // 0.00–0.65: front-facing hand in the open source pose
   // 0.65–1.45: rotate to show back of hand; thumb/index stay OPEN
@@ -272,7 +280,7 @@ function create(root){
  init();
  raf=requestAnimationFrame(render);
  return {
-  setFrame,hideOnce,
+  setFrame,hideOnce,afterPeel,
   destroy(){
    active=false;cancelAnimationFrame(raf);
    mixer?.stopAllAction();

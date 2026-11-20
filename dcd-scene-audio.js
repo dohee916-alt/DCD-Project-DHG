@@ -9,7 +9,8 @@ const sounds={
  'mask-arrive':{gain:.67},
  'mask-peel':{gain:.78},
  'mask-all-cleared':{gain:.82},
- 'final-message':{gain:.46}
+ 'final-message':{gain:.46},
+ 'clock-ticking':{gain:.58}
 };
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
 const workbenchPages=new Set(['03','workbench','08a','08b','09','10','11']);
@@ -36,7 +37,7 @@ function unlock(){
   master=ctx.createGain();master.gain.value=.9;master.connect(ctx.destination);
  }
  ctx.resume()?.then(()=>{
-  if(!primed){primed=true;for(const name of instantSounds)preload(name);}
+  if(!primed){primed=true;for(const name of instantSounds)preload(name);preload('clock-ticking');}
   // The rotate/workbench scene may already have begun before the first
   // pointer gesture. Start that pending ambience right after unlocking.
   if(workbenchPages.has(activePage)&&!voices.has('workbench-ambience')&&!loopLoads.has('workbench-ambience'))
@@ -116,6 +117,7 @@ function scene(page){
   return;
  }
  const previous=activePage;activePage=page;
+ if(page!=='AR4'&&page!=='AR5-2')stop('clock-ticking',.20);
  if(['09','10','11','12','13','14','14done'].includes(page)&&enabled){
   if(page==='11')preload('prescription-typing');
   for(const name of instantSounds)preload(name);

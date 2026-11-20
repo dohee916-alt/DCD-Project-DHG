@@ -1968,3 +1968,8 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-receipt-row{position:relative;padding-left:15px;width:216px;white-space:nowrap;font:700 10px/18px Arial,sans-serif}
 #stage .ar-receipt-row::before{content:"•";position:absolute;left:4px;top:0;font:700 10px/18px Arial,sans-serif;color:inherit}
 #stage .ar-receipt-signature{display:block;z-index:4;object-fit:contain;mix-blend-mode:multiply;pointer-events:none}
+
+/* Finish the shared heading at the fifth phrase's final focus fade. */
+.ar-stigma-heading.ar-stigma-heading-exit{animation:dcdStigmaHeadingExit 4s ease-in-out both}
+@keyframes dcdStigmaHeadingExit{0%,64%{opacity:1;filter:blur(0)}82%,100%{opacity:0;filter:blur(3px)}}
+@media(prefers-reduced-motion:reduce){.ar-stigma-heading.ar-stigma-heading-exit{animation:none}}
