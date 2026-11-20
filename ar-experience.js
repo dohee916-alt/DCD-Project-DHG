@@ -583,7 +583,7 @@ function enter(frame){
  if(frame==='AR9'){state.endingMusicEnded=false;state.endingRestarting=false;}
  if(frame==='AR10')state.endingRestarting=false;
  state.root.dataset.arFrame=frame;clearScene();layoutText();
- window.DCD_SCENE_AUDIO?.scene?.(frame);
+ const audioStart=window.DCD_SCENE_AUDIO?.scene?.(frame);
  switch(frame){
  case 'AR3':state.portraitPending=false;caption('POSITION YOUR FACE HERE');bridgeWhisper(.065,1.6);break;
  case 'AR3-1':
@@ -653,9 +653,21 @@ function enter(frame){
    // returning from a previous scene in an existing browser session.
    caption('');
    delay(()=>enter('AR9'),1800);break;
- case 'AR9':
-   typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1700);
-   delay(()=>enter('AR10'),3550);break;
+ case 'AR9':{
+   const session=state.session;
+   let began=false;
+   function beginEnding(){
+    if(began||state.session!==session||state.frame!=='AR9')return;
+    began=true;typeCaption('GLP-1 IS JUST\nONE MORE OPTION',1700);
+    delay(()=>enter('AR10'),3550);
+   }
+   // The first letter starts with actual playback, not entry into AR9.
+   // A failed/unavailable audio asset must not trap the visitor.
+   if(audioStart&&typeof audioStart.then==='function')audioStart.then(result=>{
+    if(result?.started)delay(beginEnding,result.latencyMs||0);else beginEnding();
+   }).catch(beginEnding);else beginEnding();
+   break;
+ }
  case 'AR10':
     typeCaption('NOT\nA REASON TO\nPRESCRIBE\nOTHERS',1800,()=>{
       delay(showEndingQuestion,2000);

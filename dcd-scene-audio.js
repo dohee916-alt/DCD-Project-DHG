@@ -37,7 +37,7 @@ function unlock(){
   master=ctx.createGain();master.gain.value=.9;master.connect(ctx.destination);
  }
  ctx.resume()?.then(()=>{
-  if(!primed){primed=true;for(const name of instantSounds)preload(name);preload('clock-ticking');}
+  if(!primed){primed=true;for(const name of instantSounds)preload(name);preload('clock-ticking');preload('final-message');}
   // The rotate/workbench scene may already have begun before the first
   // pointer gesture. Start that pending ambience right after unlocking.
   if(workbenchPages.has(activePage)&&!voices.has('workbench-ambience')&&!loopLoads.has('workbench-ambience'))
@@ -57,7 +57,7 @@ async function buffer(name){
    const decoder=await import('https://cdn.jsdelivr.net/npm/audio-decode@3.12.0/+esm');
    return decoder.default(data.slice(0));
   }
- }).then(b=>{decoded.set(name,b);if(instantSounds.has(name))onsetOffsets.set(name,onset(b));pending.delete(name);return b})
+ }).then(b=>{decoded.set(name,b);if(instantSounds.has(name)||name==='final-message')onsetOffsets.set(name,onset(b));pending.delete(name);return b})
    .catch(e=>{pending.delete(name);console.warn('[DCD scene audio] '+name,e);throw e});
  pending.set(name,promise);return promise;
 }
@@ -105,7 +105,14 @@ async function play(name,options={}){
    try{node.disconnect();gain.disconnect()}catch{}
    if(natural&&name==='final-message'&&['AR9','AR10'].includes(activePage))window.DCD_AR_FLOW?.endingAudioEnded?.();
   };
-  node.start(0,instantSounds.has(name)?(onsetOffsets.get(name)||0):0);
+  const offset=(instantSounds.has(name)||name==='final-message')?(onsetOffsets.get(name)||0):0;
+  const startsAt=ctx.currentTime;
+  node.start(startsAt,offset);
+  if(name==='final-message'){
+   const latency=Math.max(0,(ctx.baseLatency||0)+(ctx.outputLatency||0));
+   return {started:true,latencyMs:Math.round(latency*1000)};
+  }
+  return {started:true,latencyMs:0};
  }catch(e){console.warn('[DCD scene audio] play:',name,e)}
  finally{if(options.loop)loopLoads.delete(name)}
 }
@@ -129,7 +136,7 @@ function scene(page){
  // the silent gap between the prompt and the first checkbox row.
  if(page!=='12'&&page!=='13')stop('prescription-typing',.08);
  if(page==='AR9'){
-  play('final-message',{loop:false});
+  return play('final-message',{loop:false});
  }else if(page!=='AR10'&&previous==='AR9'||(page!=='AR9'&&page!=='AR10'&&previous==='AR10')){
   stop('final-message',.6);
  }
