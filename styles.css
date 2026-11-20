@@ -2026,3 +2026,12 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-pack,
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-front,
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-back{will-change:transform;backface-visibility:hidden}
+
+/* Fade the existing Figma ending look in once, then retain it through AR10.
+   Specific rules below intentionally override the older no-transition guard. */
+#stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode{transition:background-color 1.8s ease-in-out!important}
+#stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode:not(.ar-ending-color-ready){background-color:transparent!important}
+#stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode .ar-group3-figma{transition:opacity 1.8s ease-in-out!important}
+#stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode:not(.ar-ending-color-ready) .ar-group3-figma{opacity:0!important}
+#stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode .ar-portrait-camera{transition:filter 1.8s ease-in-out,-webkit-filter 1.8s ease-in-out,opacity 1.8s ease-in-out!important}
+#stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode:not(.ar-ending-color-ready) .ar-portrait-camera{opacity:1!important;filter:blur(0px) grayscale(0) sepia(0) saturate(1) brightness(1) contrast(1)!important;-webkit-filter:blur(0px) grayscale(0) sepia(0) saturate(1) brightness(1) contrast(1)!important}

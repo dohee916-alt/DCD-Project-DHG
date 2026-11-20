@@ -170,6 +170,7 @@ function stopWhisper(force=false){
   const endingHit=state.root.querySelector('.ar-ending-hit');if(endingHit)endingHit.hidden=true;
  state.endingReady=false;
  state.root.classList.toggle('ar-final-mode',state.frame==='AR9'||state.frame==='AR10');
+ if(state.frame!=='AR9'&&state.frame!=='AR10')state.root.classList.remove('ar-ending-color-ready');
  state.root.classList.toggle('ar-moment',state.frame==='AR8');
  state.root.classList.toggle('ar-align-gesture',state.frame==='AR3');
  // Blink only guidance authored in Doto, not consent or ending copy.
@@ -654,7 +655,12 @@ function enter(frame){
    caption('');
    delay(()=>enter('AR9'),1800);break;
  case 'AR9':{
-   const session=state.session;
+   const session=state.session,root=state.root;
+   root.classList.remove('ar-ending-color-ready');
+   // Commit the neutral starting state before transitioning the authored look.
+   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(state.root===root&&state.session===session&&state.frame==='AR9')root.classList.add('ar-ending-color-ready');
+   }));
    let began=false;
    function beginEnding(){
     if(began||state.session!==session||state.frame!=='AR9')return;
