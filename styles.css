@@ -1957,9 +1957,9 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-choice{animation:arReceiptButtonsIn .28s ease-out both}
 @keyframes arReceiptButtonsIn{from{opacity:0}to{opacity:1}}
 
-/* AR5-1 final frame is exactly Figma 1156:538. Keep all positioning within the 428×926 stage. */
+/* AR5-1 follows the existing AR coordinate convention: upper guidance text excludes the 52px mock status area; body assets and choice controls retain native frame coordinates. */
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-choice-pack{position:absolute!important;inset:0!important;width:428px!important;height:926px!important;transform:none!important;translate:none!important}
-#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{position:absolute!important;left:61px!important;top:107px!important;width:306px!important;height:32px!important;transform:none!important;translate:none!important;margin:0!important;padding:0!important}
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{position:absolute!important;left:61px!important;top:55px!important;width:306px!important;height:32px!important;transform:none!important;translate:none!important;margin:0!important;padding:0!important}
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-flow-choices{transform:none!important;translate:none!important;margin:0!important;padding:0!important}
 
 /* Receipt uses the full 428x926 frame coordinate system, without mock OS art.
