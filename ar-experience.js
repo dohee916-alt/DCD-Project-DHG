@@ -501,38 +501,20 @@ function showReceiptDecision(){
   chosen=true;window.DCD_SCENE_AUDIO?.stop?.('clock-ticking');copy.textContent='';area.innerHTML='';
   root.classList.add('ar-receipt-exiting',yes?'ar-receipt-yes':'ar-receipt-no');
   if(yes){
-   // The physical pack stays solid. First separate the paper, then use
-   // the foil as a full-screen occluder while the live camera refocuses.
-   animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.45,.05,.35,1)'});
-   animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.45,.05,.35,1)'});
-   // Pack centre in Figma content space (217.077,391.392); map to live stage
-   // centre (214,463); scale sufficiently to cover EVERY viewport edge.
-   // No opacity keyframes, no dissolve, no change in material.
-   animate(pack,[{transform:'translate(0,0) scale(1)'},{transform:'translate(-3.077px,89.1078px) scale(4.1)'}],{duration:1350,delay:180,easing:'cubic-bezier(.32,.04,.45,1)'});
-   delay(()=>{
-    if(!active())return;
-    root.classList.add('ar-receipt-occluded');
-    root.classList.remove('ar-receipt-tint');
-   },1530);
-   // Keep the fully occluding real pack fixed while the camera clears.
-   // Push past the lens with an opaque upward sweep, revealing live AR.
-   delay(()=>{
-    if(!active())return;
-    animate(pack,[{transform:'translate(-3.077px,89.1078px) scale(4.1)'},{transform:'translate(-3.077px,-1600px) scale(4.1)'}],{duration:680,easing:'cubic-bezier(.55,.03,.85,.55)'});
-   },1930);
-   delay(()=>{if(active())enter('AR6');},2640);
+   // Separate two physical objects without a giant pack zoom. All pack
+   // layers travel together at their original dimensions.
+   root.classList.remove('ar-receipt-tint');
+   animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1250,easing:'cubic-bezier(.42,.04,.48,1)'});
+   animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1250,easing:'cubic-bezier(.42,.04,.48,1)'});
+   animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-740px)'}],{duration:1250,delay:150,easing:'cubic-bezier(.42,.04,.48,1)'});
+   delay(()=>{if(active())enter('AR6');},1450);
   }else{
    animate(pack,[{transform:'translateY(0)'},{transform:'translateY(158px)'}],{duration:820,easing:'cubic-bezier(.3,.1,.22,1)'});
    delay(()=>{
     if(!active())return;
     root.classList.remove('ar-receipt-tint');
-    // Withdraw the complete sandwich downward in depth. Avoid diagonal
-    // throws, sharp spins and transparency changes.
-    animate(assembly,[
-     {transform:'perspective(1100px) translate3d(0,0,0) rotateX(0deg)'},
-     {transform:'perspective(1100px) translate3d(0,38px,-80px) rotateX(7deg)',offset:.28},
-     {transform:'perspective(1100px) translate3d(0,1120px,-220px) rotateX(11deg)'}
-    ],{duration:1450,easing:'cubic-bezier(.42,.04,.48,1)'});
+    // Keep the complete sandwich rigid: vertical translation only.
+    animate(assembly,[{transform:'translateY(0)'},{transform:'translateY(950px)'}],{duration:1450,easing:'cubic-bezier(.42,.04,.48,1)'});
    },940);
    delay(()=>{if(active())enter('AR5-2');},2440);
   }

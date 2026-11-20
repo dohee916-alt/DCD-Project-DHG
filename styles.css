@@ -2009,3 +2009,10 @@ canvas.figure{object-fit:contain!important}
    layer, including the assembly's animation, instead of manual offsets.
    X coordinates remain native; the approved upper question stays y=55. */
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-content-space{position:absolute;inset:0;width:428px;height:926px;transform-origin:0 0;transform:scaleY(1.08051342) translateY(-52px);pointer-events:none}
+
+/* The decision pack lettering must composite against its own foil only, not
+   the camera or the moving paper. Keep all native pack layers in one group. */
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-native-pack{isolation:isolate}
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-yes .ar-portrait-camera,
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-yes .ar-group3-figma,
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-yes .ar-organza-stack{transition-duration:1.35s!important}
