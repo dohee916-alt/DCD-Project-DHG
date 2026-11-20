@@ -586,7 +586,15 @@ function arPackMarkup(figmaChoicePreview=false){
   return h+'</div>';
 }
 // Share the exact approved AR blister with the AR5-1 decision overlay.
-window.DCD_AR_PACK_PREVIEW=()=>arPackMarkup(true);
+window.DCD_AR_PACK_PREVIEW=()=>{
+ // Native local coordinates of Figma 1156:624, not a transformed 428x926 screen.
+ const slots=[[36.854,54.911,65.696,184.342],[141.198,54.911,65.696,184.342],[36.854,271.141,65.696,184.342],[140.835,271.141,65.696,184.342]],order=[0,2,3,1];
+ return '<div class="ar-receipt-native-pack">'+
+ img(A.arOverlayFoilStates[0],2.94165,3.92236,240.23248,506.93994,'ar-receipt-native-foil')+
+ slots.map((q,i)=>canvasFigure(order[i],...q,'ar-receipt-native-doll')).join('')+
+ img(A.arOverlayFrontStates[0],0,0,244.154617,514.784302,'ar-receipt-native-clear')+
+ packDoseMarkup(0,0,244.154617,514.784302,'ar-pack-dose')+'</div>';
+};
 
 // AR receipt: retain explicit selections until the ten-line limit.
 // Only when the explicit selections overflow do priority side effects

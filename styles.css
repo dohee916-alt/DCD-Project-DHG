@@ -1918,10 +1918,11 @@ canvas.figure{object-fit:contain!important}
 .ar-receipt-front{position:absolute;inset:0;z-index:3;pointer-events:none}
 .ar-receipt-pack{position:absolute;left:45px;top:27px;width:244.1546px;height:514.7843px;z-index:2;transform-origin:50% 50%;overflow:visible}
 .ar-receipt-pack-inner{position:absolute;inset:0;overflow:visible}
-#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-pack-inner .ar-pack-flip{
- width:428px;height:926px;inset:auto;left:0;top:0;
- transform:translate(-34.76px,-106.06px) scale(.73134)!important;transform-origin:0 0!important;animation:none!important;
-}
+/* Use native Figma pack layers inside the physical sandwich, no nested screen transform. */
+.ar-receipt-native-pack{position:absolute;inset:0;width:244.154617px;height:514.784302px;overflow:visible}
+.ar-receipt-native-foil{z-index:0}
+.ar-receipt-native-doll{z-index:1;object-fit:cover!important;opacity:1!important;animation:none!important}
+.ar-receipt-native-clear{z-index:2;opacity:.7}
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-receipt-yes .ar-receipt-pack{z-index:4}
 #stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-yes .ar-receipt-pack{z-index:4}
 .ar-receipt-print{position:absolute;inset:0;z-index:2;color:#2e2924;font:400 10px/18px Arial,sans-serif;text-align:left}
@@ -1935,7 +1936,16 @@ canvas.figure{object-fit:contain!important}
 .ar-receipt-heading{margin-left:4px;height:18px;font:400 10px/18px Arial,sans-serif;margin-bottom:3px;white-space:nowrap}
 .ar-receipt-row{height:18px;font:700 10px/18px Arial,sans-serif;white-space:nowrap;color:#2b333d}
 .ar-receipt-heading+.ar-receipt-row{margin-top:0}
-.ar-receipt-rule.second{margin-top:10.5px;margin-bottom:10.5px}
+.ar-receipt-sections{--side-rule-y:60.5px}
+.ar-receipt-rule{position:absolute;left:0;top:0;margin-bottom:0}
+.ar-receipt-heading{position:absolute;top:10.5px;left:0;margin-bottom:0}
+.ar-receipt-sections>.ar-receipt-row{position:relative;top:31.5px}
+.ar-receipt-rule.second{position:absolute;top:var(--side-rule-y);margin-top:0;margin-bottom:0}
+.ar-receipt-rule.second+.ar-receipt-heading{top:calc(var(--side-rule-y) + 11px)}
+.ar-receipt-rule.second+.ar-receipt-heading~.ar-receipt-row{top:auto}
+.ar-receipt-sections>.ar-receipt-heading:nth-of-type(2){position:absolute}
+.ar-receipt-side-lines{position:absolute;top:calc(var(--side-rule-y) + 31px);left:0;width:216px}
+
 .ar-receipt-new{color:#d83a00;transition:color .24s ease}
 .ar-receipt-new.ar-receipt-typed{color:#2b333d}
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{color:#fff!important;white-space:nowrap;font:700 25px/32px "Source Sans 3",Arial,sans-serif}
@@ -1946,3 +1956,8 @@ canvas.figure{object-fit:contain!important}
 /* Keep the former gray NO artwork and isolate the new reveal from other screens. */
 #stage .ar-immersive[data-ar-frame="AR5-1"] .ar-choice{animation:arReceiptButtonsIn .28s ease-out both}
 @keyframes arReceiptButtonsIn{from{opacity:0}to{opacity:1}}
+
+/* AR5-1 final frame is exactly Figma 1156:538. Keep all positioning within the 428×926 stage. */
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-choice-pack{position:absolute!important;inset:0!important;width:428px!important;height:926px!important;transform:none!important;translate:none!important}
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-copy{position:absolute!important;left:61px!important;top:107px!important;width:306px!important;height:32px!important;transform:none!important;translate:none!important;margin:0!important;padding:0!important}
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-flow-choices{transform:none!important;translate:none!important;margin:0!important;padding:0!important}

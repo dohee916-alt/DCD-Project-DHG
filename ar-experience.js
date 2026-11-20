@@ -447,8 +447,8 @@ function showReceiptDecision(){
   '<div class="ar-receipt-heading">EXPECTED EFFECTS</div>'+
   data.expected.map(v=>row(v)).join('')+
   '<div class="ar-receipt-rule second"></div><div class="ar-receipt-heading">POSSIBLE SIDE EFFECTS</div>'+
-  data.side.map(v=>row(v)).join('')+
-  '<div class="ar-receipt-added"></div></div></div>';
+  '<div class="ar-receipt-side-lines">'+data.side.map(v=>row(v)).join('')+
+  '<div class="ar-receipt-added"></div></div></div></div>';
  preview.innerHTML='<div class="ar-receipt-assembly">'+
   '<img class="ar-receipt-paper ar-receipt-back" src="'+asset+'ar-prescription-paper-back.png" alt="">'+
   '<div class="ar-receipt-pack"><div class="ar-receipt-pack-inner">'+(window.DCD_AR_PACK_PREVIEW?.()||'')+'</div></div>'+
@@ -458,10 +458,12 @@ function showReceiptDecision(){
  const ink=preview.querySelector('.ar-receipt-signature');
  if(data.signature)window.DCD_AR_RECEIPT_SIGNATURE?.(data.signature).then(src=>{if(active()&&src){ink.src=src;ink.style.visibility='visible';}});
  const additional=preview.querySelector('.ar-receipt-added');
+ preview.querySelector('.ar-receipt-sections').style.setProperty('--side-rule-y',(60.5+17*(data.expected.length-1))+'px');
  let chosen=false;
  function animate(node,frames,options){
   // CSS final-state classes remain authoritative once a WAAPI motion ends.
-  return node.animate(frames,{fill:'forwards',...options});
+  const motion=node.animate(frames,{fill:'forwards',...options});
+  return motion;
  }
  function typeInto(node,value,done,interval=25){
   let index=0;
@@ -481,14 +483,14 @@ function showReceiptDecision(){
    animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:950,easing:'cubic-bezier(.4,0,.8,1)'});
    animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:950,easing:'cubic-bezier(.4,0,.8,1)'});
    // Fly the same blister toward the viewer, growing to cover the entire stage.
-   animate(pack,[{transform:'translate(0,-158px) scale(1)'},{transform:'translate(-5px,-55px) scale(2.35)',offset:.72},{transform:'translate(-5px,-55px) scale(4.6)',opacity:0}],{duration:1250,easing:'cubic-bezier(.35,.05,.65,1)'});
+   animate(pack,[{transform:'translate(0,0) scale(1)'},{transform:'translate(-5px,-55px) scale(2.35)',offset:.72},{transform:'translate(-5px,-55px) scale(4.6)',opacity:0}],{duration:1250,easing:'cubic-bezier(.35,.05,.65,1)'});
    delay(()=>{if(active())enter('AR6');},1280);
   }else{
-   animate(pack,[{transform:'translateY(-158px)'},{transform:'translateY(0)'}],{duration:570,easing:'cubic-bezier(.3,.1,.2,1)'});
+   animate(pack,[{transform:'translateY(0)'},{transform:'translateY(158px)'}],{duration:570,easing:'cubic-bezier(.3,.1,.2,1)'});
    delay(()=>{
     if(!active())return;
     root.classList.remove('ar-receipt-tint');
-    animate(assembly,[{transform:'translate(6px,59px)'},{transform:'translate(590px,-920px) rotate(17deg)'}],{duration:1020,easing:'cubic-bezier(.45,0,.8,.95)'});
+    animate(assembly,[{transform:'translate(0,0)'},{transform:'translate(590px,-920px) rotate(17deg)'}],{duration:1020,easing:'cubic-bezier(.45,0,.8,.95)'});
    },580);
    delay(()=>{if(active())enter('AR5-2');},1640);
   }
@@ -526,7 +528,13 @@ function showReceiptDecision(){
   ],{duration:1490,easing:'linear'});
   animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:1490,easing:'cubic-bezier(.23,.55,.25,1)'});
  },960);
- delay(()=>{if(active()){root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');reveal();}},2490);
+ delay(()=>{if(active()){
+  // Lock to actual Figma frame-local coordinates; cancel all retained entrance transforms.
+  assembly.getAnimations().forEach(a=>a.cancel());pack.getAnimations().forEach(a=>a.cancel());
+  assembly.style.left='50px';assembly.style.top='265px';assembly.style.transform='none';
+  pack.style.left='45px';pack.style.top='-131px';pack.style.transform='none';
+  root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');reveal();
+ }},2490);
 }
 
 function enter(frame){
