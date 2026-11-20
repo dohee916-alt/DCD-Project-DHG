@@ -132,7 +132,7 @@ function stopWhisper(force=false){
    'AR3-1':{copy:[33,64,362,32]},
    'AR4':{heading:[61,64,306,32],typed:[61,109,306,46]},
    'AR5':{copy:[61,64,306,64]},
-   'AR5-1':{copy:[61,55,306,32]},
+   'AR5-1':{copy:[61,107,306,32]},
    'AR5-2':{heading:[61,64,306,32],typed:[61,109,306,46]},
    'AR6':{copy:[50,89,342,44]},
    'AR7':{copy:[50,89,342,44]},
@@ -535,7 +535,7 @@ function showReceiptDecision(){
  delay(()=>{if(active()){
   // Lock to actual Figma frame-local coordinates; cancel all retained entrance transforms.
   assembly.getAnimations().forEach(a=>a.cancel());pack.getAnimations().forEach(a=>a.cancel());
-  assembly.style.left='50px';assembly.style.top='213px';assembly.style.transform='none';
+  assembly.style.left='50px';assembly.style.top='265px';assembly.style.transform='none';
   pack.style.left='45px';pack.style.top='-131px';pack.style.transform='none';
   root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');reveal();
  }},2490);
