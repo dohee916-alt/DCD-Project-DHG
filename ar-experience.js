@@ -536,8 +536,8 @@ function showReceiptDecision(){
   },45);
  }
  // Entry starts with the pack exactly sandwiched between the two native crops.
- animate(assembly,[{transform:'translate(0,780px)'},{transform:'translate(0,0)'}],{duration:940,easing:'cubic-bezier(.18,.82,.22,1)'});
- delay(()=>{if(active())root.classList.add('ar-receipt-tint');},30);
+ animate(assembly,[{transform:'translate(0,780px)'},{transform:'translate(0,0)'}],{duration:1750,easing:'cubic-bezier(.25,.65,.25,1)'});
+ delay(()=>{if(active())root.classList.add('ar-receipt-tint');},350);
  delay(()=>{
   if(!active())return;
   root.classList.add('ar-receipt-shaking');
@@ -548,16 +548,16 @@ function showReceiptDecision(){
    {transform:'translate(7px,31px) rotate(-1.6deg)',offset:.53},
    {transform:'translate(3px,43px) rotate(1.1deg)',offset:.72},
    {transform:'translate(6px,59px) rotate(0deg)'}
-  ],{duration:1490,easing:'linear'});
-  animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:1490,easing:'cubic-bezier(.23,.55,.25,1)'});
- },960);
+  ],{duration:2450,easing:'linear'});
+  animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:2450,easing:'cubic-bezier(.23,.55,.25,1)'});
+ },2350);
  delay(()=>{if(active()){
   // Lock to actual Figma frame-local coordinates; cancel all retained entrance transforms.
   assembly.getAnimations().forEach(a=>a.cancel());pack.getAnimations().forEach(a=>a.cancel());
   assembly.style.left='50px';assembly.style.top='265px';assembly.style.transform='none';
   pack.style.left='45px';pack.style.top='-131px';pack.style.transform='none';
-  root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');reveal();
- }},2490);
+  root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');delay(reveal,850);
+ }},4850);
 }
 
 function enter(frame){
@@ -605,13 +605,13 @@ function enter(frame){
    delay(readyForStigmas,500);break;
  case 'AR5':
    // The five first stigmas lead automatically to the new receipt decision.
-   typeCaption('ANY REGRETS?',620,()=>{
+   typeCaption('ANY REGRETS?',950,()=>{
      delay(()=>{
        if(state.frame!=='AR5')return;
-       typeCaption('YOU HAVE ONE MORE CHANCE.',1100,()=>{
-         delay(()=>{if(state.frame==='AR5')enter('AR5-1');},1050);
+       typeCaption('YOU HAVE ONE MORE CHANCE.',1750,()=>{
+         delay(()=>{if(state.frame==='AR5')enter('AR5-1');},2900);
        });
-     },1250);
+     },2200);
    });
    break;
  case 'AR5-1':
