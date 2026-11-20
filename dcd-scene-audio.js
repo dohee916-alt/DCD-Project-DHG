@@ -117,7 +117,7 @@ function scene(page){
   return;
  }
  const previous=activePage;activePage=page;
- if(page!=='AR4'&&page!=='AR5-2')stop('clock-ticking',.20);
+ if(page!=='AR5-1')stop('clock-ticking');
  if(['09','10','11','12','13','14','14done'].includes(page)&&enabled){
   if(page==='11')preload('prescription-typing');
   for(const name of instantSounds)preload(name);

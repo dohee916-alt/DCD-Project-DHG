@@ -1973,3 +1973,24 @@ canvas.figure{object-fit:contain!important}
 .ar-stigma-heading.ar-stigma-heading-exit{animation:dcdStigmaHeadingExit 4s ease-in-out both}
 @keyframes dcdStigmaHeadingExit{0%,64%{opacity:1;filter:blur(0)}82%,100%{opacity:0;filter:blur(3px)}}
 @media(prefers-reduced-motion:reduce){.ar-stigma-heading.ar-stigma-heading-exit{animation:none}}
+
+/* The full live video is the ONLY visible portrait in the receipt/ending.
+   Explicitly defeat earlier higher-specificity matting-active rules. */
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-person-segment,
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-matting-active .ar-person-segment,
+#stage .ar-immersive.ar-final-mode.ar-matting-active .ar-person-segment{
+ display:none!important;visibility:hidden!important;opacity:0!important;mask-image:none!important;-webkit-mask-image:none!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5-1"] .ar-face-warp{visibility:hidden!important}
+#stage .ar-immersive[data-ar-frame="AR5-1"]:is(.ar-matting-active,:not(.ar-matting-active)) .ar-portrait-camera{
+ display:block!important;visibility:visible!important;opacity:1!important;
+ filter:blur(0px)!important;-webkit-filter:blur(0px)!important;
+ mask-image:none!important;-webkit-mask-image:none!important;mix-blend-mode:normal!important;
+ transition:filter 1.05s ease!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-tint:is(.ar-matting-active,:not(.ar-matting-active)) .ar-portrait-camera{
+ opacity:1!important;filter:blur(36px)!important;-webkit-filter:blur(36px)!important;
+ mix-blend-mode:normal!important;transition:filter 2.35s ease!important;
+}
+#stage .ar-immersive[data-ar-frame="AR5-1"]{background:transparent!important}
+#stage .ar-immersive[data-ar-frame="AR5-1"].ar-receipt-tint{background:transparent!important}

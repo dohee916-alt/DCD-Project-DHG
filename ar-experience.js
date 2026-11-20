@@ -316,7 +316,6 @@ function typeStigmaTimed(node,text,ms,onComplete){
  next();
 }
 function typeStigmaHeading(text,onComplete){
- window.DCD_SCENE_AUDIO?.play?.('clock-ticking',{loop:true});
  typeStigmaTimed(state.root?.querySelector('.ar-stigma-heading'),text,42,onComplete);
 }
 function typeStigma(text,onComplete){
@@ -382,7 +381,6 @@ function showStigmaSequence(variant,done){
        if(state.root!==root||state.session!==session||state.frame!==frame)return;
        heading.textContent='';
        if(reduced)root.querySelector('.ar-stigma-typed').textContent='';
-       window.DCD_SCENE_AUDIO?.stop?.('clock-ticking',.20);
      },reduced?4000:3280);
      delay(()=>{
        if(state.root===root&&state.session===session&&state.frame===frame)
@@ -500,7 +498,7 @@ function showReceiptDecision(){
  }
  function select(yes){
   if(chosen||!active())return;
-  chosen=true;copy.textContent='';area.innerHTML='';
+  chosen=true;window.DCD_SCENE_AUDIO?.stop?.('clock-ticking');copy.textContent='';area.innerHTML='';
   root.classList.add('ar-receipt-exiting',yes?'ar-receipt-yes':'ar-receipt-no');
   if(yes){
    root.classList.remove('ar-receipt-tint');
@@ -521,6 +519,7 @@ function showReceiptDecision(){
  }
  function reveal(){
   if(!active())return;
+  window.DCD_SCENE_AUDIO?.play?.('clock-ticking',{loop:true});
   typeInto(copy,'WOULD YOU STILL TAKE IT?',()=>{
    if(!active())return;
    buttons(()=>select(true),()=>select(false));
