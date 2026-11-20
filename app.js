@@ -471,7 +471,7 @@ function bindNewSignature(){
   // can be refined without ghost ink or changing previous strokes.
   function nib(p,speed,pressure){
     const factor=(.86+.28*pressure)/(1+Math.min(1.4,speed)*.15);
-    ctx.beginPath();ctx.ellipse(p.x,p.y,2.65*factor,1.04*factor,-Math.PI/5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(p.x,p.y,3.45*factor,1.35*factor,-Math.PI/5,0,Math.PI*2);ctx.fill();
   }
   function inkTo(p,now,pressure){
     const prev=penSamples[penSamples.length-1];

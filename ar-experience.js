@@ -543,7 +543,7 @@ function showReceiptDecision(){
     typeInto(line,data.extra[i++],()=>{line.classList.add('ar-receipt-typed');if(i>=data.extra.length)appendNext();else delay(appendNext,110);},23);
    }
    appendNext();
-  },38);
+  },30);
  }
  // Entry starts with the pack exactly sandwiched between the two native crops.
  animate(assembly,[{transform:'translate(0,780px)'},{transform:'translate(0,0)'}],{duration:1450,easing:'cubic-bezier(.25,.65,.25,1)'});
@@ -558,16 +558,16 @@ function showReceiptDecision(){
    {transform:'translate(7px,31px) rotate(-1.6deg)',offset:.53},
    {transform:'translate(3px,43px) rotate(1.1deg)',offset:.72},
    {transform:'translate(6px,59px) rotate(0deg)'}
-  ],{duration:1450,easing:'linear'});
-  animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:1450,easing:'cubic-bezier(.23,.55,.25,1)'});
+  ],{duration:1150,easing:'linear'});
+  animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:1150,easing:'cubic-bezier(.23,.55,.25,1)'});
  },1850);
  delay(()=>{if(active()){
   // Lock to actual Figma frame-local coordinates; cancel all retained entrance transforms.
   assembly.getAnimations().forEach(a=>a.cancel());pack.getAnimations().forEach(a=>a.cancel());
   assembly.style.left='50px';assembly.style.top='265px';assembly.style.transform='none';
   pack.style.left='45px';pack.style.top='-131px';pack.style.transform='none';
-  root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');delay(reveal,500);
- }},3350);
+  root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');delay(reveal,220);
+ }},3050);
 }
 
 function enter(frame){
