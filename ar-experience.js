@@ -467,10 +467,10 @@ function showReceiptDecision(){
   '<div class="ar-receipt-rule second"></div><div class="ar-receipt-heading">POSSIBLE SIDE EFFECTS</div>'+
   '<div class="ar-receipt-side-lines">'+data.side.map(v=>row(v)).join('')+
   '<div class="ar-receipt-added"></div></div></div></div>';
- preview.innerHTML='<div class="ar-receipt-assembly">'+
+ preview.innerHTML='<div class="ar-receipt-content-space"><div class="ar-receipt-assembly">'+
   '<img class="ar-receipt-paper ar-receipt-back" src="'+asset+'ar-prescription-paper-back.png" alt="">'+
   '<div class="ar-receipt-pack"><div class="ar-receipt-pack-inner">'+(window.DCD_AR_PACK_PREVIEW?.()||'')+'</div></div>'+
-  '<div class="ar-receipt-front"><img class="ar-receipt-paper" src="'+asset+'ar-prescription-paper-front.png" alt="">'+paperMarkup+'</div></div>';
+  '<div class="ar-receipt-front"><img class="ar-receipt-paper" src="'+asset+'ar-prescription-paper-front.png" alt="">'+paperMarkup+'</div></div></div>';
  window.DCD_RENDER_FIGURES?.();
  const assembly=preview.querySelector('.ar-receipt-assembly'),pack=preview.querySelector('.ar-receipt-pack'),front=preview.querySelector('.ar-receipt-front'),back=preview.querySelector('.ar-receipt-back');
  const ink=preview.querySelector('.ar-receipt-signature');
@@ -505,10 +505,10 @@ function showReceiptDecision(){
    // the foil as a full-screen occluder while the live camera refocuses.
    animate(front,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.45,.05,.35,1)'});
    animate(back,[{transform:'translateY(0)'},{transform:'translateY(740px)'}],{duration:1050,easing:'cubic-bezier(.45,.05,.35,1)'});
-   // Current pack centre: (217.077,361.392). Move it exactly to stage
+   // Pack centre in Figma content space (217.077,391.392); map to live stage
    // centre (214,463); scale sufficiently to cover EVERY viewport edge.
    // No opacity keyframes, no dissolve, no change in material.
-   animate(pack,[{transform:'translate(0,0) scale(1)'},{transform:'translate(-3.077px,101.608px) scale(4.1)'}],{duration:1350,delay:180,easing:'cubic-bezier(.32,.04,.45,1)'});
+   animate(pack,[{transform:'translate(0,0) scale(1)'},{transform:'translate(-3.077px,89.1078px) scale(4.1)'}],{duration:1350,delay:180,easing:'cubic-bezier(.32,.04,.45,1)'});
    delay(()=>{
     if(!active())return;
     root.classList.add('ar-receipt-occluded');
@@ -518,7 +518,7 @@ function showReceiptDecision(){
    // Push past the lens with an opaque upward sweep, revealing live AR.
    delay(()=>{
     if(!active())return;
-    animate(pack,[{transform:'translate(-3.077px,101.608px) scale(4.1)'},{transform:'translate(-3.077px,-1600px) scale(4.1)'}],{duration:680,easing:'cubic-bezier(.55,.03,.85,.55)'});
+    animate(pack,[{transform:'translate(-3.077px,89.1078px) scale(4.1)'},{transform:'translate(-3.077px,-1600px) scale(4.1)'}],{duration:680,easing:'cubic-bezier(.55,.03,.85,.55)'});
    },1930);
    delay(()=>{if(active())enter('AR6');},2640);
   }else{
@@ -568,16 +568,16 @@ function showReceiptDecision(){
    {transform:'translate(7px,31px) rotate(-1.6deg)',offset:.53},
    {transform:'translate(3px,43px) rotate(1.1deg)',offset:.72},
    {transform:'translate(6px,59px) rotate(0deg)'}
-  ],{duration:2450,easing:'linear'});
-  animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:2450,easing:'cubic-bezier(.23,.55,.25,1)'});
+  ],{duration:1750,easing:'linear'});
+  animate(pack,[{transform:'translateY(0)'},{transform:'translateY(-40px)',offset:.24},{transform:'translateY(-95px)',offset:.58},{transform:'translateY(-158px)'}],{duration:1750,easing:'cubic-bezier(.23,.55,.25,1)'});
  },2350);
  delay(()=>{if(active()){
   // Lock to actual Figma frame-local coordinates; cancel all retained entrance transforms.
   assembly.getAnimations().forEach(a=>a.cancel());pack.getAnimations().forEach(a=>a.cancel());
-  assembly.style.left='50px';assembly.style.top='235px';assembly.style.transform='none';
+  assembly.style.left='50px';assembly.style.top='265px';assembly.style.transform='none';
   pack.style.left='45px';pack.style.top='-131px';pack.style.transform='none';
   root.classList.remove('ar-receipt-shaking');root.classList.add('ar-receipt-settled');delay(reveal,850);
- }},4850);
+ }},4150);
 }
 
 function enter(frame){
