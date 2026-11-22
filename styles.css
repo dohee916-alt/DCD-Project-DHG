@@ -617,6 +617,7 @@ canvas.figure{object-fit:contain!important}
 .page-workbench .workbench-pack .workbench-native-export,
 .page-03 .workbench-pack .workbench-native-export{
   filter:none!important;
+  opacity:.90;
   object-fit:fill!important;
 }
 .page-workbench .workbench-pack.with-pack-shadow .workbench-native-export,
@@ -1352,8 +1353,8 @@ canvas.figure{object-fit:contain!important}
 #stage.page-01 .guide-copy{color:#f9f6f2!important;line-height:28px!important;}
 #stage .ar-press-copy{color:#f9f6f2!important;line-height:24px!important;}/* Tighter two-line AR heading while keeping existing size and position. */
 
-/* WEB04: orange syringe liquid layer at 85% opacity. */
-.syringe-2d .syringe-drug.orange{opacity:.85}
+/* WEB04: preserve orange liquid 85% opacity and increase color saturation. */
+.syringe-2d .syringe-drug.orange{opacity:.85;filter:saturate(1.22)}
 
 /* WEB00–02: approved GIF placement, Figma 'gif 화면비율 배치' 984:115.
    The image has a native 1:2 ratio (540x1080), placed at -16,0,467x934.
@@ -2045,3 +2046,16 @@ canvas.figure{object-fit:contain!important}
 #stage.page-reel0 .reel-new-menu{height:36.493px}
 #stage.page-reel0 > .reel-comment-footer{position:absolute;left:0;bottom:0;width:428px;height:82px;background:#0d1015;display:flex;align-items:flex-start;justify-content:center;padding-top:9px;z-index:30;pointer-events:none}
 #stage.page-reel0 .reel-comment-pill{height:50px;width:400px;border-radius:27px;display:flex;align-items:center;padding:0 24px;background:#26292f;color:#e7e7e8;font:400 16.5px/20px Roboto,Arial,sans-serif}
+
+/* Workbench doll color: subtle cooler cast, retaining the original figure sprites,
+   morph geometry, and the existing active-figure drop shadow. */
+#stage.page-workbench canvas.figure,
+#stage.page-03 canvas.figure,
+#stage.page-08a canvas.figure,
+#stage.page-08b canvas.figure{
+  filter:hue-rotate(-8deg) saturate(.96) brightness(1.01);
+}
+#stage.page-workbench .workbench-pack ~ canvas.active-figure,
+#stage.page-03 .workbench-pack ~ canvas.active-figure{
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.25)) hue-rotate(-8deg) saturate(.96) brightness(1.01);
+}
