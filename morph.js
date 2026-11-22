@@ -1,5 +1,5 @@
-/* DCD doll morph: the same saved body value drives the paired front/back images.
-   Transform complete image rows around a fixed center, without slicing limbs. */
+/* DCD doll morph: preserve authentic front/back reference images and
+   interpolate silhouette widths with premultiplied-alpha pixels, not strips. */
 window.DCDMorph = (() => {
   const W=346,H=873,CX=W/2,cache=new Map(),pending=new WeakMap();
   // Facial states 0–3 all participate. Warp landmark texture alignment
@@ -41,9 +41,11 @@ window.DCDMorph = (() => {
     for(let i=0;i<d.length;i+=4){
       if(!d[i+3])continue;
       const r=d[i],g=d[i+1],b=d[i+2];
-      d[i]=Math.max(0,Math.min(255,Math.round((r-128)*1.12+128-5)));
-      d[i+1]=Math.max(0,Math.min(255,Math.round((g-128)*1.12+128)));
-      d[i+2]=Math.max(0,Math.min(255,Math.round((b-128)*1.12+128+5)));
+      // Figma reference: +0.60 contrast, -0.25 temperature, -0.08 tint.
+      // Keep skin/highlights neutral rather than painting the whole doll blue.
+      d[i]=Math.max(0,Math.min(255,Math.round((r-128)*1.24+128-4)));
+      d[i+1]=Math.max(0,Math.min(255,Math.round((g-128)*1.24+128+3)));
+      d[i+2]=Math.max(0,Math.min(255,Math.round((b-128)*1.24+128+3)));
     }
     ctx.putImageData(image,0,0);
   }
@@ -70,6 +72,7 @@ window.DCDMorph = (() => {
         resolve({
           canvas:c,
           profile:widthProfile(edges),
+          pixels:ctx.getImageData(0,0,W,H).data,
           facePixels:ctx.getImageData(0,0,W,FACE_BLEND_END).data
         });
       };
@@ -207,18 +210,35 @@ window.DCDMorph = (() => {
       ctx.drawImage(from.canvas,0,0);
       return;
     }
+    // Build the entire warped body in ONE ImageData surface. Previously each
+    // frame drew 873 independent 1px image strips; canvas interpolation left
+    // visible horizontal seams at the bust/waist when the syringe animated.
+    // Premultiplied-alpha sampling preserves antialiased edges and color.
+    const sourcePixels=from.pixels;
+    const warped=ctx.createImageData(W,H),out=warped.data;
     for(let y=0;y<H;y++){
       const baseline=widthAt(from.profile,y);
       const target=mix(widthAt(a.profile,y),widthAt(b.profile,y),t);
       const ratio=clamp(target/Math.max(1,baseline),.78,1.22);
-      // Protect face, jaw and neck from width-based silhouette distortion.
       const feather=clamp((y-165)/95,0,1);
       const smooth=feather*feather*(3-2*feather);
       const stretch=1+(ratio-1)*smooth;
-      // Approved technique: scale the COMPLETE image row, not a cropped
-      // silhouette segment. The center stays fixed, so edges cannot tear.
-      ctx.drawImage(from.canvas,0,y,W,1,CX*(1-stretch),y,W*stretch,1);
+      const invStretch=1/stretch;
+      const row=y*W*4;
+      for(let x=0;x<W;x++){
+        const sx=CX+(x-CX)*invStretch;
+        if(sx<0||sx>=W-1)continue;
+        const x0=Math.floor(sx),f=sx-x0;
+        const left=row+x0*4,right=left+4,dst=row+x*4;
+        const al=sourcePixels[left+3]*(1-f),ar=sourcePixels[right+3]*f;
+        const alpha=al+ar;
+        if(alpha<.5)continue;
+        out[dst+3]=Math.round(alpha);
+        for(let channel=0;channel<3;channel++)
+          out[dst+channel]=Math.round((sourcePixels[left+channel]*al+sourcePixels[right+channel]*ar)/alpha);
+      }
     }
+    ctx.putImageData(warped,0,0);
     // Warp both original facial textures toward their intermediate position
     // before merging, instead of snapping or stacking unaligned faces.
     morphFace(ctx,kind,lo,hi,view,a,b,t);
