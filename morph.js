@@ -31,35 +31,36 @@ window.DCDMorph = (() => {
     const t=clamp((y-ROWS[i])/(ROWS[i+1]-ROWS[i]),0,1);
     return mix(profile[i],profile[i+1],t);
   }
-  // Match Figma's "인형색" frame: silver-lilac/light blue-gray clothing
-  // with natural skin/hair and all original light/shadow detail.
-  // Do NOT collapse RGB into a monochrome luminance value. That had
-  // flattened the fabric's lilac material into dull slate gray.
+  // Reference: Figma 03_MOBILE_WEB "당장확인해" (1190:72).
+  // Image filters: exposure 0, contrast +0.30, saturation 0,
+  // temperature -0.27, tint -0.10, highlights 0, shadows 0.
+  // Figma's exact color-adjustment algorithm is unavailable here, so use a
+  // color-selective equivalent on the original pixels, retaining the material
+  // highlights and the face/hair/skin. No horizontal/vertical position masks.
   function coolDollPixels(ctx){
-    const image=ctx.getImageData(0,0,W,H);
-    const d=image.data;
-    const clamp01=v=>Math.max(0,Math.min(1,v));
+    const data=ctx.getImageData(0,0,W,H),d=data.data;
+    const unit=v=>Math.max(0,Math.min(1,v));
     for(let i=0;i<d.length;i+=4){
       if(d[i+3]<16)continue;
       const r=d[i],g=d[i+1],b=d[i+2];
       const min=Math.min(r,g,b),max=Math.max(r,g,b);
-      // Smooth RGB-based material detection across the ENTIRE garment,
-      // including shoulders. Warm, saturated skin/hair remain original.
-      const pale=clamp01((min-95)/35);
-      const desaturated=1-clamp01((max-min-34)/20);
-      const notSkin=1-clamp01(((r-g)-21)/18);
-      const weight=pale*desaturated*notSkin;
-      if(weight<=0)continue;
-      // Per-channel correction preserves the actual highlights, contours
-      // and lilac undertone instead of averaging them into gray.
-      const rr=Math.max(0,Math.min(255,(r-128)*1.03+128+1));
-      const gg=Math.max(0,Math.min(255,(g-128)*1.03+128+5));
-      const bb=Math.max(0,Math.min(255,(b-128)*1.03+128+15));
-      d[i]=Math.round(r+(rr-r)*weight);
-      d[i+1]=Math.round(g+(gg-g)*weight);
-      d[i+2]=Math.round(b+(bb-b)*weight);
+      // Pale low-chroma material responds; strongly warm and saturated
+      // face, hair and hands remain original. Soft mask avoids color seams.
+      const pale=unit((min-82)/36);
+      const lowChroma=1-unit((max-min-30)/23);
+      const notSkin=1-unit(((r-g)-24)/17);
+      const w=pale*lowChroma*notSkin;
+      if(w<=0)continue;
+      // Temperature/tint: less red, slightly more green/blue.
+      // Preserve each channel's highlights instead of averaging to gray.
+      const rr=Math.max(0,Math.min(255,(r-128)*1.035+128-8));
+      const gg=Math.max(0,Math.min(255,(g-128)*1.035+128+3));
+      const bb=Math.max(0,Math.min(255,(b-128)*1.035+128+13));
+      d[i]=Math.round(r+(rr-r)*w);
+      d[i+1]=Math.round(g+(gg-g)*w);
+      d[i+2]=Math.round(b+(bb-b)*w);
     }
-    ctx.putImageData(image,0,0);
+    ctx.putImageData(data,0,0);
   }
   function source(kind,state,view){
     const key=`${kind}-${state}-${view}`;
