@@ -31,32 +31,33 @@ window.DCDMorph = (() => {
     const t=clamp((y-ROWS[i])/(ROWS[i+1]-ROWS[i]),0,1);
     return mix(profile[i],profile[i+1],t);
   }
-  // Figma "인형색" reference: pale cool-gray clothing, natural face/hair.
-  // Apply only a subtle, garment-selective white balance, once per source.
-  // Do NOT globally increase contrast or recolor warm skin/hair pixels.
+  // Figma "인형색": a consistent cool-gray costume without an orange
+  // shoulder band. The old y=200..270 blend left the upper costume warm.
+  // Select pale, near-neutral fabric by COLOR, not by its vertical position.
+  // Strongly warm/saturated hair, face, hands and feet keep source colors.
   function coolDollPixels(ctx){
     const image=ctx.getImageData(0,0,W,H);
     const d=image.data;
-    for(let y=0;y<H;y++){
-      const vertical=Math.min(1,Math.max(0,(y-200)/70));
-      if(vertical<=0)continue;
-      for(let x=0;x<W;x++){
-        const i=(y*W+x)*4;
-        if(d[i+3]<16)continue;
-        const r=d[i],g=d[i+1],b=d[i+2];
-        const warm=r-g;
-        const bright=Math.min(r,g,b);
-        // Neutralize the warm pink/yellow cast of pale garment pixels.
-        // Keep vivid hair, face, hands, and feet unchanged.
-        const material=Math.min(1,Math.max(0,(bright-94)/44));
-        const skinGuard=Math.min(1,Math.max(0,(21-warm)/10));
-        const weight=vertical*material*skinGuard;
-        if(weight<=0)continue;
-        const neutral=.2126*r+.7152*g+.0722*b;
-        d[i]=Math.max(0,Math.min(255,Math.round(r*(1-weight)+(neutral-8)*weight)));
-        d[i+1]=Math.max(0,Math.min(255,Math.round(g*(1-weight)+(neutral+1)*weight)));
-        d[i+2]=Math.max(0,Math.min(255,Math.round(b*(1-weight)+(neutral+6)*weight)));
-      }
+    const clamp01=v=>Math.max(0,Math.min(1,v));
+    for(let i=0;i<d.length;i+=4){
+      if(d[i+3]<16)continue;
+      const r=d[i],g=d[i+1],b=d[i+2];
+      const brightness=Math.min(r,g,b);
+      const chroma=Math.max(r,g,b)-brightness;
+      // Smooth material-only mask, with no hard shoulder-height cutoff.
+      const pale=clamp01((brightness-92)/33);
+      const neutralEnough=1-clamp01((chroma-19)/17);
+      const warmSkin=1-clamp01(((r-g)-19)/13);
+      const weight=pale*neutralEnough*warmSkin;
+      if(weight<=0)continue;
+      const luminance=.2126*r+.7152*g+.0722*b;
+      // Gently preserve lighting and texture; make fabric neutral cool gray.
+      const rr=Math.max(0,Math.min(255,luminance-7));
+      const gg=Math.max(0,Math.min(255,luminance+1));
+      const bb=Math.max(0,Math.min(255,luminance+5));
+      d[i]=Math.round(r*(1-weight)+rr*weight);
+      d[i+1]=Math.round(g*(1-weight)+gg*weight);
+      d[i+2]=Math.round(b*(1-weight)+bb*weight);
     }
     ctx.putImageData(image,0,0);
   }
