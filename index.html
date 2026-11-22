@@ -11,13 +11,17 @@
   <link rel="preload" as="image" href="assets/figma-current/hd/reel0-underlay-image.jpg" fetchpriority="high">
   <link rel="preload" as="image" href="assets/figma-current/hd/reel0-ui-scroll-no-status.png?v=complete-frame-20261117" fetchpriority="high">
   <link rel="preload" as="image" href="assets/motion/blister_3_to_5_1_23_pingpong_first.png" fetchpriority="high">
-  <link rel="stylesheet" href="styles.css?v=dolls-cool-orange-sat-pack-180">
+  <link rel="stylesheet" href="styles.css?v=doll-temperature-cool-181">
   <!-- Pages deployment refresh after queued deploy failure, 2026-11-10 -->
 </head>
 <body>
   <!-- Color-only grading on original 3x syringe images; no rotation/resizing. -->
   <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;pointer-events:none;overflow:hidden">
     <defs>
+      <!-- Cool workbench dolls using per-channel RGB temperature adjustment, with alpha untouched. -->
+      <filter id="dcd-doll-cool-temperature" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values="0.94 0 0 0 0  0 1.005 0 0 0  0 0 1.09 0 0  0 0 0 1 0"/>
+      </filter>
       <filter id="dcd-syringe-plunger-grade" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
         <feColorMatrix type="saturate" values="0.29"/>
         <feColorMatrix type="matrix" values="0.971 0 0 0 0  0 1 0 0 0  0 0 1.045 0 0  0 0 0 1 0"/>
