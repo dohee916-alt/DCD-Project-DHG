@@ -44,17 +44,29 @@ function beginRuptureGif(gif){
   const loaded=()=>{
     if(started||!gif.isConnected||s.page!=='01'||s.phase!=='rupture')return;
     started=true;
-    gif.classList.remove('opening-blister-awaiting');
-    // Play exactly when decoded rupture GIF begins, not when drag starts.
-    window.DCD_CAMPAIGN_AUDIO?.burst('web');
-    later(finishRupture,M.blisterOneShotMs);
+    // Image-load may fire before its pixels have reached the screen.
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(!gif.isConnected||s.page!=='01'||s.phase!=='rupture')return;
+      gif.classList.remove('opening-blister-awaiting');
+      // The initial GIF frames squeeze the pack; play the fracture cue
+      // at the rupture phase rather than at image-load.
+      later(()=>{
+        if(s.page==='01'&&s.phase==='rupture'&&gif.isConnected)
+          window.DCD_CAMPAIGN_AUDIO?.burst('web');
+      },M.blisterRuptureImpactMs);
+      later(finishRupture,M.blisterOneShotMs);
+    }));
   };
   gif.onload=loaded;
-  gif.onerror=()=>{if(s.page==='01'&&s.phase==='rupture')finishRupture();};
+  gif.onerror=()=>{
+    console.warn('[DCD] Rupture motion failed; keeping the intact fallback instead of skipping to a broken frame.');
+    gif.classList.add('opening-blister-awaiting');
+    ruptureWarmPromise=null;ruptureBuffer=null;
+  };
   gif.src=source;
   if(gif.complete&&gif.naturalWidth)loaded();
 }
-if(s.page==='reel0'||s.page==='00'||s.page==='01')preloadRuptureGif();
+// Warm the rupture after the first screen has had a chance to render.
 let arCameraStream=null,arDropFrame=0,arDropFinished=false,arCameraReady=false,arCameraError='';
 function warmPackingAssets(){
   if(packingAssetsWarmed)return;
@@ -1805,5 +1817,6 @@ window.addEventListener('deviceorientation',e=>{
 window.DCD_CAMPAIGN_AUDIO?.setScene(s.page);
 if(s.page==='00'&&s.phase==='intro')runIntro('00');else if(s.page==='01'&&s.phase==='intro')runIntro('01');else if(s.page==='03'&&s.phase==='waiting'){rotateGuideFinished=true;render();}
 else if(s.page==='03')startRotateGuide();else render();
+if(['reel0','00','01'].includes(s.page))requestAnimationFrame(()=>requestAnimationFrame(()=>preloadRuptureGif()));
 window.DCD_DEBUG={state:()=>structuredClone(s),page:p=>setPage(p),finishRupture};
 })();

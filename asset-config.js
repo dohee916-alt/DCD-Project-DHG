@@ -45,6 +45,7 @@ window.DCD_MOTION = Object.freeze({
   introMs: 1550,
   blisterPingpongMs: 2500, // Retimed 44-frame GIF: 30 x 60ms + 14 x 50ms
   blisterOneShotMs: 1500, // Same 44 frames; 18 x 40ms + 26 x 30ms
+  blisterRuptureImpactMs: 680, // After squeeze phase, before final foil tear
   rotateGuideMs: 3000,
   injectionMs: 1040, // Match injection cue: 1.48–2.52s (1040ms).
   packingSlideMs: 860,
