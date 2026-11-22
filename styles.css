@@ -617,7 +617,7 @@ canvas.figure{object-fit:contain!important}
 .page-workbench .workbench-pack .workbench-native-export,
 .page-03 .workbench-pack .workbench-native-export{
   filter:none!important;
-  opacity:.90;
+  opacity:.80;
   object-fit:fill!important;
 }
 .page-workbench .workbench-pack.with-pack-shadow .workbench-native-export,
