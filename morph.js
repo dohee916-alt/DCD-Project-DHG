@@ -262,62 +262,50 @@ window.DCDMorph = (() => {
     }
     ctx.putImageData(body,0,0);
   }
+  // Draw morph by blending BOTH adjacent source states on the 2D canvas.
+  // This avoids the previous 300k-pixel JavaScript redraw per animation frame,
+  // and, crucially, removes the midpoint jump from round(p).
   async function draw(canvas,kind,value,view='front'){
     if(!canvas)return;
     const request=(pending.get(canvas)||0)+1;
     pending.set(canvas,request);
-    const p=clamp(value,0,100)*3/100,lo=Math.floor(p),
-      hi=Math.min(3,Math.ceil(p)),t=p-lo,nearest=Math.round(p);
-    const [a,b,from]=await Promise.all([
-      source(kind,lo,view),source(kind,hi,view),
-      source(kind,nearest,view)
-    ]);
-    if(!a||!b||!from||!canvas.isConnected||pending.get(canvas)!==request)return;
+    const p=clamp(value,0,100)*3/100;
+    const lo=Math.floor(p),hi=Math.min(3,Math.ceil(p)),t=p-lo;
+    const [a,b]=await Promise.all([source(kind,lo,view),source(kind,hi,view)]);
+    if(!a||!b||!canvas.isConnected||pending.get(canvas)!==request)return;
     if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    const ctx=canvas.getContext('2d');
     ctx.clearRect(0,0,W,H);
     ctx.globalAlpha=1;
     ctx.globalCompositeOperation='source-over';
     ctx.imageSmoothingEnabled=true;
     ctx.imageSmoothingQuality='high';
-
-    // Every exact reference shows its authentic body AND face without override.
-    if(Math.abs(p-nearest)<.00001){
-      ctx.drawImage(from.canvas,0,0);
-      return;
-    }
-    // Build the entire warped body in ONE ImageData surface. Previously each
-    // frame drew 873 independent 1px image strips; canvas interpolation left
-    // visible horizontal seams at the bust/waist when the syringe animated.
-    // Premultiplied-alpha sampling preserves antialiased edges and color.
-    const sourcePixels=from.pixels;
-    const warped=ctx.createImageData(W,H),out=warped.data;
-    for(let y=0;y<H;y++){
-      const baseline=widthAt(from.profile,y);
-      const target=mix(widthAt(a.profile,y),widthAt(b.profile,y),t);
-      const ratio=clamp(target/Math.max(1,baseline),.78,1.22);
-      const feather=clamp((y-165)/95,0,1);
-      const smooth=feather*feather*(3-2*feather);
-      const stretch=1+(ratio-1)*smooth;
-      const invStretch=1/stretch;
-      const row=y*W*4;
-      for(let x=0;x<W;x++){
-        const sx=CX+(x-CX)*invStretch;
-        if(sx<0||sx>=W-1)continue;
-        const x0=Math.floor(sx),f=sx-x0;
-        const left=row+x0*4,right=left+4,dst=row+x*4;
-        const al=sourcePixels[left+3]*(1-f),ar=sourcePixels[right+3]*f;
-        const alpha=al+ar;
-        if(alpha<.5)continue;
-        out[dst+3]=Math.round(alpha);
-        for(let channel=0;channel<3;channel++)
-          out[dst+channel]=Math.round((sourcePixels[left+channel]*al+sourcePixels[right+channel]*ar)/alpha);
+    if(lo===hi||t<.000001){ctx.drawImage(a.canvas,0,0);return;}
+    if(t>.999999){ctx.drawImage(b.canvas,0,0);return;}
+    // Continuous target silhouette; each endpoint's image is warped to that
+    // same target at every stage. Draw grouped 4px rows via the native
+    // canvas rasterizer rather than a per-pixel JavaScript loop.
+    // The head region remains geometrically stable; its textures cross-fade
+    // continuously instead of snapping at the midpoint.
+    const stripHeight=4;
+    function paint(src,alpha){
+      ctx.globalAlpha=alpha;
+      for(let y=0;y<H;y+=stripHeight){
+        const height=Math.min(stripHeight,H-y);
+        const center=y+(height-1)*.5;
+        const base=widthAt(src.profile,center);
+        const target=mix(widthAt(a.profile,center),widthAt(b.profile,center),t);
+        const feather=clamp((center-165)/95,0,1);
+        const ease=feather*feather*(3-2*feather);
+        const ratio=clamp(target/Math.max(1,base),.78,1.22);
+        const stretch=1+(ratio-1)*ease;
+        const destW=W*stretch;
+        ctx.drawImage(src.canvas,0,y,W,height,(W-destW)*.5,y,destW,height);
       }
     }
-    ctx.putImageData(warped,0,0);
-    // Do not morph the face with a low-resolution optical-flow field.
-    // The exact nearest reference face retains its original eyes/hair detail;
-    // only body silhouette widths interpolate during an injection.
+    paint(a,1);
+    paint(b,t);
+    ctx.globalAlpha=1;
   }
   function drawVisible(root=document){
     root.querySelectorAll('canvas[data-figure]').forEach(c=>
@@ -325,7 +313,10 @@ window.DCDMorph = (() => {
   }
   async function preload(kind,value,view='back'){
     const p=clamp(value,0,100)*3/100;
-    await Promise.all([source(kind,Math.floor(p),view),source(kind,Math.min(3,Math.ceil(p)),view),source(kind,Math.round(p),view)]);
+    await Promise.all([source(kind,Math.floor(p),view),source(kind,Math.min(3,Math.ceil(p)),view)]);
   }
-  return {draw,drawVisible,preload};
+  async function preloadAll(kind,view='front'){
+    await Promise.all([0,1,2,3].map(i=>source(kind,i,view)));
+  }
+  return {draw,drawVisible,preload,preloadAll};
 })();
