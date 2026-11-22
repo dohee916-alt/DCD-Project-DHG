@@ -31,10 +31,10 @@ window.DCDMorph = (() => {
     const t=clamp((y-ROWS[i])/(ROWS[i+1]-ROWS[i]),0,1);
     return mix(profile[i],profile[i+1],t);
   }
-  // Figma "인형색": a consistent cool-gray costume without an orange
-  // shoulder band. The old y=200..270 blend left the upper costume warm.
-  // Select pale, near-neutral fabric by COLOR, not by its vertical position.
-  // Strongly warm/saturated hair, face, hands and feet keep source colors.
+  // Match Figma's "인형색" frame: silver-lilac/light blue-gray clothing
+  // with natural skin/hair and all original light/shadow detail.
+  // Do NOT collapse RGB into a monochrome luminance value. That had
+  // flattened the fabric's lilac material into dull slate gray.
   function coolDollPixels(ctx){
     const image=ctx.getImageData(0,0,W,H);
     const d=image.data;
@@ -42,25 +42,22 @@ window.DCDMorph = (() => {
     for(let i=0;i<d.length;i+=4){
       if(d[i+3]<16)continue;
       const r=d[i],g=d[i+1],b=d[i+2];
-      const minimum=Math.min(r,g,b);
-      const chroma=Math.max(r,g,b)-minimum;
-      // Clothing retains a consistently pale neutral material even at shoulders.
-      // Strongly colored skin/hair have much higher red-green difference/chroma.
-      // No y-coordinate mask: shoulders, torso and legs follow the same rule.
-      const pale=clamp01((minimum-86)/26);
-      const garmentColor=1-clamp01((chroma-32)/16);
-      const skinProtection=1-clamp01(((r-g)-29)/14);
-      const weight=pale*garmentColor*skinProtection;
+      const min=Math.min(r,g,b),max=Math.max(r,g,b);
+      // Smooth RGB-based material detection across the ENTIRE garment,
+      // including shoulders. Warm, saturated skin/hair remain original.
+      const pale=clamp01((min-95)/35);
+      const desaturated=1-clamp01((max-min-34)/20);
+      const notSkin=1-clamp01(((r-g)-21)/18);
+      const weight=pale*desaturated*notSkin;
       if(weight<=0)continue;
-      const luminance=.2126*r+.7152*g+.0722*b;
-      // Neutral silver-gray with a slight blue balance, preserving native
-      // luminance gradients (gloss, folds and shadow) and the original alpha.
-      const rr=Math.max(0,Math.min(255,luminance-6));
-      const gg=Math.max(0,Math.min(255,luminance+1));
-      const bb=Math.max(0,Math.min(255,luminance+5));
-      d[i]=Math.round(r*(1-weight)+rr*weight);
-      d[i+1]=Math.round(g*(1-weight)+gg*weight);
-      d[i+2]=Math.round(b*(1-weight)+bb*weight);
+      // Per-channel correction preserves the actual highlights, contours
+      // and lilac undertone instead of averaging them into gray.
+      const rr=Math.max(0,Math.min(255,(r-128)*1.03+128+1));
+      const gg=Math.max(0,Math.min(255,(g-128)*1.03+128+5));
+      const bb=Math.max(0,Math.min(255,(b-128)*1.03+128+15));
+      d[i]=Math.round(r+(rr-r)*weight);
+      d[i+1]=Math.round(g+(gg-g)*weight);
+      d[i+2]=Math.round(b+(bb-b)*weight);
     }
     ctx.putImageData(image,0,0);
   }
