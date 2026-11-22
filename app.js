@@ -253,9 +253,7 @@ function reelChromeMarkup(reel){
  };
  const item=(name,y,n)=>'<div class="reel-new-action reel-new-'+name+'" style="top:'+y+'px">'+paths[name]+(n===null?'':'<span>'+n+'</span>')+'</div>';
  return '<div class="reel-2026-ui" aria-hidden="true">'+
- '<div class="reel-new-header"><svg viewBox="0 0 33 22" xmlns="http://www.w3.org/2000/svg" fill="none"><path d="M16 2 5 11l11 9M5 11h26" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Explore</span></div>'+
- item('like',510,numbers[0])+item('comment',580,numbers[1])+item('repost',650,'820')+item('share',719,numbers[2])+item('menu',789,null)+
- '<div class="reel-comment-footer"><div class="reel-comment-pill">Add a comment...</div></div></div>';
+ item('like',510,numbers[0])+item('comment',580,numbers[1])+item('repost',650,'820')+item('share',719,numbers[2])+item('menu',789,null)+'</div>';
 }
 function reelStackMarkup(){
  return '<div class="reels-vertical-scroll" aria-label="Reels feed">'+
@@ -266,7 +264,9 @@ function reelStackMarkup(){
  (!openingSoundEnabled?'<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>':'')+
  '</section>'+
  '<section class="reel-screen reel-screen-one" aria-label="Reel 1">'+introMarkup('00')+'</section>'+
- '</div>';
+ '</div>'+
+ // One fixed footer belongs to the stage, never to either scrolling reel.
+ '<div class="reel-comment-footer" aria-hidden="true"><div class="reel-comment-pill">Add a comment...</div></div>';
 }
 function introMarkup(p){
   if(p==='00')return blisterMotionLayer(A.blisterPingpong,'loop',A.blisterPingpongFirst)+
