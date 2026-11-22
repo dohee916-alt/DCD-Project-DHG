@@ -2053,3 +2053,19 @@ canvas.figure{object-fit:contain!important}
 #stage.page-03 .workbench-pack ~ canvas.active-figure{
   filter:drop-shadow(0 2px 6px rgba(0,0,0,.25));
 }
+
+/* Gentle text-only outer glow on AR scenes without the Figma Group 3 gradient.
+   AR5-1, AR9, AR10 use the gradient and are deliberately excluded.
+   Text-shadow preserves glyph edges, typewriter and whisper animations. */
+#stage .ar-immersive:is(
+  [data-ar-frame="AR3"],
+  [data-ar-frame="AR3-1"],
+  [data-ar-frame="AR4"],
+  [data-ar-frame="AR5"],
+  [data-ar-frame="AR5-2"],
+  [data-ar-frame="AR6"],
+  [data-ar-frame="AR7"],
+  [data-ar-frame="AR8"]
+) :is(.ar-copy,.ar-stigma-heading,.ar-stigma-typed,.ar-whisper-main,.ar-whisper-echo){
+  text-shadow:0 0 3px rgba(255,255,255,.42),0 0 8px rgba(255,255,255,.23);
+}
