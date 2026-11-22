@@ -240,11 +240,29 @@ function blisterMotionLayer(source,mode,still){
   const cls=(still?'opening-blister-motion opening-blister-awaiting ':'opening-blister-still ')+'opening-blister-'+mode;
   return fallback+img(source,-16,0,467,934,cls);
 }
+// Figma 03_MOBILE_WEB: Reel0 and Reel1 use one Instagram 2026 chrome layout.
+function reelChromeMarkup(reel){
+ const numbers=reel===0?['253K','1.139','29']:['513K','5.139','129'];
+ const icon=d=>'<svg width="36.493" height="36.493" viewBox="0 0 36.493 36.493" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">'+d+'</svg>';
+ const paths={
+  like:icon('<path d="M18.25 31.7 5.4 19.05C-1.6 11.8 7.6 1.9 15.1 8.8l3.15 3.25 3.15-3.25c7.5-6.9 16.7 3 9.7 10.25L18.25 31.7Z" stroke="white" stroke-width="2.7" stroke-linejoin="round"/>'),
+  comment:icon('<path d="M30.6 16.8a12.4 12.4 0 0 1-12.4 12.4c-2.6 0-4.9-.6-7.1-2L4 29.3l2.1-7A12.4 12.4 0 1 1 30.6 16.8Z" stroke="white" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>'),
+  repost:icon('<path d="M6.1 21.5v-7.8c0-3.8 2.6-5.8 6.4-5.8h13.6M21.7 3.4l5.1 4.5-5.1 4.6M30.4 15v7.8c0 3.9-2.6 5.8-6.4 5.8H10.4M14.8 24l-5.1 4.6 5.1 4.5" stroke="white" stroke-width="2.65" stroke-linecap="round" stroke-linejoin="round"/>'),
+  share:icon('<path d="m30.5 5.1-25 10.3 11.2 4.1 4.5 11.6 9.3-26Z" stroke="white" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/><path d="m16.7 19.5 13.8-14.4" stroke="white" stroke-width="2.3" stroke-linecap="round"/>'),
+  menu:icon('<path d="M6.5 14.2H30M6.5 22.8H25.5" stroke="white" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>')
+ };
+ const item=(name,y,n)=>'<div class="reel-new-action reel-new-'+name+'" style="top:'+y+'px">'+paths[name]+(n===null?'':'<span>'+n+'</span>')+'</div>';
+ return '<div class="reel-2026-ui" aria-hidden="true">'+
+ '<div class="reel-new-header"><svg viewBox="0 0 33 22" xmlns="http://www.w3.org/2000/svg" fill="none"><path d="M16 2 5 11l11 9M5 11h26" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Explore</span></div>'+
+ item('like',510,numbers[0])+item('comment',580,numbers[1])+item('repost',650,'820')+item('share',719,numbers[2])+item('menu',789,null)+
+ '<div class="reel-comment-footer"><div class="reel-comment-pill">Add a comment...</div></div></div>';
+}
 function reelStackMarkup(){
  return '<div class="reels-vertical-scroll" aria-label="Reels feed">'+
  '<section class="reel-screen reel-screen-zero" aria-label="Reel 0">'+
  '<img class="reel-background" src="assets/figma-current/hd/reel0-underlay-image.jpg" alt="" draggable="false">'+
  '<img class="reel-frame-overlay reel-progress-art" src="assets/figma-current/hd/reel0-ui-scroll-no-status.png?v=complete-frame-20261117" alt="" draggable="false">'+
+  reelChromeMarkup(0)+
  (!openingSoundEnabled?'<button type="button" class="opening-sound-gate" data-action="enableSound" aria-label="Enable sound"><img class="opening-sound-figma-asset" src="assets/figma-current/hd/web00-enable-sound-figma.svg" draggable="false" alt="ENABLE SOUND"></button>':'')+
  '</section>'+
  '<section class="reel-screen reel-screen-one" aria-label="Reel 1">'+introMarkup('00')+'</section>'+
@@ -257,7 +275,8 @@ function introMarkup(p){
       'assets/figma-current/hd/poster-tagline.svg')+
     posterWords()+
     '<img class="reel-frame-overlay reel1-figma-overlay reel-progress-art" src="assets/figma-current/hd/reel1-ui-scroll-no-status.png?v=complete-frame-20261117" alt="" aria-hidden="true">'+
-    '<div class="reel-progress-track" aria-hidden="true"><div class="reel-progress-active"></div></div>'+ 
+    '<div class="reel-progress-track" aria-hidden="true"><div class="reel-progress-active"></div></div>'+
+    reelChromeMarkup(1)+ 
     '<button class="full-hit" data-action="enter" aria-label="Continue to the interactive advertisement"></button>';
   // Approved GIFs entirely replace the superseded pair of alternating
   // poster photos. No old poster is allowed to flash behind a new GIF.

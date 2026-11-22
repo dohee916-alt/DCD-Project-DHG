@@ -2029,3 +2029,19 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode:not(.ar-ending-color-ready) .ar-group3-figma{opacity:0!important}
 #stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode .ar-portrait-camera{transition:filter 1.8s ease-in-out,-webkit-filter 1.8s ease-in-out,opacity 1.8s ease-in-out!important}
 #stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode:not(.ar-ending-color-ready) .ar-portrait-camera{opacity:1!important;filter:blur(0px) grayscale(0) sepia(0) saturate(1) brightness(1) contrast(1)!important;-webkit-filter:blur(0px) grayscale(0) sepia(0) saturate(1) brightness(1) contrast(1)!important}
+
+/* Reel0 / Reel1 — approved 2026 Instagram Figma update.
+   Remove obsolete baked action artwork only from the right strip;
+   the underlying Reel0 image and Reel1 GIF remain unchanged. */
+#stage.page-reel0 .reel-screen .reel-frame-overlay{
+ clip-path:polygon(0 0,100% 0,100% 480px,355px 480px,355px 844px,100% 844px,100% 100%,0 100%);
+}
+#stage.page-reel0 .reel-2026-ui{position:absolute;inset:0;width:428px;height:926px;z-index:12;pointer-events:none;color:#fff;font-family:Arial,Helvetica,sans-serif}
+#stage.page-reel0 .reel-new-header{position:absolute;left:13px;top:20px;display:flex;align-items:center;gap:29px;height:25px;font-family:Roboto,Arial,sans-serif;font-size:18.5px;font-weight:700;line-height:22px}
+#stage.page-reel0 .reel-new-header svg{width:33px;height:22px;display:block;flex:none}
+#stage.page-reel0 .reel-new-action{position:absolute;left:377.82px;width:36.493px;height:56.054px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4.5616px}
+#stage.page-reel0 .reel-new-action svg{width:36.493px;height:36.493px;display:block;flex:none;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.2))}
+#stage.page-reel0 .reel-new-action span{display:block;width:100%;font:600 12.544px/15px Arial,Helvetica,sans-serif;letter-spacing:.02em;text-align:center;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+#stage.page-reel0 .reel-new-menu{height:36.493px}
+#stage.page-reel0 .reel-comment-footer{position:absolute;left:0;top:844px;width:428px;height:82px;background:#0d1015;display:flex;align-items:flex-start;justify-content:center;padding-top:9px}
+#stage.page-reel0 .reel-comment-pill{height:50px;width:400px;border-radius:27px;display:flex;align-items:center;padding:0 24px;background:#26292f;color:#e7e7e8;font:400 16.5px/20px Roboto,Arial,sans-serif}
