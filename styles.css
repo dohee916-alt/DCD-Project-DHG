@@ -1490,11 +1490,12 @@ canvas.figure{object-fit:contain!important}
 #stage .reel1-figma-overlay{height:927px;}
 #stage.page-reel0 .full-hit,#stage.page-00 .full-hit{z-index:10;}
 
-/* The Figma Reel0 and Reel1 are successive 428x926 scroll panels.
-   The only fixed UI is the actual Figma Status Bar, exported separately. */
+/* Reel0 and Reel1 scroll only within the 844px media viewport.
+   The old 82px bottom tabs must never enter the scroll surface.
+   The comment dock remains fixed over the bottom of the 428x926 stage. */
 #stage.page-reel0 .reels-vertical-scroll{
- position:absolute;inset:0;
- width:428px;height:926px;
+ position:absolute;left:0;top:0;
+ width:428px;height:844px;
  overflow-x:hidden;overflow-y:auto;
  -webkit-overflow-scrolling:touch;
  touch-action:pan-y;
@@ -1508,7 +1509,7 @@ canvas.figure{object-fit:contain!important}
 #stage.page-reel0 .reel-screen{
  position:relative;
  display:block;
- width:428px;height:926px;
+ width:428px;height:844px;
  flex:none;
  overflow:hidden;
  scroll-snap-align:start;
@@ -2031,8 +2032,9 @@ canvas.figure{object-fit:contain!important}
 #stage .ar-immersive[data-ar-frame="AR9"].ar-final-mode:not(.ar-ending-color-ready) .ar-portrait-camera{opacity:1!important;filter:blur(0px) grayscale(0) sepia(0) saturate(1) brightness(1) contrast(1)!important;-webkit-filter:blur(0px) grayscale(0) sepia(0) saturate(1) brightness(1) contrast(1)!important}
 
 /* Reel0 / Reel1 — approved 2026 Instagram Figma update.
-   Remove obsolete baked action artwork only from the right strip;
-   the underlying Reel0 image and Reel1 GIF remain unchanged. */
+   Crop the obsolete baked action artwork on the right.
+   Each 844px reel also clips its old bottom navigation tab bar.
+   The original Reel0 art and Reel1 GIF remain unchanged. */
 #stage.page-reel0 .reel-screen .reel-frame-overlay{
  clip-path:polygon(0 0,100% 0,100% 480px,355px 480px,355px 844px,100% 844px,100% 100%,0 100%);
 }
