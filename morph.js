@@ -46,16 +46,16 @@ window.DCDMorph = (() => {
         const r=d[i],g=d[i+1],b=d[i+2];
         const warm=r-g;
         const bright=Math.min(r,g,b);
-        // White/pale-lilac fabric only; preserve the rich brown hair,
-        // face, hands and feet, and keep the original highlights.
-        const material=Math.min(1,Math.max(0,(bright-106)/43));
-        const skinGuard=1-Math.min(1,Math.max(0,(warm-10)/13));
-        const weight=vertical*material*skinGuard*.72;
+        // Neutralize the warm pink/yellow cast of pale garment pixels.
+        // Keep vivid hair, face, hands, and feet unchanged.
+        const material=Math.min(1,Math.max(0,(bright-94)/44));
+        const skinGuard=Math.min(1,Math.max(0,(21-warm)/10));
+        const weight=vertical*material*skinGuard;
         if(weight<=0)continue;
         const neutral=.2126*r+.7152*g+.0722*b;
-        d[i]=Math.round(r*(1-weight)+(neutral-3)*weight);
-        d[i+1]=Math.round(g*(1-weight)+(neutral+1)*weight);
-        d[i+2]=Math.round(b*(1-weight)+(neutral+5)*weight);
+        d[i]=Math.max(0,Math.min(255,Math.round(r*(1-weight)+(neutral-8)*weight)));
+        d[i+1]=Math.max(0,Math.min(255,Math.round(g*(1-weight)+(neutral+1)*weight)));
+        d[i+2]=Math.max(0,Math.min(255,Math.round(b*(1-weight)+(neutral+6)*weight)));
       }
     }
     ctx.putImageData(image,0,0);
