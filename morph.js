@@ -31,47 +31,111 @@ window.DCDMorph = (() => {
     const t=clamp((y-ROWS[i])/(ROWS[i+1]-ROWS[i]),0,1);
     return mix(profile[i],profile[i+1],t);
   }
-  // Figma source: 03_MOBILE_WEB / "당장확인해" (1190:72).
-  // Neutral-cool fabric with natural original skin/hair. The previous grade
-  // raised B while retaining red dominance, leaving a pink/lilac cast.
-  // Material selection is RGB-based, not vertically cropped, and no
-  // luminance-to-monochrome replacement is used (preserves fine highlights).
-  function coolDollPixels(ctx){
-    const data=ctx.getImageData(0,0,W,H),d=data.data;
-    const unit=v=>Math.max(0,Math.min(1,v));
-    for(let i=0;i<d.length;i+=4){
-      if(d[i+3]<16)continue;
-      const r=d[i],g=d[i+1],b=d[i+2];
-      const min=Math.min(r,g,b),max=Math.max(r,g,b);
-      const pale=unit((min-82)/30);
-      const lowChroma=1-unit((max-min-28)/22);
-      const noWarmSkin=1-unit(((r-g)-23)/14);
-      const w=pale*lowChroma*noWarmSkin;
-      if(w<=0)continue;
-      // Measured browser costume samples retained R>G by 1-4 units.
-      // Remove the warm cast by increasing G more than B while lowering R;
-      // retain the existing color gradients and the original pixel alpha.
-      const rr=Math.max(0,Math.min(255,r-6));
-      const gg=Math.max(0,Math.min(255,g+11));
-      const bb=Math.max(0,Math.min(255,b+10));
-      d[i]=Math.round(r+(rr-r)*w);
-      d[i+1]=Math.round(g+(gg-g)*w);
-      d[i+2]=Math.round(b+(bb-b)*w);
+  // Auto-calibrate from the exact Figma PNG export of "당장확인해"
+  // and its byte-identical unadjusted web original, doll-02-level-01-front.
+  // A single measured transform applies to all 4 dolls x 4 stages x 2 sides.
+  let gradePromise;
+  function imageLoad(url){
+    return new Promise((resolve,reject)=>{
+      const im=new Image();im.onload=()=>resolve(im);
+      im.onerror=()=>reject(Error("Unable to load "+url));im.src=url;
+    });
+  }
+  function solve4(M,v){
+    const a=M.map((row,i)=>[...row,v[i]]);
+    for(let c=0;c<4;c++){
+      let pivot=c;
+      for(let i=c+1;i<4;i++)if(Math.abs(a[i][c])>Math.abs(a[pivot][c]))pivot=i;
+      if(Math.abs(a[pivot][c])<1e-8)return null;
+      [a[c],a[pivot]]=[a[pivot],a[c]];
+      const t=a[c][c];for(let j=c;j<=4;j++)a[c][j]/=t;
+      for(let i=0;i<4;i++)if(i!==c){
+        const n=a[i][c];for(let j=c;j<=4;j++)a[i][j]-=n*a[c][j];
+      }
     }
-    ctx.putImageData(data,0,0);
+    return a.map(row=>row[4]);
+  }
+  async function figmaGrade(){
+    if(!gradePromise)gradePromise=(async()=>{
+      const [source,reference]=await Promise.all([
+        imageLoad('assets/figures-v2/doll-02-level-01-front.png'),
+        imageLoad('assets/figma-reference/doll-02-level-01-front-figma.png')
+      ]);
+      const w=reference.naturalWidth,h=reference.naturalHeight;
+      const pixels=im=>{
+        const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        const context=canvas.getContext('2d',{willReadFrequently:true});
+        context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';
+        context.drawImage(im,0,0,w,h);
+        return context.getImageData(0,0,w,h).data;
+      };
+      const x=pixels(source),y=pixels(reference);
+      const xx=Array.from({length:4},()=>[0,0,0,0]);
+      const xy=Array.from({length:3},()=>[0,0,0,0]);
+      let count=0;
+      for(let p=0;p<x.length;p+=4){
+        if(x[p+3]<248||y[p+3]<248)continue;
+        const v=[x[p]/255,x[p+1]/255,x[p+2]/255,1];
+        for(let i=0;i<4;i++){
+          for(let j=0;j<4;j++)xx[i][j]+=v[i]*v[j];
+          for(let k=0;k<3;k++)xy[k][i]+=v[i]*y[p+k]/255;
+        }
+        count++;
+      }
+      if(count<200)throw Error('Not enough matched Figma pixels');
+      // Regularize to the identity matrix to keep unseen skin/body colors
+      // stable when fitting a small reference export.
+      const regularizer=4;
+      for(let i=0;i<4;i++)xx[i][i]+=regularizer;
+      const matrix=xy.map((row,k)=>{
+        const vector=[...row];vector[k]+=regularizer;
+        return solve4(xx,vector);
+      });
+      if(matrix.some(row=>!row||row.some(v=>!Number.isFinite(v))))
+        throw Error('Invalid Figma color transform');
+      let error=0;
+      for(let p=0;p<x.length;p+=4){
+        if(x[p+3]<248||y[p+3]<248)continue;
+        const v=[x[p]/255,x[p+1]/255,x[p+2]/255,1];
+        for(let k=0;k<3;k++){
+          const predicted=Math.min(255,Math.max(0,255*matrix[k].reduce((s,a,j)=>s+a*v[j],0)));
+          error+=(predicted-y[p+k])**2;
+        }
+      }
+      console.info('[DCD] Matched Figma doll reference', {samples:count,rmse:Math.sqrt(error/(count*3))});
+      return matrix;
+    })().catch(e=>{
+      console.warn('[DCD] Calibration failed; leaving original doll colors untouched',e);
+      return null;
+    });
+    return gradePromise;
+  }
+  function coolDollPixels(ctx,matrix){
+    if(!matrix)return;
+    const image=ctx.getImageData(0,0,W,H),data=image.data;
+    for(let i=0;i<data.length;i+=4){
+      if(data[i+3]===0)continue;
+      const src=[data[i]/255,data[i+1]/255,data[i+2]/255,1];
+      for(let k=0;k<3;k++){
+        const v=matrix[k].reduce((s,a,j)=>s+a*src[j],0);
+        data[i+k]=Math.max(0,Math.min(255,Math.round(255*v)));
+      }
+    }
+    ctx.putImageData(image,0,0);
   }
   function source(kind,state,view){
     const key=`${kind}-${state}-${view}`;
     if(cache.has(key))return cache.get(key);
     const promise=new Promise(resolve=>{
       const image=new Image();
-      image.onload=()=>{
+      image.onload=async()=>{
+        try{
         const c=document.createElement('canvas');c.width=W;c.height=H;
         const ctx=c.getContext('2d',{willReadFrequently:true});
         const scale=Math.min(W/image.width,H/image.height);
         const w=image.width*scale,h=image.height*scale;
         ctx.drawImage(image,(W-w)/2,(H-h)/2,w,h);
-        coolDollPixels(ctx);
+        coolDollPixels(ctx,await figmaGrade());
         const packed=window.DCD_FIGURE_BOUNDS?.[key];
         if(!packed){console.warn('[DCD] Missing figure outline',key);resolve(null);return;}
         const bytes=atob(packed),edges=new Array(H);
@@ -86,6 +150,7 @@ window.DCDMorph = (() => {
           pixels:ctx.getImageData(0,0,W,H).data,
           facePixels:ctx.getImageData(0,0,W,FACE_BLEND_END).data
         });
+        }catch(error){console.error('[DCD] Figure processing failed',key,error);resolve(null);}
       };
       image.onerror=()=>{console.warn('[DCD] Figure image missing',key);resolve(null);};
       image.src=window.DCD_ASSETS.figure(kind,state,view);
