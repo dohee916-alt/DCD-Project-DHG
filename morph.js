@@ -42,17 +42,20 @@ window.DCDMorph = (() => {
     for(let i=0;i<d.length;i+=4){
       if(d[i+3]<16)continue;
       const r=d[i],g=d[i+1],b=d[i+2];
-      const brightness=Math.min(r,g,b);
-      const chroma=Math.max(r,g,b)-brightness;
-      // Smooth material-only mask, with no hard shoulder-height cutoff.
-      const pale=clamp01((brightness-92)/33);
-      const neutralEnough=1-clamp01((chroma-19)/17);
-      const warmSkin=1-clamp01(((r-g)-19)/13);
-      const weight=pale*neutralEnough*warmSkin;
+      const minimum=Math.min(r,g,b);
+      const chroma=Math.max(r,g,b)-minimum;
+      // Clothing retains a consistently pale neutral material even at shoulders.
+      // Strongly colored skin/hair have much higher red-green difference/chroma.
+      // No y-coordinate mask: shoulders, torso and legs follow the same rule.
+      const pale=clamp01((minimum-86)/26);
+      const garmentColor=1-clamp01((chroma-32)/16);
+      const skinProtection=1-clamp01(((r-g)-29)/14);
+      const weight=pale*garmentColor*skinProtection;
       if(weight<=0)continue;
       const luminance=.2126*r+.7152*g+.0722*b;
-      // Gently preserve lighting and texture; make fabric neutral cool gray.
-      const rr=Math.max(0,Math.min(255,luminance-7));
+      // Neutral silver-gray with a slight blue balance, preserving native
+      // luminance gradients (gloss, folds and shadow) and the original alpha.
+      const rr=Math.max(0,Math.min(255,luminance-6));
       const gg=Math.max(0,Math.min(255,luminance+1));
       const bb=Math.max(0,Math.min(255,luminance+5));
       d[i]=Math.round(r*(1-weight)+rr*weight);
