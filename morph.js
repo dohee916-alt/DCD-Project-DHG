@@ -31,21 +31,32 @@ window.DCDMorph = (() => {
     const t=clamp((y-ROWS[i])/(ROWS[i+1]-ROWS[i]),0,1);
     return mix(profile[i],profile[i+1],t);
   }
-  // Figma image adjustments: exposure 0, contrast +0.60, saturation 0,
-  // temperature -0.25, tint -0.08. Figma's internal image pipeline is not
-  // available in browser, so apply a restrained white-balance + contrast
-  // on cached source pixels ONCE; never run SVG filters on live morph canvases.
+  // Figma "인형색" reference: pale cool-gray clothing, natural face/hair.
+  // Apply only a subtle, garment-selective white balance, once per source.
+  // Do NOT globally increase contrast or recolor warm skin/hair pixels.
   function coolDollPixels(ctx){
     const image=ctx.getImageData(0,0,W,H);
     const d=image.data;
-    for(let i=0;i<d.length;i+=4){
-      if(!d[i+3])continue;
-      const r=d[i],g=d[i+1],b=d[i+2];
-      // Figma reference: +0.60 contrast, -0.25 temperature, -0.08 tint.
-      // Keep skin/highlights neutral rather than painting the whole doll blue.
-      d[i]=Math.max(0,Math.min(255,Math.round((r-128)*1.24+128-4)));
-      d[i+1]=Math.max(0,Math.min(255,Math.round((g-128)*1.24+128+3)));
-      d[i+2]=Math.max(0,Math.min(255,Math.round((b-128)*1.24+128+3)));
+    for(let y=0;y<H;y++){
+      const vertical=Math.min(1,Math.max(0,(y-200)/70));
+      if(vertical<=0)continue;
+      for(let x=0;x<W;x++){
+        const i=(y*W+x)*4;
+        if(d[i+3]<16)continue;
+        const r=d[i],g=d[i+1],b=d[i+2];
+        const warm=r-g;
+        const bright=Math.min(r,g,b);
+        // White/pale-lilac fabric only; preserve the rich brown hair,
+        // face, hands and feet, and keep the original highlights.
+        const material=Math.min(1,Math.max(0,(bright-106)/43));
+        const skinGuard=1-Math.min(1,Math.max(0,(warm-10)/13));
+        const weight=vertical*material*skinGuard*.72;
+        if(weight<=0)continue;
+        const neutral=.2126*r+.7152*g+.0722*b;
+        d[i]=Math.round(r*(1-weight)+(neutral-3)*weight);
+        d[i+1]=Math.round(g*(1-weight)+(neutral+1)*weight);
+        d[i+2]=Math.round(b*(1-weight)+(neutral+5)*weight);
+      }
     }
     ctx.putImageData(image,0,0);
   }
@@ -239,9 +250,9 @@ window.DCDMorph = (() => {
       }
     }
     ctx.putImageData(warped,0,0);
-    // Warp both original facial textures toward their intermediate position
-    // before merging, instead of snapping or stacking unaligned faces.
-    morphFace(ctx,kind,lo,hi,view,a,b,t);
+    // Do not morph the face with a low-resolution optical-flow field.
+    // The exact nearest reference face retains its original eyes/hair detail;
+    // only body silhouette widths interpolate during an injection.
   }
   function drawVisible(root=document){
     root.querySelectorAll('canvas[data-figure]').forEach(c=>
