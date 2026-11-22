@@ -31,16 +31,19 @@ window.DCDMorph = (() => {
     const t=clamp((y-ROWS[i])/(ROWS[i+1]-ROWS[i]),0,1);
     return mix(profile[i],profile[i+1],t);
   }
-  // Approximate Figma Temperature -0.20 for ALL four dolls, front and back.
-  // Process cached source imagery only once; keep alpha, morphology and geometry untouched.
+  // Figma image adjustments: exposure 0, contrast +0.60, saturation 0,
+  // temperature -0.25, tint -0.08. Figma's internal image pipeline is not
+  // available in browser, so apply a restrained white-balance + contrast
+  // on cached source pixels ONCE; never run SVG filters on live morph canvases.
   function coolDollPixels(ctx){
     const image=ctx.getImageData(0,0,W,H);
     const d=image.data;
     for(let i=0;i<d.length;i+=4){
       if(!d[i+3])continue;
-      d[i]=Math.round(d[i]*0.96);
-      d[i+1]=Math.min(255,Math.round(d[i+1]*1.01));
-      d[i+2]=Math.min(255,Math.round(d[i+2]*1.043));
+      const r=d[i],g=d[i+1],b=d[i+2];
+      d[i]=Math.max(0,Math.min(255,Math.round((r-128)*1.12+128-5)));
+      d[i+1]=Math.max(0,Math.min(255,Math.round((g-128)*1.12+128)));
+      d[i+2]=Math.max(0,Math.min(255,Math.round((b-128)*1.12+128+5)));
     }
     ctx.putImageData(image,0,0);
   }
