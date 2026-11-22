@@ -1,5 +1,5 @@
-/* DCD doll morph: preserve authentic front/back reference images and
-   interpolate silhouette widths with premultiplied-alpha pixels, not strips. */
+/* DCD doll morph: the same saved body value drives the paired front/back images.
+   Transform complete image rows around a fixed center, without slicing limbs. */
 window.DCDMorph = (() => {
   const W=346,H=873,CX=W/2,cache=new Map(),pending=new WeakMap();
   // Facial states 0–3 all participate. Warp landmark texture alignment
@@ -31,95 +31,16 @@ window.DCDMorph = (() => {
     const t=clamp((y-ROWS[i])/(ROWS[i+1]-ROWS[i]),0,1);
     return mix(profile[i],profile[i+1],t);
   }
-  // Auto-calibrate from the exact Figma PNG export of "당장확인해"
-  // and its byte-identical unadjusted web original, doll-02-level-01-front.
-  // A single measured transform applies to all 4 dolls x 4 stages x 2 sides.
-  let gradePromise;
-  function imageLoad(url){
-    return new Promise((resolve,reject)=>{
-      const im=new Image();im.onload=()=>resolve(im);
-      im.onerror=()=>reject(Error("Unable to load "+url));im.src=url;
-    });
-  }
-  function solve4(M,v){
-    const a=M.map((row,i)=>[...row,v[i]]);
-    for(let c=0;c<4;c++){
-      let pivot=c;
-      for(let i=c+1;i<4;i++)if(Math.abs(a[i][c])>Math.abs(a[pivot][c]))pivot=i;
-      if(Math.abs(a[pivot][c])<1e-8)return null;
-      [a[c],a[pivot]]=[a[pivot],a[c]];
-      const t=a[c][c];for(let j=c;j<=4;j++)a[c][j]/=t;
-      for(let i=0;i<4;i++)if(i!==c){
-        const n=a[i][c];for(let j=c;j<=4;j++)a[i][j]-=n*a[c][j];
-      }
-    }
-    return a.map(row=>row[4]);
-  }
-  async function figmaGrade(){
-    if(!gradePromise)gradePromise=(async()=>{
-      const [source,reference]=await Promise.all([
-        imageLoad('assets/figures-v2/doll-02-level-01-front.png'),
-        imageLoad('assets/figma-reference/doll-02-level-01-front-figma.png')
-      ]);
-      const w=reference.naturalWidth,h=reference.naturalHeight;
-      const pixels=im=>{
-        const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-        const context=canvas.getContext('2d',{willReadFrequently:true});
-        context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';
-        context.drawImage(im,0,0,w,h);
-        return context.getImageData(0,0,w,h).data;
-      };
-      const x=pixels(source),y=pixels(reference);
-      const xx=Array.from({length:4},()=>[0,0,0,0]);
-      const xy=Array.from({length:3},()=>[0,0,0,0]);
-      let count=0;
-      for(let p=0;p<x.length;p+=4){
-        if(x[p+3]<248||y[p+3]<248)continue;
-        const v=[x[p]/255,x[p+1]/255,x[p+2]/255,1];
-        for(let i=0;i<4;i++){
-          for(let j=0;j<4;j++)xx[i][j]+=v[i]*v[j];
-          for(let k=0;k<3;k++)xy[k][i]+=v[i]*y[p+k]/255;
-        }
-        count++;
-      }
-      if(count<200)throw Error('Not enough matched Figma pixels');
-      // Regularize to the identity matrix to keep unseen skin/body colors
-      // stable when fitting a small reference export.
-      const regularizer=4;
-      for(let i=0;i<4;i++)xx[i][i]+=regularizer;
-      const matrix=xy.map((row,k)=>{
-        const vector=[...row];vector[k]+=regularizer;
-        return solve4(xx,vector);
-      });
-      if(matrix.some(row=>!row||row.some(v=>!Number.isFinite(v))))
-        throw Error('Invalid Figma color transform');
-      let error=0;
-      for(let p=0;p<x.length;p+=4){
-        if(x[p+3]<248||y[p+3]<248)continue;
-        const v=[x[p]/255,x[p+1]/255,x[p+2]/255,1];
-        for(let k=0;k<3;k++){
-          const predicted=Math.min(255,Math.max(0,255*matrix[k].reduce((s,a,j)=>s+a*v[j],0)));
-          error+=(predicted-y[p+k])**2;
-        }
-      }
-      console.info('[DCD] Matched Figma doll reference', {samples:count,rmse:Math.sqrt(error/(count*3))});
-      return matrix;
-    })().catch(e=>{
-      console.warn('[DCD] Calibration failed; leaving original doll colors untouched',e);
-      return null;
-    });
-    return gradePromise;
-  }
-  function coolDollPixels(ctx,matrix){
-    if(!matrix)return;
-    const image=ctx.getImageData(0,0,W,H),data=image.data;
-    for(let i=0;i<data.length;i+=4){
-      if(data[i+3]===0)continue;
-      const src=[data[i]/255,data[i+1]/255,data[i+2]/255,1];
-      for(let k=0;k<3;k++){
-        const v=matrix[k].reduce((s,a,j)=>s+a*src[j],0);
-        data[i+k]=Math.max(0,Math.min(255,Math.round(255*v)));
-      }
+  // Approximate Figma Temperature -0.20 for ALL four dolls, front and back.
+  // Process cached source imagery only once; keep alpha, morphology and geometry untouched.
+  function coolDollPixels(ctx){
+    const image=ctx.getImageData(0,0,W,H);
+    const d=image.data;
+    for(let i=0;i<d.length;i+=4){
+      if(!d[i+3])continue;
+      d[i]=Math.round(d[i]*0.96);
+      d[i+1]=Math.min(255,Math.round(d[i+1]*1.01));
+      d[i+2]=Math.min(255,Math.round(d[i+2]*1.043));
     }
     ctx.putImageData(image,0,0);
   }
@@ -128,14 +49,13 @@ window.DCDMorph = (() => {
     if(cache.has(key))return cache.get(key);
     const promise=new Promise(resolve=>{
       const image=new Image();
-      image.onload=async()=>{
-        try{
+      image.onload=()=>{
         const c=document.createElement('canvas');c.width=W;c.height=H;
         const ctx=c.getContext('2d',{willReadFrequently:true});
         const scale=Math.min(W/image.width,H/image.height);
         const w=image.width*scale,h=image.height*scale;
         ctx.drawImage(image,(W-w)/2,(H-h)/2,w,h);
-        coolDollPixels(ctx,await figmaGrade());
+        coolDollPixels(ctx);
         const packed=window.DCD_FIGURE_BOUNDS?.[key];
         if(!packed){console.warn('[DCD] Missing figure outline',key);resolve(null);return;}
         const bytes=atob(packed),edges=new Array(H);
@@ -147,10 +67,8 @@ window.DCDMorph = (() => {
         resolve({
           canvas:c,
           profile:widthProfile(edges),
-          pixels:ctx.getImageData(0,0,W,H).data,
           facePixels:ctx.getImageData(0,0,W,FACE_BLEND_END).data
         });
-        }catch(error){console.error('[DCD] Figure processing failed',key,error);resolve(null);}
       };
       image.onerror=()=>{console.warn('[DCD] Figure image missing',key);resolve(null);};
       image.src=window.DCD_ASSETS.figure(kind,state,view);
@@ -262,50 +180,45 @@ window.DCDMorph = (() => {
     }
     ctx.putImageData(body,0,0);
   }
-  // Draw morph by blending BOTH adjacent source states on the 2D canvas.
-  // This avoids the previous 300k-pixel JavaScript redraw per animation frame,
-  // and, crucially, removes the midpoint jump from round(p).
   async function draw(canvas,kind,value,view='front'){
     if(!canvas)return;
     const request=(pending.get(canvas)||0)+1;
     pending.set(canvas,request);
-    const p=clamp(value,0,100)*3/100;
-    const lo=Math.floor(p),hi=Math.min(3,Math.ceil(p)),t=p-lo;
-    const [a,b]=await Promise.all([source(kind,lo,view),source(kind,hi,view)]);
-    if(!a||!b||!canvas.isConnected||pending.get(canvas)!==request)return;
+    const p=clamp(value,0,100)*3/100,lo=Math.floor(p),
+      hi=Math.min(3,Math.ceil(p)),t=p-lo,nearest=Math.round(p);
+    const [a,b,from]=await Promise.all([
+      source(kind,lo,view),source(kind,hi,view),
+      source(kind,nearest,view)
+    ]);
+    if(!a||!b||!from||!canvas.isConnected||pending.get(canvas)!==request)return;
     if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
-    const ctx=canvas.getContext('2d');
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
     ctx.clearRect(0,0,W,H);
     ctx.globalAlpha=1;
     ctx.globalCompositeOperation='source-over';
     ctx.imageSmoothingEnabled=true;
     ctx.imageSmoothingQuality='high';
-    if(lo===hi||t<.000001){ctx.drawImage(a.canvas,0,0);return;}
-    if(t>.999999){ctx.drawImage(b.canvas,0,0);return;}
-    // Continuous target silhouette; each endpoint's image is warped to that
-    // same target at every stage. Draw grouped 4px rows via the native
-    // canvas rasterizer rather than a per-pixel JavaScript loop.
-    // The head region remains geometrically stable; its textures cross-fade
-    // continuously instead of snapping at the midpoint.
-    const stripHeight=4;
-    function paint(src,alpha){
-      ctx.globalAlpha=alpha;
-      for(let y=0;y<H;y+=stripHeight){
-        const height=Math.min(stripHeight,H-y);
-        const center=y+(height-1)*.5;
-        const base=widthAt(src.profile,center);
-        const target=mix(widthAt(a.profile,center),widthAt(b.profile,center),t);
-        const feather=clamp((center-165)/95,0,1);
-        const ease=feather*feather*(3-2*feather);
-        const ratio=clamp(target/Math.max(1,base),.78,1.22);
-        const stretch=1+(ratio-1)*ease;
-        const destW=W*stretch;
-        ctx.drawImage(src.canvas,0,y,W,height,(W-destW)*.5,y,destW,height);
-      }
+
+    // Every exact reference shows its authentic body AND face without override.
+    if(Math.abs(p-nearest)<.00001){
+      ctx.drawImage(from.canvas,0,0);
+      return;
     }
-    paint(a,1);
-    paint(b,t);
-    ctx.globalAlpha=1;
+    for(let y=0;y<H;y++){
+      const baseline=widthAt(from.profile,y);
+      const target=mix(widthAt(a.profile,y),widthAt(b.profile,y),t);
+      const ratio=clamp(target/Math.max(1,baseline),.78,1.22);
+      // Protect face, jaw and neck from width-based silhouette distortion.
+      const feather=clamp((y-165)/95,0,1);
+      const smooth=feather*feather*(3-2*feather);
+      const stretch=1+(ratio-1)*smooth;
+      // Approved technique: scale the COMPLETE image row, not a cropped
+      // silhouette segment. The center stays fixed, so edges cannot tear.
+      ctx.drawImage(from.canvas,0,y,W,1,CX*(1-stretch),y,W*stretch,1);
+    }
+    // Warp both original facial textures toward their intermediate position
+    // before merging, instead of snapping or stacking unaligned faces.
+    morphFace(ctx,kind,lo,hi,view,a,b,t);
   }
   function drawVisible(root=document){
     root.querySelectorAll('canvas[data-figure]').forEach(c=>
@@ -313,10 +226,7 @@ window.DCDMorph = (() => {
   }
   async function preload(kind,value,view='back'){
     const p=clamp(value,0,100)*3/100;
-    await Promise.all([source(kind,Math.floor(p),view),source(kind,Math.min(3,Math.ceil(p)),view)]);
+    await Promise.all([source(kind,Math.floor(p),view),source(kind,Math.min(3,Math.ceil(p)),view),source(kind,Math.round(p),view)]);
   }
-  async function preloadAll(kind,view='front'){
-    await Promise.all([0,1,2,3].map(i=>source(kind,i,view)));
-  }
-  return {draw,drawVisible,preload,preloadAll};
+  return {draw,drawVisible,preload};
 })();
