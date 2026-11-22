@@ -2047,8 +2047,7 @@ canvas.figure{object-fit:contain!important}
 #stage.page-reel0 > .reel-comment-footer{position:absolute;left:0;bottom:0;width:428px;height:82px;background:#0d1015;display:flex;align-items:flex-start;justify-content:center;padding-top:9px;z-index:30;pointer-events:none}
 #stage.page-reel0 .reel-comment-pill{height:50px;width:400px;border-radius:27px;display:flex;align-items:center;padding:0 24px;background:#26292f;color:#e7e7e8;font:400 16.5px/20px Roboto,Arial,sans-serif}
 
-/* Workbench doll temperature: cool RGB white balance, not hue rotation.
-   Preserve sprites, silhouettes, morph motion and original active-doll shadow. */
+/* Workbench doll temperature: compensate the warm beige sprite with a cool blue-gray RGB matrix (defined in index.html). Preserve alpha, silhouettes, morph and shadow. */
 #stage.page-workbench canvas.figure,
 #stage.page-03 canvas.figure,
 #stage.page-08a canvas.figure,
