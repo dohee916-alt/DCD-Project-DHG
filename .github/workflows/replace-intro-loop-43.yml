@@ -1,0 +1,78 @@
+name: Rebuild approved 43-frame intro GIF from existing source
+on:
+  push:
+    paths:
+      - .github/workflows/replace-intro-loop-43.yml
+permissions:
+  contents: write
+jobs:
+  replace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Validate supplied frame sequence against existing 44-frame GIF
+        shell: bash
+        env:
+          EXPECTED_FRAMES: "bfe0532d78d6 e570f01ab9cf f341ae6b8780 a35cafd59c15 957c174ba828 e76d65675a96 0d525148e27e 75a424d66963 db2283103787 41db93555d78 66f1bbb1bc08 0357ed726399 0de633fb4f43 cf5f56fabee9 73babc602d5a b3db39060c8e 5f0f3886a935 690677ded84b 115c77acbec8 71bf351d1455 8622710a1386 f8a823491ea3 8622710a1386 71bf351d1455 115c77acbec8 690677ded84b 5f0f3886a935 b3db39060c8e 73babc602d5a cf5f56fabee9 0de633fb4f43 0357ed726399 66f1bbb1bc08 41db93555d78 db2283103787 75a424d66963 0d525148e27e e76d65675a96 957c174ba828 a35cafd59c15 f341ae6b8780 e570f01ab9cf bfe0532d78d6"
+        run: |
+          set -euo pipefail
+          python3 -m pip -q install Pillow
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          import hashlib, json, os
+          src=Path('assets/motion/blister_3_to_5_1_23_pingpong.gif')
+          with Image.open(src) as gif:
+              assert gif.n_frames==44 and gif.size==(540,1080), (gif.n_frames,gif.size)
+              frames=[]
+              for i in range(gif.n_frames):
+                  gif.seek(i)
+                  frames.append(gif.convert('RGBA').copy())
+          expected=os.environ['EXPECTED_FRAMES'].split()
+          assert len(expected)==43
+          actual=[hashlib.sha256(f.tobytes()).hexdigest()[:12] for f in frames]
+          matches=[(start,sum(a==b for a,b in zip(actual[start:start+43],expected))) for start in (0,1)]
+          print('Input GIF:',len(frames),'frames; original hash samples:',actual[:5],actual[-5:])
+          print('Uploaded GIF:',len(expected),'frames; uploaded hash samples:',expected[:5],expected[-5:])
+          print('Frame comparison (offset, exact matches):',matches)
+          best=max(matches,key=lambda x:x[1])
+          # Do not replace anything if the original source does not
+          # reproduce the GIF the user actually supplied.
+          if best[1]<43:
+              raise SystemExit('Reference frames differ; refusing to substitute an incorrect GIF.')
+          selected=frames[best[0]:best[0]+43]
+          out=Path('assets/motion/blister_3_to_5_1_23_pingpong.gif')
+          selected[0].save(out,save_all=True,append_images=selected[1:],duration=[80]*43,loop=0,optimize=False,disposal=2)
+          selected[0].save('assets/motion/blister_3_to_5_1_23_pingpong_first.png')
+          with Image.open(out) as verify:
+              assert verify.n_frames==43 and verify.size==(540,1080)
+              actualDuration=sum((verify.seek(i) or verify.info.get('duration',0)) for i in range(43))
+              assert actualDuration==3440,actualDuration
+              after=[hashlib.sha256((verify.seek(i) or verify.convert('RGBA')).tobytes()).hexdigest()[:12] for i in range(43)]
+              assert after==expected, 'Pixel changes in generated GIF'
+          meta=Path('assets/motion/motion-metadata.json')
+          data=json.loads(meta.read_text())
+          data['blister_3_to_5_1_23_pingpong']={'frames':43,'duration_ms':3440,'size':[540,1080]}
+          meta.write_text(json.dumps(data))
+          config=Path('asset-config.js')
+          s=config.read_text()
+          s=s.replace('blister_3_to_5_1_23_pingpong.gif?v=2500ms-20261110','blister_3_to_5_1_23_pingpong.gif?v=43frames-3440ms-20261123')
+          s=s.replace('blisterPingpongMs: 2500, // Retimed 44-frame GIF: 30 x 60ms + 14 x 50ms','blisterPingpongMs: 3440, // Verified 43-frame GIF, 43 x 80ms')
+          config.write_text(s)
+          index=Path('index.html')
+          h=index.read_text()
+          h=h.replace('asset-config.js?v=rupture-visual-audio-sync-175','asset-config.js?v=approved-43frame-loop-197')
+          index.write_text(h)
+          print('Replaced matching GIF and first frame; 43 frames, 3440ms, pixel hashes checked.')
+          PY
+      - name: Commit GIF, first still and updated playback metadata
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion/blister_3_to_5_1_23_pingpong.gif assets/motion/blister_3_to_5_1_23_pingpong_first.png assets/motion/motion-metadata.json asset-config.js index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'Replace intro loop with verified 43-frame Figma GIF, 80ms per frame'
+            git push origin HEAD:main
+          fi
