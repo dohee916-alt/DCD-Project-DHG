@@ -1,0 +1,72 @@
+name: Squeeze acceleration only; uniform reverse release
+on:
+  push:
+    paths:
+      - .github/workflows/retime-blister-squeeze-only-20261124.yml
+permissions:
+  contents: write
+jobs:
+  retime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Retime squeeze only, keep reverse release constant
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip -q install Pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageSequence
+          import hashlib, re, json
+          path=Path('assets/motion/blister_3_to_5_1_23_pingpong.gif')
+          raw=bytearray(path.read_bytes())
+          with Image.open(path) as im:
+              assert im.n_frames==43 and im.size==(540,1080)
+              before=[hashlib.sha256(fr.convert('RGBA').tobytes()).digest() for fr in ImageSequence.Iterator(im)]
+          # 0..20: progressively faster squeeze; 21: turnaround;
+          # 22..42: constant 60ms per frame through the reverse release.
+          squeeze=[150,150,120,110,90,80,70,60,50,50,40,40,30,30,30,20,20,20,20,20,20]
+          timing=squeeze+[20]+[60]*21
+          assert len(timing)==43 and sum(timing)==2500,(len(timing),sum(timing))
+          gce=[i for i in range(len(raw)-7) if raw[i:i+3]==bytes((0x21,0xF9,0x04)) and raw[i+7]==0]
+          assert len(gce)==43,('unexpected GCE count',len(gce))
+          for offset,delay in zip(gce,timing):
+              raw[offset+4:offset+6]=(delay//10).to_bytes(2,'little')
+          path.write_bytes(raw)
+          with Image.open(path) as im:
+              after=[hashlib.sha256(fr.convert('RGBA').tobytes()).digest() for fr in ImageSequence.Iterator(im)]
+              actual=[fr.info.get('duration',0) for fr in ImageSequence.Iterator(im)]
+              assert im.n_frames==43 and im.size==(540,1080)
+          assert before==after,'visual frames changed'
+          assert actual==timing and sum(actual)==2500,actual
+          cfg=Path('asset-config.js')
+          src=cfg.read_text()
+          src,n=re.subn(r'blisterPingpongMs: *\d+,[^\n]*','blisterPingpongMs: 2500, // Accelerated squeeze only; uniform 60ms reverse',src)
+          assert n==1,n
+          src,n=re.subn(r'blister_3_to_5_1_23_pingpong\.gif\?v=[^" ]+','blister_3_to_5_1_23_pingpong.gif?v=squeeze-only-2500-20261124',src)
+          assert n==1,n
+          cfg.write_text(src)
+          html=Path('index.html')
+          src=html.read_text()
+          src,n=re.subn(r'asset-config\.js\?v=[^" ]+','asset-config.js?v=squeeze-only-2500-20261124',src)
+          assert n==1,n
+          html.write_text(src)
+          meta=json.loads(Path('assets/motion/motion-metadata.json').read_text())
+          assert meta['blister_3_to_5_1_23_pingpong']['frames']==43
+          assert meta['blister_3_to_5_1_23_pingpong']['duration_ms']==2500
+          print('PASS: forward accelerates, backward uniform; 43 visually identical frames; 2500ms')
+          print(timing)
+          PY
+      - name: Commit timing-only change
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion/blister_3_to_5_1_23_pingpong.gif asset-config.js index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'Accelerate blister squeeze only and keep release constant'
+            git push origin HEAD:main
+          fi
