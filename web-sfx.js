@@ -9,8 +9,8 @@ const PATH='assets/audio/';
 const parts=Array.from({length:8},(_,i)=>PATH+'dcd-fixed-sfx-part'+(i+1)+'.txt');
 const legacy=PATH+'dcd-approved-workbench-cues.mp3.b64';
 const clips={
- suction:{source:'hq',start:0,duration:1.33,gain:.60},
- injection:{source:'hq',start:1.48,duration:1.04,gain:.60},
+ suction:{source:'hq',start:0,duration:1.33,gain:.36},
+ injection:{source:'hq',start:1.48,duration:1.04,gain:.36},
  signature:{source:'hq',start:2.67,duration:1.36,gain:.30},
  pack:{source:'legacy',start:4.68,duration:.456,gain:.70},
  'machine-in':{source:'legacy',start:5.336,duration:1.45,gain:.72},
@@ -51,7 +51,7 @@ function stop(id){
   return;
  }
  try{voice.node.stop();}catch{}
- voice.node.disconnect();voice.gain.disconnect();
+ voice.node.disconnect();voice.filter?.disconnect();voice.gain.disconnect();
 }
 function start(id,options={}){
  const clip=clips[id],buffer=buffers[clip?.source];
@@ -65,13 +65,16 @@ function start(id,options={}){
   gain.gain.setValueAtTime(0,now);
   gain.gain.linearRampToValueAtTime(clip.gain,now+.14);
  }else gain.gain.value=clip.gain;
- node.connect(gain);gain.connect(bus);
+ const filter=(id==='suction'||id==='injection')?context.createBiquadFilter():null;
+ if(filter){filter.type='lowpass';filter.frequency.value=3000;filter.Q.value=.707;node.connect(filter);filter.connect(gain);}
+ else node.connect(gain);
+ gain.connect(bus);
  if(options.loop){
   node.loop=true;node.loopStart=clip.start;node.loopEnd=clip.start+clip.duration;
   node.start(0,clip.start);
  }else node.start(0,clip.start,clip.duration);
- const voice={node,gain};voices.set(id,voice);
- node.onended=()=>{if(voices.get(id)===voice){voices.delete(id);node.disconnect();gain.disconnect();}};
+ const voice={node,gain,filter};voices.set(id,voice);
+ node.onended=()=>{if(voices.get(id)===voice){voices.delete(id);node.disconnect();filter?.disconnect();gain.disconnect();}};
  return true;
 }
 function flush(source){
