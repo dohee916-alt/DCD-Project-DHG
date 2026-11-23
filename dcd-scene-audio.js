@@ -17,7 +17,7 @@ const workbenchPages=new Set(['03','workbench','08a','08b','09','10','11']);
 let ctx=null,master=null,activePage='',enabled=false;
 const decoded=new Map(),pending=new Map(),voices=new Map(),serials=new Map();
 const loopLoads=new Set();
-const instantSounds=new Set(['prescription-check','prescription-next']);
+const instantSounds=new Set(['prescription-check','prescription-next','prescription-typing']);
 const onsetOffsets=new Map();
 let primed=false;
 function onset(buffer){
@@ -95,6 +95,11 @@ async function play(name,options={}){
   if(serials.get(name)!==latest||!ctx||ctx.state!=='running')return;
   const node=ctx.createBufferSource(),gain=ctx.createGain();
   node.buffer=b;node.loop=!!options.loop;
+  // Remove the encoded leading silence from each typing loop, not only the first play.
+  if(name==='prescription-typing'&&options.loop){
+   node.loopStart=Math.min(onsetOffsets.get(name)||0,Math.max(0,b.duration-.05));
+   node.loopEnd=b.duration;
+  }
   gain.gain.value=(options.gain??sounds[name].gain);
   node.connect(gain);gain.connect(master);
   const voice={node,gain};
@@ -126,7 +131,7 @@ function scene(page){
  const previous=activePage;activePage=page;
  if(page!=='AR5-1')stop('clock-ticking');
  if(['09','10','11','12','13','14','14done'].includes(page)&&enabled){
-  if(page==='11')preload('prescription-typing');
+  if(['09','10','11','12','13'].includes(page))preload('prescription-typing');
   for(const name of instantSounds)preload(name);
  }
  if(workbenchPages.has(page)){
