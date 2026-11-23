@@ -1,0 +1,70 @@
+name: Retime uploaded 43-frame blister GIF to 2.5 seconds
+on:
+  push:
+    paths:
+      - .github/workflows/retime-uploaded-blister-2500ms.yml
+permissions:
+  contents: write
+jobs:
+  retime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Change only frame delays and synchronized playback config
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install -q Pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageSequence
+          import hashlib, json, re
+          target=Path('assets/motion/blister_3_to_5_1_23_pingpong.gif')
+          raw=bytearray(target.read_bytes())
+          with Image.open(target) as im:
+              assert im.size==(540,1080) and im.n_frames==43, (im.size,im.n_frames)
+              before=[hashlib.sha256(frame.convert('RGBA').tobytes()).digest() for frame in ImageSequence.Iterator(im)]
+              assert sum(frame.info.get('duration',0) for frame in ImageSequence.Iterator(im))==3440
+          gce=[i for i in range(len(raw)-7) if raw[i:i+3]==bytes((0x21,0xF9,0x04)) and raw[i+7]==0]
+          assert len(gce)==43, ('GCE blocks',len(gce))
+          for frame,i in enumerate(gce):
+              delay=6 if frame<35 else 5
+              raw[i+4]=delay
+              raw[i+5]=0
+          target.write_bytes(raw)
+          with Image.open(target) as im:
+              durations=[frame.info.get('duration',0) for frame in ImageSequence.Iterator(im)]
+              after=[hashlib.sha256(frame.convert('RGBA').tobytes()).digest() for frame in ImageSequence.Iterator(im)]
+              assert im.n_frames==43 and im.size==(540,1080)
+              assert sum(durations)==2500, durations
+              assert before==after, 'Rendered frames changed'
+          config=Path('asset-config.js')
+          src=config.read_text()
+          src,n=re.subn(r'blisterPingpongMs: *\d+,[^\n]*','blisterPingpongMs: 2500, // Same uploaded 43 frames; 35 x 60ms + 8 x 50ms',src)
+          assert n==1,n
+          src,n=re.subn(r'blister_3_to_5_1_23_pingpong\.gif\?v=[^" ]+','blister_3_to_5_1_23_pingpong.gif?v=uploaded-fold-removed-2500ms-20261124',src)
+          assert n==1,n
+          config.write_text(src)
+          meta=Path('assets/motion/motion-metadata.json')
+          data=json.loads(meta.read_text())
+          assert data['blister_3_to_5_1_23_pingpong']['frames']==43
+          data['blister_3_to_5_1_23_pingpong']['duration_ms']=2500
+          meta.write_text(json.dumps(data))
+          index=Path('index.html')
+          html=index.read_text()
+          html,n=re.subn(r'asset-config\.js\?v=[^" ]+','asset-config.js?v=uploaded-fold-removed-2500ms-20261124',html)
+          assert n==1,n
+          index.write_text(html)
+          print('PASS: 43 pixel-identical frames, 2500ms, asset config and cache synchronized')
+          PY
+      - name: Commit verified retime
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion/blister_3_to_5_1_23_pingpong.gif assets/motion/motion-metadata.json asset-config.js index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Speed up exact uploaded blister GIF to 2.5s without changing frames'
+          git push origin HEAD:main
