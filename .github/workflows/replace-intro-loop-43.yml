@@ -15,6 +15,7 @@ jobs:
       - name: Validate supplied frame sequence against existing 44-frame GIF
         shell: bash
         env:
+          REFERENCE_SMALL: "eNrF19lTU1ccB/AZ7IMJ+KC1mAVZWq0PoEI0LAmJC4hapzMmIUIFnREhBFyKoJBo++SSUDYJWBf6JEkIkg37oD64oaAzzCTOKAGiIbYm1jG5ER/qTLXO9Jx7b5J7Q1DG6Y3/wOf+5tzf+Z3v7/WVi+/cY+99nveBF5OKEr/57BvbzbdO25CI86y5+kX34YD5rDmbYcpjPJRteHlRZeUyzDyGq3E7ovvFkrlwVJxu2yPwnj6kT50/sj398RHR1ClZAy2ug0Uz5CbfL8t9/Un+FMkXfpKfBf0u6JtQ/1H1Rl+vOuiLcF+SbqsQejs/7D/C/AmCfxut/6+uhoAlmt+E+lmLRiUZqF+vT6MB39koxn02zZCXcr8sb5rkl5J8dYRf4NM2W3BfHMUXZaB+dT0trp1N65vpK4F/juRroG/MXgJ9eYEPmFyGhc+Evr4l6K8j+BKSX543fbUXnP+/Id8C/FvAvyXi/KmWPdfUQ58L/TF5oV/XYuEyoa8g+HuB36DD/Cbgy3Gfl3KvnAf8t0F/XPlDNP8c7tcU+vWt5mzMl0Cf8yXqr/dqGnTf0IZFK51NxbifRA/572bzVbLnndAfwPzaTf4+km8GfnGGrTLoi6HvUsnr6XFtSXQ9PzWy/qM7/ZbzIf8PVRVoPNznMRy1Rf6+NuBb81luRTECvgX9lbbKDV7NYd0y+rB4lVMhdalqCD5/+qo2mm+/CfxTVeDiAP8SN9HMYzr2FSGGdhPmK1F/zWLg26s2erpm+EtRf1eEX0b2K8n+ZqS/A/oC3DeF/SPaZfS7ktVOxQ6XuuZQPPR1+WkjZN9B9p+eBH4d7vOZjv1bkP7TxhzmoIDtVkqRvjbclxVAf3n8XUnmJPRrgd+aHI/6+ajvCPvWC2/st/9x2m9Afy/0ref7uYkWPmv8wBbkUqcxhwX9o9A3rv0K9QtxvzhzUlmC+vNC/qtrurB/rNw/2DO7vxUZ0EBfCPwdiCHoVwO/UfstwU+Y15oSrxOkjeyO9H1E/wTZPwj9gRzWZWGS+1gJ7kuBv8nTjflZBD9BK/g6wh8j+NdFHHfQNwA/nz1+8DvE2EXw2we4iaPSVXY58Jt6VyTckXLABHii3gf8llToD+8WzPB/I/gVqH8B8ydC/jrglwLfiPtFIX8S8xeE/WngPyX7D4ai+z9uQ4zduP9TKaH+ufjeD/pLMD9gmru/YFbfPoT9X/fxCk8H6mfjPjIH3/WR+nv+xvpHzJk6XvGsvS4w2NOfw7AKl07UfR8w/2rMZf++Ptn9805wlzH/Qc1mzxlF2G8G/hefr36Kzp+q/qG6/2N5f6meP1TMT6rnf0zerxi9v9TkB6rzTwzzG8X5k5L8THX+p3h/oXr/isn++Fn23/9nf/8PyPjmPA=="
           EXPECTED_FRAMES: "bfe0532d78d6 e570f01ab9cf f341ae6b8780 a35cafd59c15 957c174ba828 e76d65675a96 0d525148e27e 75a424d66963 db2283103787 41db93555d78 66f1bbb1bc08 0357ed726399 0de633fb4f43 cf5f56fabee9 73babc602d5a b3db39060c8e 5f0f3886a935 690677ded84b 115c77acbec8 71bf351d1455 8622710a1386 f8a823491ea3 8622710a1386 71bf351d1455 115c77acbec8 690677ded84b 5f0f3886a935 b3db39060c8e 73babc602d5a cf5f56fabee9 0de633fb4f43 0357ed726399 66f1bbb1bc08 41db93555d78 db2283103787 75a424d66963 0d525148e27e e76d65675a96 957c174ba828 a35cafd59c15 f341ae6b8780 e570f01ab9cf bfe0532d78d6"
         run: |
           set -euo pipefail
@@ -41,7 +42,19 @@ jobs:
           # Do not replace anything if the original source does not
           # reproduce the GIF the user actually supplied.
           if best[1]<43:
-              raise SystemExit('Reference frames differ; refusing to substitute an incorrect GIF.')
+              import base64,zlib,math
+              small=zlib.decompress(base64.b64decode(os.environ['REFERENCE_SMALL']))
+              assert len(small)==43*4*8*3
+              scores=[]
+              for off in (0,1):
+                  errs=[]
+                  for i in range(43):
+                      bits=frames[i+off].convert('RGB').resize((4,8),Image.Resampling.BOX).tobytes()
+                      exp=small[i*96:(i+1)*96]
+                      errs.extend([(a-b)**2 for a,b in zip(bits,exp)])
+                  scores.append((off,round(math.sqrt(sum(errs)/len(errs)),3)))
+              print('Visual thumbnail RMSE per channel (offset, 0-255 scale):',scores)
+              raise SystemExit('Source is not pixel-identical; diagnostic visual comparison complete.')
           selected=frames[best[0]:best[0]+43]
           out=Path('assets/motion/blister_3_to_5_1_23_pingpong.gif')
           selected[0].save(out,save_all=True,append_images=selected[1:],duration=[80]*43,loop=0,optimize=False,disposal=2)
