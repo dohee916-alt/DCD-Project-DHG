@@ -24,7 +24,21 @@ let packingAssetsWarmed=false;
 // Fetch compressed GIF bytes during the opening, rather than after pulling.
 // A fresh blob URL then starts at frame zero without another network request.
 let ruptureWarmPromise=null,ruptureBuffer=null,rupturePlayUrl=null;
+let ruptureStillsPromise=null,ruptureStillsReady=false;
+function preloadRuptureStills(){
+  if(ruptureStillsPromise)return ruptureStillsPromise;
+  ruptureStillsPromise=Promise.all([A.blisterOneShotFirst,A.blisterOneShotLast].map(src=>{
+    const image=new Image();image.decoding='sync';image.src=src;
+    return image.decode?image.decode():new Promise((resolve,reject)=>{
+      if(image.complete&&image.naturalWidth)return resolve();
+      image.onload=resolve;image.onerror=reject;
+    });
+  })).then(()=>{ruptureStillsReady=true;return true;})
+    .catch(error=>{console.warn('[DCD] Rupture still decode:',error);ruptureStillsPromise=null;return false;});
+  return ruptureStillsPromise;
+}
 function preloadRuptureGif(){
+  preloadRuptureStills();
   if(ruptureWarmPromise)return ruptureWarmPromise;
   ruptureWarmPromise=fetch(A.blisterOneShot,{cache:'force-cache'})
     .then(response=>{
@@ -32,7 +46,7 @@ function preloadRuptureGif(){
       return response.arrayBuffer();
     })
     .then(buffer=>{ruptureBuffer=buffer;return buffer;})
-    .catch(error=>{console.warn('[DCD] Rupture prefetch:',error);return null;});
+    .catch(error=>{console.warn('[DCD] Rupture prefetch:',error);ruptureWarmPromise=null;return null;});
   return ruptureWarmPromise;
 }
 function beginRuptureGif(gif){
@@ -1303,11 +1317,18 @@ if(packHand){
  }
 }
 function finishRupture(){
- if(s.page==='01'&&s.phase==='rupture'){
-   videoEnded=true;
-   if(rupturePlayUrl){URL.revokeObjectURL(rupturePlayUrl);rupturePlayUrl=null;}
-   setPage('02');
- }
+  if(s.page==='01'&&s.phase==='rupture'){
+    // Never remove the visible GIF until its final still is already decoded.
+    if(!ruptureStillsReady){
+      preloadRuptureStills().then(ok=>{
+        if(ok&&s.page==='01'&&s.phase==='rupture')finishRupture();
+      });
+      return;
+    }
+    videoEnded=true;
+    setPage('02');
+    if(rupturePlayUrl){URL.revokeObjectURL(rupturePlayUrl);rupturePlayUrl=null;}
+  }
 }
 function runIntro(p){setPage(p,'intro');later(()=>{
   if(s.page!==p||s.phase!=='intro')return;
@@ -1836,6 +1857,6 @@ window.addEventListener('deviceorientation',e=>{
 window.DCD_CAMPAIGN_AUDIO?.setScene(s.page);
 if(s.page==='00'&&s.phase==='intro')runIntro('00');else if(s.page==='01'&&s.phase==='intro')runIntro('01');else if(s.page==='03'&&s.phase==='waiting'){rotateGuideFinished=true;render();}
 else if(s.page==='03')startRotateGuide();else render();
-if(['reel0','00','01'].includes(s.page))requestAnimationFrame(()=>requestAnimationFrame(()=>preloadRuptureGif()));
+if(['reel0','00','01'].includes(s.page))requestAnimationFrame(()=>requestAnimationFrame(()=>{preloadRuptureStills();preloadRuptureGif();}));
 window.DCD_DEBUG={state:()=>structuredClone(s),page:p=>setPage(p),finishRupture};
 })();
