@@ -25,13 +25,13 @@ function preloadBurst(){
  burstLoading=fetch(BASE+'dcd-blister-burst-1p5s.mp3').then(r=>{if(!r.ok)throw Error('burst HTTP '+r.status);return r.arrayBuffer();}).then(bytes=>ctx.decodeAudioData(bytes)).then(b=>burstDecoded=b).catch(()=>{burstLoading=null;});
 }
 function stopBoostedBurst(){if(burstSource){try{burstSource.stop();}catch{}try{burstSource.disconnect();}catch{}burstSource=null;}if(burstGain){try{burstGain.disconnect();}catch{}burstGain=null;}if(burstLimiter){try{burstLimiter.disconnect();}catch{}burstLimiter=null;}}
-function playBoostedBurst(){
+function playBoostedBurst(offset=0){
  if(!boostSupported||!ctx||ctx.state!=='running'||!burstDecoded)return false;
  try{
   stopBoostedBurst();const n=ctx.createBufferSource(),g=ctx.createGain(),lim=ctx.createDynamicsCompressor();
   n.buffer=burstDecoded;g.gain.value=1.5;lim.threshold.value=-3;lim.knee.value=3;lim.ratio.value=12;lim.attack.value=.001;lim.release.value=.06;
   n.connect(g);g.connect(lim);lim.connect(ctx.destination);burstSource=n;burstGain=g;burstLimiter=lim;
-  n.onended=()=>{if(burstSource===n)stopBoostedBurst();};n.start();return true;
+  n.onended=()=>{if(burstSource===n)stopBoostedBurst();};n.start(0,offset);return true;
  }catch(error){stopBoostedBurst();return false;}
 }
 const VOLUME=.48;
@@ -157,9 +157,9 @@ function duck(ms){
 }
 function burst(kind='web'){
  gesture();const audio=FX.burst;
- audio.pause();audio.volume=kind==='ar'?.8:1;try{audio.currentTime=kind==='ar'?1.04:0;}catch{}
+ audio.pause();audio.volume=kind==='ar'?.8:1;try{audio.currentTime=1.04;}catch{}
  duck(kind==='ar'?700:1700);
- if(kind==='ar'||!playBoostedBurst())attempt(audio);
+ if(kind==='ar'||!playBoostedBurst(1.04))attempt(audio);
 }
 function whoosh(){
  gesture();FX.whoosh.pause();try{FX.whoosh.currentTime=0;}catch{}
