@@ -6,7 +6,7 @@ window.DCD_ASSETS = Object.freeze({
   posterResult: "assets/figma-current/hd/posterResult-updated.png",
   openingBreakVideo: null, // Set when the approved rupture motion file exists.
   openingLastFrame: "assets/motion/blister_3_to_5_one_shot_last.png",
-  blisterPingpong: "assets/motion/blister_3_to_5_1_23_pingpong.gif?v=2500ms-20261110",
+  blisterPingpong: "assets/motion/blister_3_to_5_1_23_pingpong.gif?v=uploaded-fold-removed-20261124",
   blisterPingpongFirst: "assets/motion/blister_3_to_5_1_23_pingpong_first.png",
   blisterOneShot: "assets/motion/blister_3_to_5_one_shot.gif?v=fast-1500ms-20261110",
   blisterOneShotFirst: "assets/motion/blister_3_to_5_one_shot_first.png",
@@ -43,7 +43,7 @@ window.DCD_ASSETS = Object.freeze({
 });
 window.DCD_MOTION = Object.freeze({
   introMs: 1550,
-  blisterPingpongMs: 2500, // Retimed 44-frame GIF: 30 x 60ms + 14 x 50ms
+  blisterPingpongMs: 3440, // Uploaded exact 43-frame GIF, 43 x 80ms
   blisterOneShotMs: 1500, // Same 44 frames; 18 x 40ms + 26 x 30ms
   blisterRuptureImpactMs: 680, // After squeeze phase, before final foil tear
   rotateGuideMs: 3000,
