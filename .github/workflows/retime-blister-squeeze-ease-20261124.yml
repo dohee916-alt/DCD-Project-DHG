@@ -1,0 +1,75 @@
+name: Accelerate squeeze, decelerate reverse release (43-frame original)
+on:
+  push:
+    paths:
+      - .github/workflows/retime-blister-squeeze-ease-20261124.yml
+permissions:
+  contents: write
+jobs:
+  retime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Apply mirrored strong ease-in timing without changing frame visuals
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip -q install Pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageSequence
+          import hashlib, json, re
+          path=Path('assets/motion/blister_3_to_5_1_23_pingpong.gif')
+          raw=bytearray(path.read_bytes())
+          with Image.open(path) as im:
+              assert im.n_frames==43 and im.size==(540,1080)
+              before=[hashlib.sha256(fr.convert('RGBA').tobytes()).digest() for fr in ImageSequence.Iterator(im)]
+          # 0..20 progressively accelerate on squeeze; index 21 is turn-around,
+          # indices 22..42 play the mirrored squeeze frames backwards.
+          forward=[170,150,120,110,90,80,70,60,50,50,40,40,30,30,30,20,20,20,20,20,20]
+          timing=forward+[20]+forward[::-1]
+          assert len(timing)==43 and sum(timing)==2500
+          gce=[i for i in range(len(raw)-7) if raw[i:i+3]==bytes((0x21,0xF9,0x04)) and raw[i+7]==0]
+          assert len(gce)==43,('unexpected graphic control count',len(gce))
+          for i,(offset,delay) in enumerate(zip(gce,timing)):
+              assert delay%10==0
+              raw[offset+4:offset+6]=(delay//10).to_bytes(2,'little')
+          path.write_bytes(raw)
+          with Image.open(path) as im:
+              after=[hashlib.sha256(fr.convert('RGBA').tobytes()).digest() for fr in ImageSequence.Iterator(im)]
+              actual=[fr.info.get('duration',0) for fr in ImageSequence.Iterator(im)]
+              assert im.n_frames==43 and im.size==(540,1080)
+          assert before==after,'VISUAL FRAMES CHANGED'
+          assert actual==timing,('delay mismatch',actual)
+          assert sum(actual)==2500
+          cfg=Path('asset-config.js')
+          s=cfg.read_text()
+          s,n=re.subn(r'blisterPingpongMs: *\d+,[^\n]*','blisterPingpongMs: 2500, // Strong squeeze acceleration and mirrored release deceleration',s)
+          assert n==1,n
+          s,n=re.subn(r'blister_3_to_5_1_23_pingpong\.gif\?v=[^" ]+','blister_3_to_5_1_23_pingpong.gif?v=squeeze-ease-2500-20261124',s)
+          assert n==1,n
+          cfg.write_text(s)
+          meta=Path('assets/motion/motion-metadata.json')
+          data=json.loads(meta.read_text())
+          assert data['blister_3_to_5_1_23_pingpong']['frames']==43
+          data['blister_3_to_5_1_23_pingpong']['duration_ms']==2500
+          html=Path('index.html')
+          s=html.read_text()
+          s,n=re.subn(r'asset-config\.js\?v=[^" ]+','asset-config.js?v=squeeze-ease-2500-20261124',s)
+          assert n==1,n
+          html.write_text(s)
+          print('PASS: 43 identical visual frames, 2500ms total, squeeze acceleration, reverse deceleration')
+          print('Timing:',timing)
+          PY
+      - name: Commit changed GIF frame delays and cache versions
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion/blister_3_to_5_1_23_pingpong.gif asset-config.js index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'Ease in blister squeeze and mirror release with original 43 frames'
+            git push origin HEAD:main
+          fi
