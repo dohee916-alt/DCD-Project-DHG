@@ -1,0 +1,66 @@
+name: Install exact user-uploaded blister GIF
+on:
+  push:
+    paths:
+      - .github/workflows/install-uploaded-blister-gif.yml
+permissions:
+  contents: write
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Assemble exact GIF, verify and update playback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install -q Pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import hashlib, re, json
+          parts=sorted(Path('.github/dcd-gif-parts').glob('part-*.bin'))
+          assert len(parts)==53,len(parts)
+          raw=b''.join(p.read_bytes() for p in parts)
+          expected='9d9a5b1d8ce4d947ecd25e0a02ee24c319859a272fa439a836ee3e7b7b78f72a'
+          assert hashlib.sha256(raw).hexdigest()==expected,'GIF mismatch'
+          gif=Path('assets/motion/blister_3_to_5_1_23_pingpong.gif')
+          gif.write_bytes(raw)
+          with Image.open(gif) as im:
+              assert im.size==(540,1080) and im.n_frames==43
+              durations=[]
+              for i in range(im.n_frames):
+                  im.seek(i)
+                  durations.append(im.info.get('duration',0))
+                  if i==0:
+                      im.convert('RGBA').save('assets/motion/blister_3_to_5_1_23_pingpong_first.png')
+              assert sum(durations)==3440,durations
+          config=Path('asset-config.js')
+          text=config.read_text()
+          text,count=re.subn(r'blister_3_to_5_1_23_pingpong[.]gif[?]v=[^" ]+','blister_3_to_5_1_23_pingpong.gif?v=uploaded-fold-removed-20261124',text)
+          assert count==1,count
+          text,count=re.subn(r'blisterPingpongMs: *[0-9]+,[^\n]*','blisterPingpongMs: 3440, // Uploaded exact 43-frame GIF, 43 x 80ms',text)
+          assert count==1,count
+          config.write_text(text)
+          meta=Path('assets/motion/motion-metadata.json')
+          data=json.loads(meta.read_text())
+          data['blister_3_to_5_1_23_pingpong']={'frames':43,'duration_ms':3440,'size':[540,1080]}
+          meta.write_text(json.dumps(data))
+          index=Path('index.html')
+          html=index.read_text()
+          html,count=re.subn(r'asset-config[.]js[?]v=[^" ]+','asset-config.js?v=uploaded-fold-removed-20261124',html)
+          assert count==1,count
+          index.write_text(html)
+          print('Exact uploaded GIF SHA256:',expected,'frames:',43,'duration:',3440)
+          PY
+      - name: Commit exact GIF and remove temporary chunks
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/motion/blister_3_to_5_1_23_pingpong.gif assets/motion/blister_3_to_5_1_23_pingpong_first.png assets/motion/motion-metadata.json asset-config.js index.html
+          git rm -rq .github/dcd-gif-parts
+          git commit -m 'Install exact uploaded fold-removed blister GIF (43 frames, 3440ms)'
+          git push origin HEAD:main
