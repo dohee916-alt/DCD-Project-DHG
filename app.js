@@ -196,6 +196,13 @@ function localPoint(e){
  return p;
 }
 function hit(p,x,y,w,h){return p.x>=x&&p.x<=x+w&&p.y>=y&&p.y<=y+h;}
+// WEB04: generous touch/trackpad targets for retrieving a packed doll.
+// Keep each pack slot independent; pad is smaller than the gap between slots.
+function packedSlotAt(p){
+  return packSlots.findIndex((b,i)=>s.figures[i].packed&&hit(p,b[0]-12,b[1]-12,b[2]+24,b[3]+24));
+}
+function overUnpackTray(p){return hit(p,280,18,293,397);}
+function packedDraggedFarEnough(d,p){return Math.hypot(p.x-d.start.x,p.y-d.start.y)>=14;}
 function workbenchActive(){return s.page==='workbench';}
 function workbenchReady(){return s.page==='workbench'&&s.phase==='ready';}
 function resumeWorkbench(){s.phase='ready';save();render();}
@@ -1789,7 +1796,7 @@ stage.addEventListener('pointerdown',e=>{let p=localPoint(e);if(s.page==='01'&&s
   try{stage.setPointerCapture(e.pointerId);}catch(error){console.warn('[DCD] Pointer capture:',error);}
   return;
 }
-if(!workbenchReady())return;let kind=null,index=-1;if(hit(p,261,125,40,297))kind='syringe';else if(hit(p,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h))kind='doll';else{index=packSlots.findIndex((b,i)=>s.figures[i].packed&&hit(p,...b));if(index>=0)kind='packed';}if(kind){e.preventDefault();const el=kind==='syringe'?stage.querySelector('.syringe'):kind==='doll'?stage.querySelector('.active-figure'):stage.querySelector('canvas.packed-figure[data-figure="'+index+'"]');drag={kind,index,pointerId:e.pointerId,start:p,last:p,moved:false,angle:kind==='syringe'?(s.loaded?45:-45):0,el};if(el)el.classList.add('dragging');if(kind==='syringe'){s.handGuideDismissed=true;save();stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());if(el){el.style.transition='none';el.style.transform='rotate('+drag.angle+'deg)';}}stage.setPointerCapture(e.pointerId);}});
+if(!workbenchReady())return;let kind=null,index=-1;if(hit(p,261,125,40,297))kind='syringe';else if(hit(p,activeDollRect.x,activeDollRect.y,activeDollRect.w,activeDollRect.h))kind='doll';else{index=packedSlotAt(p);if(index>=0)kind='packed';}if(kind){e.preventDefault();const el=kind==='syringe'?stage.querySelector('.syringe'):kind==='doll'?stage.querySelector('.active-figure'):stage.querySelector('canvas.packed-figure[data-figure="'+index+'"]');drag={kind,index,pointerId:e.pointerId,start:p,last:p,moved:false,angle:kind==='syringe'?(s.loaded?45:-45):0,el};if(el)el.classList.add('dragging');if(kind==='syringe'){s.handGuideDismissed=true;save();stage.querySelectorAll('.syringe-guide').forEach(n=>n.remove());if(el){el.style.transition='none';el.style.transform='rotate('+drag.angle+'deg)';}}stage.setPointerCapture(e.pointerId);}});
 stage.addEventListener('pointermove',e=>{
   let p=localPoint(e);
   if(gesture.has(e.pointerId)){
@@ -1832,10 +1839,10 @@ stage.addEventListener('pointerup',e=>{
   }else if(d.kind==='doll'){
     if(hit(p,...packRect))animatePackActive(d.el);else render();
   }else if(d.kind==='packed'){
-    if(hit(p,308,39,237,355))unpack(d.index);else render();
+    if(packedDraggedFarEnough(d,p)&&overUnpackTray(p))unpack(d.index);else render();
   }
 });
-stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag){drag=null;render();}});
+stage.addEventListener('pointercancel',e=>{gesture.delete(e.pointerId);if(drag?.pointerId===e.pointerId){drag=null;render();}});
 function bindSignature(){let c=stage.querySelector('#signature');if(!c)return;let ctx=c.getContext('2d'),drawing=false,moved=false;ctx.strokeStyle='#171717';ctx.lineWidth=5;ctx.lineJoin='round';ctx.lineCap='round';function point(e){let r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};}c.onpointerdown=e=>{window.DCD_WEB_SFX?.unlock();e.stopPropagation();c.setPointerCapture(e.pointerId);drawing=true;moved=false;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(!moved){window.DCD_WEB_SFX?.play('signature',{loop:true});stage.querySelectorAll('.signature-guide,.signature-sample').forEach(n=>n.remove());}moved=true;};c.onpointerup=e=>{e.stopPropagation();drawing=false;window.DCD_WEB_SFX?.stop('signature');if(moved){s.signed=true;s.page='14done';save();stage.className='stage page-14done phase-ready';let guide=stage.querySelector('.signature-guide');if(guide)guide.remove();(stage.querySelector('.scene-content')||stage).insertAdjacentHTML('beforeend',arrowButton(839,365,'next','12'));}};c.onpointercancel=()=>{drawing=false;window.DCD_WEB_SFX?.stop('signature');};}
 // Resize never rotates the WEB canvas in code. It only reads the user's
 // real viewport layout. Device motion unlocks the next step under OS lock.
