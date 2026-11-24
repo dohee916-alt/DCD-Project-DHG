@@ -1190,6 +1190,31 @@ async function beginAr(){
     // The AR pack is already at its final native Figma coordinates behind the
     // flying object. Replace only at arrival, without a mid-flight asset snap.
     await flight.finished;
+    // Match the actual rendered dose-label positions at the handoff boundary.
+    // Figma/native box math agrees to ~0.001px, but CSS font rasterization and
+    // viewport transforms can produce a visible difference. Apply an offset to
+    // the incoming label only when measured screen rectangles disagree.
+    const outgoingDose=flying.querySelector('.new-pack-dose');
+    const incomingDose=stage.querySelector('.ar-pack-dose');
+    if(outgoingDose&&incomingDose){
+      const from=outgoingDose.getBoundingClientRect();
+      const to=incomingDose.getBoundingClientRect();
+      const dx=(from.left+from.width/2)-(to.left+to.width/2);
+      const dy=(from.top+from.height/2)-(to.top+to.height/2);
+      const gap=Math.hypot(dx,dy);
+      if(gap>0.5&&gap<20){
+        // Invert the AR stage's screen-space rotation and scale. The resulting
+        // local offset stays attached to the blister during the screen turn.
+        const m=new DOMMatrixReadOnly(getComputedStyle(stage).transform);
+        const det=m.a*m.d-m.b*m.c;
+        if(Math.abs(det)>1e-6){
+          const localX=(m.d*dx-m.c*dy)/det;
+          const localY=(-m.b*dx+m.a*dy)/det;
+          incomingDose.style.translate=localX+'px '+localY+'px';
+        }
+      }
+      console.debug('[DCD AR] dose handoff screen offset (px)',{dx,dy,gap});
+    }
     // The entire sideways AR screen is visible before desktop rotation.
     if(incomingGradient)incomingGradient.style.opacity='1';
     stage.style.opacity='1';
